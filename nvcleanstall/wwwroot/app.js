@@ -148,7 +148,9 @@ function pollDownload(jobId) {
   $('dl-sub').textContent = `${rel.version} ${rel.channel} — ${rel.sizeMB} MB`;
   $('dl-total').textContent = `${rel.sizeMB} MB`;
   let cancelled = false;
-  $('btn-cancel-dl').onclick = () => { cancelled = true; show('source'); };
+  // GAP-02: tell the server to abort a real download (deletes the partial file);
+  // harmless no-op for the simulated mock-path job.
+  $('btn-cancel-dl').onclick = () => { cancelled = true; api.post(`/api/download/${jobId}/cancel`, {}); show('source'); };
 
   const tick = async () => {
     if (cancelled || state.screen !== 'download') return;
@@ -156,6 +158,7 @@ function pollDownload(jobId) {
     $('dl-fill').style.width = `${Math.round(j.progress * 100)}%`;
     $('dl-done').textContent = `${j.doneMB} MB`;
     $('dl-speed').textContent = j.speed || '';
+    if (j.status === 'failed') { alert('Download failed: ' + (j.error || 'unknown error')); return show('source'); }
     if (j.status === 'done') {
       const r = await api.post('/api/package', { kind: 'catalog', version: state.version });
       if (r.error) return alert(r.error);
@@ -172,6 +175,9 @@ function pollDownload(jobId) {
 function adoptManifest(r) {
   state.token = r.token;
   state.manifest = r.manifest;
+  // GAP-02: live downloads carry a sample component list (real package parsing is
+  // not yet implemented); label it so it isn't mistaken for the real package.
+  $('comp-sample-note').classList.toggle('hidden', !state.manifest.sampleComponents);
   const comps = state.manifest.components;
   state.components = comps.filter(c => c.required || c.recommended).map(c => c.id);
   if (state.pendingPreset) {

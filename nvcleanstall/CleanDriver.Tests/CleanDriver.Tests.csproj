@@ -24,6 +24,8 @@
   <ItemGroup>
     <Content Include="..\data\**" Link="data\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- GAP-02 AC-3: the download engine's source is scanned by a no-execution guard test. -->
+    <Content Include="..\Lib\Jobs.cs" Link="src\Jobs.cs" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

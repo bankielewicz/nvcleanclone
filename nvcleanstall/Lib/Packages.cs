@@ -12,6 +12,22 @@ public static class Packages
         return (manifest, new PackageSource { Kind = "catalog", Dir = dir });
     }
 
+    public static bool HasCatalogPackage(string version) =>
+        Directory.Exists(Catalog.PackageDir(version));
+
+    // GAP-02: a live-downloaded version has no real package (real parsing is
+    // GAP-OUT-1). Serve the newest mock package as a representative sample, relabeled
+    // to the requested version and flagged SampleComponents. PackageSource stays under
+    // data/packages/ so extract/build read sample payloads — never the downloaded .exe.
+    public static (Manifest manifest, PackageSource source) LoadSampleTemplate(string version)
+    {
+        var templateVersion = Catalog.Releases().First().Version; // newest mock package
+        var dir = Catalog.PackageDir(templateVersion);
+        var manifest = ReadManifest(File.ReadAllText(Path.Combine(dir, "manifest.json")))
+            with { Version = version, SampleComponents = true };
+        return (manifest, new PackageSource { Kind = "catalog", Dir = dir });
+    }
+
     // A local package is either a directory containing manifest.json + payload/,
     // or a .zip with the same layout at its root.
     public static (Manifest manifest, PackageSource source) LoadLocal(string localPath)

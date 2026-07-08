@@ -40,26 +40,51 @@ public static class Api
         {
             try
             {
-                var loaded = req.Kind == "catalog"
-                    ? Packages.LoadCatalog(req.Version ?? throw new InvalidDataException("version required"))
-                    : Packages.LoadLocal(req.Path ?? throw new InvalidDataException("path required"));
+                (Manifest manifest, PackageSource source) loaded;
+                if (req.Kind == "catalog")
+                {
+                    var version = req.Version ?? throw new InvalidDataException("version required");
+                    // A live-downloaded version has no real package: serve a labeled sample.
+                    loaded = Packages.HasCatalogPackage(version)
+                        ? Packages.LoadCatalog(version)
+                        : Packages.LoadSampleTemplate(version);
+                }
+                else
+                {
+                    loaded = Packages.LoadLocal(req.Path ?? throw new InvalidDataException("path required"));
+                }
                 var token = Interlocked.Increment(ref _nextSession).ToString();
                 Sessions[token] = loaded;
                 return Results.Json(new { token, manifest = loaded.manifest }, Json.Web);
             }
-            catch (Exception ex) when (ex is IOException or InvalidDataException or JsonException or UnauthorizedAccessException)
+            catch (InvalidDataException ex)
             {
+                // Our own validation messages carry no filesystem paths — safe to surface.
                 return Results.Json(new { error = ex.Message }, Json.Web, statusCode: 400);
+            }
+            catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+            {
+                // Never leak absolute filesystem paths to the client.
+                return Results.Json(new { error = "could not load package" }, Json.Web, statusCode: 400);
             }
         });
 
         app.MapPost("/api/download", (DownloadRequest req) =>
         {
-            var rel = Catalog.Find(req.Version);
+            // Resolve the release server-side via the provider (never trust a client URL):
+            // this yields the source marker + DownloadUrl and keeps route-by-source honest.
+            var rel = catalog.GetReleases(Gpu.Detect()).FirstOrDefault(r => r.Version == req.Version);
             if (rel == null) return Results.Json(new { error = "unknown version" }, Json.Web, statusCode: 404);
-            var job = Jobs.StartDownload(rel);
+            var job = Jobs.ShouldRealDownload(rel)
+                ? Jobs.StartRealDownload(rel, Path.Combine(Jobs.OutputDir, "drivers"))
+                : Jobs.StartDownload(rel);
             return Results.Json(new { jobId = job.Id }, Json.Web);
         });
+
+        app.MapPost("/api/download/{id}/cancel", (string id) =>
+            Jobs.Cancel(id)
+                ? Results.Json(new { cancelled = id }, Json.Web)
+                : Results.Json(new { error = "no such job" }, Json.Web, statusCode: 404));
 
         app.MapPost("/api/execute", (ExecuteRequest req) =>
         {

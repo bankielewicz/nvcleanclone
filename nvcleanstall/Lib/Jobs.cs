@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace CleanDriver.Lib;
 
@@ -26,6 +27,11 @@ public class Job
     public bool Modified { get; set; }
     public bool RebootRecommended { get; set; }
 
+    // real-download-specific (GAP-02, additive)
+    public string? FilePath { get; set; }
+    public Task? Completion { get; internal set; }          // not serialized; tests await it
+    internal CancellationTokenSource? Cancellation { get; set; } // null for simulated jobs
+
     public void LogLine(string text, string cls = "")
     {
         lock (_lock) _log.Add(new { text, cls });
@@ -40,7 +46,7 @@ public class Job
                 id = Id, type = Type, status = Status, progress = Progress, error = Error,
                 version = Version, totalMB = TotalMB, doneMB = DoneMB, speed = Speed,
                 receipt = Receipt, outDir = OutDir, modified = Modified,
-                rebootRecommended = RebootRecommended,
+                rebootRecommended = RebootRecommended, filePath = FilePath,
                 log = _log.ToList(),
             };
         }
@@ -62,6 +68,24 @@ public static class Jobs
     }
 
     public static Job? Get(string id) => Store.GetValueOrDefault(id);
+
+    // Per-read stall window (public seam so tests can shorten it; no UI knob — §4).
+    public static TimeSpan StallTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    // Cancels a running real download (aborts the stream; the worker deletes the
+    // .part and marks the job "cancelled"). A no-op for simulated jobs, which carry
+    // no CancellationTokenSource — the simulation finishes harmlessly, preserving
+    // the mock-path byte-identity pin. Returns false only when the job is unknown.
+    public static bool Cancel(string id)
+    {
+        var job = Get(id);
+        if (job == null) return false;
+        // A cancel racing the worker's finally (or any late/duplicate cancel) can hit
+        // an already-disposed CTS; a late cancel on a finished job is a harmless no-op.
+        try { job.Cancellation?.Cancel(); }
+        catch (ObjectDisposedException) { /* download already completed */ }
+        return true;
+    }
 
     // ---- simulated download -------------------------------------------------
 
@@ -87,6 +111,195 @@ public static class Jobs
             }
         });
         return job;
+    }
+
+    // ---- real download (GAP-02): fetch bytes to disk, never executed --------
+
+    // Route-by-source: only a server-resolved live release with a real URL streams
+    // for real; mock and mock-stamped fallback releases keep the simulation.
+    public static bool ShouldRealDownload(Release release) =>
+        release.Source == "live" && !string.IsNullOrWhiteSpace(release.DownloadUrl);
+
+    // Untrusted live version strings are used to build a file path — accept only NNN.NN.
+    private static readonly Regex DriverVersionRe = new(@"^\d{3}\.\d{2}$", RegexOptions.Compiled);
+
+    // In-flight real downloads keyed by version, for idempotent double-click handling.
+    private static readonly ConcurrentDictionary<string, string> ActiveDownloads = new();
+
+    // A separate client from GAP-01's 5s metadata client: a real installer legitimately
+    // takes minutes, so the client has no overall timeout (ResponseHeadersRead + a
+    // per-read stall timeout enforce liveness instead).
+    private static readonly TimeSpan SpeedSampleWindow = TimeSpan.FromSeconds(1);
+
+    // Configurable cap (register): env override, else 2 GiB (real packages are ~1 GB).
+    public static long MaxDownloadBytes()
+    {
+        var env = Environment.GetEnvironmentVariable("CLEANDRIVER_MAX_DOWNLOAD_MB");
+        return long.TryParse(env, out var mb) && mb > 0 ? mb * 1024L * 1024L : 2L * 1024 * 1024 * 1024;
+    }
+
+    // <type> is derived from our own channel enum, never from response text.
+    private static string TypeTag(string channel) =>
+        channel.Equals("Beta", StringComparison.OrdinalIgnoreCase) ? "beta" : "whql";
+
+    private static void EnsureDiskSpace(string destDir, long needed)
+    {
+        var root = Path.GetPathRoot(Path.GetFullPath(destDir));
+        if (string.IsNullOrEmpty(root)) return;
+        try
+        {
+            var free = new DriveInfo(root).AvailableFreeSpace;
+            if (free < needed + 64L * 1024 * 1024)
+                throw new IOException("insufficient disk space for download");
+        }
+        catch (ArgumentException) { /* non-fixed / UNC path — skip the check */ }
+    }
+
+    // Delete swallows-and-ignores: a cleanup failure (e.g. an AV lock on the .part)
+    // must never mask the original error that triggered cleanup.
+    private static void TryDelete(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); }
+        catch { /* best effort */ }
+    }
+
+    // Atomic same-volume rename (MoveFileEx REPLACE_EXISTING). The write stream is
+    // already disposed by the caller. Retries a few times to ride out a transient
+    // antivirus lock on the freshly written file.
+    private static void MoveIntoPlace(string part, string final)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try { File.Move(part, final, overwrite: true); return; }
+            catch (IOException) when (attempt < 3) { Thread.Sleep(200); }
+        }
+    }
+
+    public static Job StartRealDownload(Release release, string destDir, HttpMessageHandler? handler = null)
+    {
+        var version = release.Version ?? "";
+
+        // Idempotent: a second request for a version already downloading returns the
+        // in-flight job rather than starting a second interleaved stream.
+        if (ActiveDownloads.TryGetValue(version, out var existingId)
+            && Get(existingId) is { Status: "running" } existing)
+            return existing;
+
+        var job = Create("download");
+        job.Version = version;
+        job.TotalMB = release.SizeMB;
+
+        // Reject path-injecting / malformed versions before any filesystem call.
+        if (!DriverVersionRe.IsMatch(version))
+        {
+            job.Status = "failed";
+            job.Error = "invalid driver version";
+            job.Completion = Task.CompletedTask;
+            return job;
+        }
+
+        bool ownsHandler = handler == null;
+        var http = new HttpClient(handler ?? new SocketsHttpHandler(), disposeHandler: ownsHandler)
+        {
+            Timeout = System.Threading.Timeout.InfiniteTimeSpan,
+        };
+        var cts = new CancellationTokenSource();
+        job.Cancellation = cts;
+        ActiveDownloads[version] = job.Id;
+        job.Completion = Task.Run(() => RunRealDownloadAsync(job, release, destDir, http, cts));
+        return job;
+    }
+
+    private static async Task RunRealDownloadAsync(Job job, Release release, string destDir,
+        HttpClient http, CancellationTokenSource cancelCts)
+    {
+        var cancelToken = cancelCts.Token;
+        var type = TypeTag(release.Channel);
+        var finalPath = Path.Combine(destDir, $"{release.Version}-{type}.exe");
+        var partPath = finalPath + ".part";
+        try
+        {
+            // Defense-in-depth: only ever fetch from NVIDIA (on top of server-side
+            // provider re-resolution). Removable for mirrors — see PR body.
+            var host = new Uri(release.DownloadUrl ?? throw new IOException("release has no download URL")).Host;
+            if (!(host.Equals("nvidia.com", StringComparison.OrdinalIgnoreCase) ||
+                  host.EndsWith(".nvidia.com", StringComparison.OrdinalIgnoreCase)))
+                throw new IOException($"refusing download from non-NVIDIA host: {host}");
+
+            Directory.CreateDirectory(destDir);
+            long maxBytes = MaxDownloadBytes();
+            using var resp = await http.GetAsync(release.DownloadUrl,
+                HttpCompletionOption.ResponseHeadersRead, cancelToken);
+            resp.EnsureSuccessStatusCode();
+            long? total = resp.Content.Headers.ContentLength;
+            if (total is 0) throw new IOException("download is empty (Content-Length 0)");
+            if (total is long t)
+            {
+                if (t > maxBytes) throw new IOException($"download too large ({t} bytes exceeds {maxBytes})");
+                EnsureDiskSpace(destDir, t);
+                job.TotalMB = (int)Math.Round(t / (1024.0 * 1024.0));
+            }
+            long denom = total ?? (long)release.SizeMB * 1024 * 1024;
+
+            long read = 0;
+            var lastSample = DateTime.UtcNow;
+            long lastBytes = 0;
+            await using (var src = await resp.Content.ReadAsStreamAsync())
+            await using (var dst = new FileStream(partPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                var buf = new byte[128 * 1024];
+                while (true)
+                {
+                    // Each read gets a fresh stall window; the job's cancel token is
+                    // linked in so a cancel aborts an in-flight read immediately.
+                    using var stall = new CancellationTokenSource(StallTimeout);
+                    using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancelToken, stall.Token);
+                    int n = await src.ReadAsync(buf, linked.Token);
+                    if (n == 0) break;
+                    await dst.WriteAsync(buf.AsMemory(0, n), cancelToken);
+                    read += n;
+                    if (read > maxBytes) throw new IOException($"download exceeded max size ({maxBytes} bytes)");
+                    job.DoneMB = (int)Math.Round(read / (1024.0 * 1024.0));
+                    double prog = denom > 0 ? (double)read / denom : 0;
+                    job.Progress = total.HasValue ? Math.Min(1.0, prog) : Math.Min(0.99, prog);
+                    var now = DateTime.UtcNow;
+                    var dt = (now - lastSample).TotalSeconds;
+                    if (dt >= SpeedSampleWindow.TotalSeconds)
+                    {
+                        job.Speed = $"{((read - lastBytes) / (1024.0 * 1024.0)) / dt:F1} MB/s";
+                        lastSample = now;
+                        lastBytes = read;
+                    }
+                }
+            } // streams disposed here, before the move
+
+            if (read == 0) throw new IOException("download produced no bytes");
+            if (File.Exists(finalPath)) job.LogLine("> Overwriting previous download.", "mut");
+            MoveIntoPlace(partPath, finalPath); // streams above are disposed before this
+            job.FilePath = finalPath;
+            job.DoneMB = (int)Math.Round(read / (1024.0 * 1024.0));
+            job.Progress = 1.0;
+            job.Status = "done";
+        }
+        catch (OperationCanceledException) when (cancelCts.IsCancellationRequested)
+        {
+            TryDelete(partPath);
+            job.Status = "cancelled";
+            job.Error = "download cancelled";
+        }
+        catch (Exception ex)
+        {
+            TryDelete(partPath);
+            job.Status = "failed";
+            // A cancellation not tied to the job's token is a per-read stall.
+            job.Error = ex is OperationCanceledException ? "download stalled" : ex.Message;
+        }
+        finally
+        {
+            ActiveDownloads.TryRemove(new KeyValuePair<string, string>(release.Version ?? "", job.Id));
+            http.Dispose();
+            cancelCts.Dispose();
+        }
     }
 
     // ---- execute (install / silent / extract / package) ---------------------
