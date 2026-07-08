@@ -3,11 +3,27 @@
 These rules bind every change to this repository, human or AI. PRs that skip them get
 returned.
 
-## TDD (without exception)
+## TDD (strict — without exception)
 
-- Red → green → refactor: every behavior change starts with a failing test that
-  specifies it; then the minimum implementation; then cleanup.
-- Bug fixes start with a reproducing test that fails on the old code.
+The discipline, in order, for every behavior change:
+
+1. **Red first.** Write the failing test that specifies the behavior. Run it. Capture
+   the failing output — it is required PR evidence (see PR template).
+2. **Green.** Write the minimum implementation that passes it. Run the full suite.
+3. **Refactor.** Clean up with the suite green.
+
+Enforcement rules:
+
+- **No production code without a failing test that requires it.** If you cannot name
+  the test that forced a line of code, the line is out of scope.
+- **Commit ordering proves the discipline:** the test lands in the same commit as (or
+  a commit before) the implementation it specifies — never after. A PR whose history
+  shows implementation-then-tests gets returned without further review.
+- **Red evidence in the PR body:** for each behavior, paste the failing-test output
+  from step 1 alongside the passing output from step 2. "Tests exist" is not
+  evidence; "tests failed, then passed" is.
+- Bug fixes start with a reproducing test that fails on the old code — same evidence
+  rule applies.
 - Acceptance tests exercise **production wiring and default code paths**, not
   test-only variants. Network-dependent logic is tested against recorded fixtures via
   an injectable `HttpMessageHandler`; live-network checks live in scripted
@@ -15,7 +31,8 @@ returned.
 - Existing tests are back-compat pins: editing one to make it pass is a design smell —
   each such edit must be individually disclosed and justified in the PR body.
 - Test project: `nvcleanstall/CleanDriver.Tests/` (xunit, `net10.0-windows`). If it
-  does not exist yet, scaffolding it is the first commit of the first wave that needs it.
+  does not exist yet, scaffolding it is the first commit of the first wave that needs
+  it, and that scaffold commit must include at least one passing test.
 
 ## Gates (each PR independently green)
 

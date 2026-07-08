@@ -33,7 +33,17 @@ dotnet publish nvcleanstall/CleanDriver.csproj -c Release -r win-x64 --self-cont
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o nvcleanstall/publish
 ```
 
-Every PR must be green on: `dotnet build`, `dotnet test`, `git diff --check` (see `CONTRIBUTING.md` — TDD is mandatory, red→green→refactor, bug fixes start with a reproducing test).
+Every PR must be green on: `dotnet build`, `dotnet test`, `git diff --check`.
+
+### TDD is strict here (CONTRIBUTING.md governs — read it before coding)
+
+Non-negotiable order for every behavior change: failing test first (capture its output),
+minimum implementation, refactor. No production code without a failing test that requires
+it. Commit the test with or before its implementation — a PR whose history shows
+implementation-then-tests gets returned. Every PR body must show red-then-green evidence
+per behavior (the PR template asks for it). Bug fixes start with a reproducing test.
+Existing tests are back-compat pins: never edit one to make it pass without disclosing and
+justifying that edit in the PR body.
 
 ### Environment quirks (WSL ↔ Windows)
 

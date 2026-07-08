@@ -3,6 +3,7 @@
 .delegate/
 .playwright-mcp/
 .*/
+!.github/
 devforgeai/
 tmp/
 
