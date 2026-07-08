@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CleanDriver</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-theme="light">
+
+  <div class="toggle" role="group" aria-label="Theme">
+    <button id="t-light" class="on">Light</button>
+    <button id="t-dark">Dark</button>
+  </div>
+
+  <div class="window">
+    <!-- title bar -->
+    <div class="titlebar">
+      <div class="glyph"></div>
+      <div class="appname">CleanDriver</div>
+      <div class="tb-spacer"></div>
+      <div class="toolbar">
+        <button class="tb-btn" id="btn-save-preset">Save preset…</button>
+        <button class="tb-btn" id="btn-load-preset">Load preset…</button>
+      </div>
+      <div class="caption">
+        <div class="cap"><svg viewBox="0 0 10 10"><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1"/></svg></div>
+        <div class="cap close"><svg viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" stroke-width="1"/><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" stroke-width="1"/></svg></div>
+      </div>
+    </div>
+
+    <!-- preset popover -->
+    <div class="popover hidden" id="preset-pop"></div>
+
+    <div class="content">
+
+      <!-- ============ screen 1: driver source ============ -->
+      <div class="screen active" id="screen-source">
+        <h1 class="page-title">Driver source</h1>
+        <div class="detect">
+          <div class="disc"><span></span></div>
+          <div>
+            <div class="gpu" id="gpu-name">Detecting…</div>
+            <div class="drv">Installed driver <b id="gpu-driver">—</b></div>
+          </div>
+          <div class="rt caption-txt" id="gpu-via"></div>
+        </div>
+
+        <div class="opt sel" id="opt-catalog">
+          <div class="opt-head">
+            <div class="radio"></div>
+            <div class="opt-title">Install a driver from the catalog</div>
+          </div>
+          <div class="opt-body" id="catalog-body">
+            <div class="combo" id="combo">
+              <div class="combo-field" id="combo-field">
+                <span class="v" id="combo-ver"></span>
+                <span class="tag" id="combo-tag"></span>
+                <span class="date" id="combo-date"></span>
+                <span class="chev"><svg viewBox="0 0 12 12" width="12" height="12"><path d="M2 8 L6 4 L10 8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></span>
+              </div>
+              <div class="menu" id="combo-menu"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="opt" id="opt-local">
+          <div class="opt-head">
+            <div class="radio"></div>
+            <div class="opt-title">Use driver files on disk</div>
+          </div>
+          <div class="opt-body disabled-block" id="local-body">
+            <div class="path-row">
+              <input class="path-field" id="local-path" placeholder="Select a folder containing driver files…">
+              <button class="btn secondary" id="btn-browse">Browse…</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ screen 2: download ============ -->
+      <div class="screen" id="screen-download">
+        <div class="dl-wrap">
+          <div class="dl-card">
+            <div class="dl-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3 v11 M7 10 l5 5 5-5"/><path d="M4 18 v2 a1 1 0 0 0 1 1 h14 a1 1 0 0 0 1-1 v-2"/>
+              </svg>
+            </div>
+            <div class="dl-title">Downloading driver package</div>
+            <div class="dl-sub" id="dl-sub"></div>
+            <div class="bar-wrap">
+              <div class="bar"><div class="bar-fill" id="dl-fill"></div></div>
+              <div class="bar-caption">
+                <span><b id="dl-done">0 MB</b> of <span id="dl-total"></span></span>
+                <span id="dl-speed"></span>
+              </div>
+            </div>
+            <div class="dl-actions">
+              <button class="btn secondary" id="btn-cancel-dl">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ screen 3: components ============ -->
+      <div class="screen" id="screen-components">
+        <h1 class="page-title">Components</h1>
+        <div class="panes">
+          <div class="left">
+            <div class="left-head">
+              <span class="label">Select components</span>
+              <button class="btn secondary sm" id="btn-recommended">Recommended</button>
+            </div>
+            <div class="list" id="comp-list"></div>
+            <div class="list-foot">
+              <span class="label" style="align-self:center">Install size</span>
+              <span><b id="size-sel"></b> <span class="csize" id="size-total"></span></span>
+            </div>
+          </div>
+          <div class="right">
+            <div class="rp-eyebrow">Component</div>
+            <div class="rp-title" id="comp-rp-title"></div>
+            <div class="rp-desc" id="comp-rp-desc"></div>
+            <div class="dep hidden" id="comp-rp-dep"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ screen 4: tweaks ============ -->
+      <div class="screen" id="screen-tweaks">
+        <h1 class="page-title">Tweaks</h1>
+        <div class="panes">
+          <div class="left">
+            <div class="list" id="tweak-list"></div>
+          </div>
+          <div class="right">
+            <div class="rp-eyebrow">Tweak</div>
+            <div class="rp-title" id="tweak-rp-title"></div>
+            <div class="rp-desc" id="tweak-rp-desc"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ screen 5: action & result ============ -->
+      <div class="screen" id="screen-action">
+        <h1 class="page-title">Action</h1>
+        <div class="agrid" id="agrid">
+          <div class="acard sel" data-action="install">
+            <div class="apick"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+            <div class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 v10 M8 9 l4 4 4-4"/><path d="M4 17 v2 a1 1 0 0 0 1 1 h14 a1 1 0 0 0 1-1 v-2"/></svg></div>
+            <div><div class="at">Install</div><div class="ad">Interactive install with progress.</div></div>
+          </div>
+          <div class="acard" data-action="silent">
+            <div class="apick"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+            <div class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 10 h8 M8 14 h5"/></svg></div>
+            <div><div class="at">Silent install</div><div class="ad">No prompts, log only.</div></div>
+          </div>
+          <div class="acard" data-action="extract">
+            <div class="apick"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+            <div class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7 a1 1 0 0 1 1-1 h5 l2 2 h8 a1 1 0 0 1 1 1 v9 a1 1 0 0 1-1 1 H4 a1 1 0 0 1-1-1 Z"/><path d="M12 10 v6 M9 13 l3 3 3-3"/></svg></div>
+            <div><div class="at">Extract only</div><div class="ad">Write customized package to a folder.</div></div>
+          </div>
+          <div class="acard" data-action="package">
+            <div class="apick"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+            <div class="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 l8 4.5 v9 L12 21 4 16.5 v-9 Z"/><path d="M4 7.5 l8 4.5 8-4.5 M12 12 v9"/></svg></div>
+            <div><div class="at">Build package</div><div class="ad">Self-contained installer package.</div></div>
+          </div>
+        </div>
+        <div class="out-row disabled" id="out-row">
+          <div class="field-label">Output folder</div>
+          <div class="path-row">
+            <input class="path-field" id="out-path" placeholder="Choose a destination folder…">
+            <button class="btn secondary" id="btn-out-browse">Browse…</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ screen 5b: running / result ============ -->
+      <div class="screen" id="screen-run">
+        <div class="run-head">
+          <div class="run-title" id="run-title">Working…</div>
+          <div class="status hidden" id="run-status">
+            <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 8 L7 10.5 L11.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+            Completed
+          </div>
+        </div>
+        <div class="bar" id="run-bar"><div class="bar-fill" id="run-fill"></div></div>
+        <div class="log" id="run-log"></div>
+        <div class="banner hidden" id="run-banner">
+          <div class="bi"><svg viewBox="0 0 16 16"><path d="M3.5 8.5 L6.5 11.5 L12.5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+          <div class="btxt">
+            <div class="bt" id="banner-text"></div>
+            <div class="bc hidden" id="banner-caption">A reboot is recommended.</div>
+          </div>
+          <div class="bbtns">
+            <button class="btn secondary" id="btn-open-folder">Open output folder</button>
+            <button class="btn primary" id="btn-finish">Finish</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- footer -->
+    <div class="footer">
+      <div class="step" id="step-label"></div>
+      <div class="sp"></div>
+      <div class="foot-actions" id="foot-actions">
+        <span class="next-note hidden" id="next-note">continues automatically when complete</span>
+        <button class="btn secondary" id="btn-back">Back</button>
+        <button class="btn primary" id="btn-next">Next</button>
+      </div>
+    </div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>

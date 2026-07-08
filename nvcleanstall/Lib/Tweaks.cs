@@ -1,0 +1,137 @@
+namespace CleanDriver.Lib;
+
+public record TweakSub(string Id, string Name, bool Default);
+public record TweakParams(string Id, string Name, string[] Values, string Default);
+public record TweakConflict(string Tweak, string Warning);
+
+public record TweakDef
+{
+    public string Id { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string Category { get; init; } = ""; // install | expert
+    public bool Default { get; init; }
+    public bool Experimental { get; init; }
+    public bool Reg { get; init; }
+    public string Description { get; init; } = "";
+    public TweakSub? Sub { get; init; }
+    public TweakParams? Params { get; init; }
+    public TweakConflict? ConflictsWith { get; init; }
+    public string? LearnMore { get; init; }
+}
+
+public static class Tweaks
+{
+    public static readonly List<TweakDef> All = new()
+    {
+        new()
+        {
+            Id = "installer-telemetry", Name = "Disable installer telemetry & advertising", Category = "install",
+            Default = true,
+            Description = "Strips telemetry and advertising tasks from the installation process itself, so the installer reports nothing home and schedules no promotional content.",
+        },
+        new()
+        {
+            Id = "unattended", Name = "Unattended express installation", Category = "install",
+            Default = true,
+            Description = "Runs the installer without any prompts or confirmations. Combine with \"Allow automatic reboot\" to finish without interaction.",
+            Sub = new TweakSub("auto-reboot", "Allow automatic reboot", false),
+        },
+        new()
+        {
+            Id = "clean-install", Name = "Perform clean installation", Category = "install",
+            Default = true,
+            Description = "Removes traces of previously installed drivers and resets driver settings to defaults before installing the new package.",
+        },
+        new()
+        {
+            Id = "disable-mpo", Name = "Disable Multi-Plane Overlay (MPO)", Category = "install",
+            Reg = true,
+            Description = "Disables Multi-Plane Overlay, which can cause flicker or stutter with some display/driver combinations. Applied as a registry change; a .reg snippet is written alongside the output.",
+        },
+        new()
+        {
+            Id = "disable-ansel", Name = "Disable Ansel", Category = "install",
+            Description = "Disables the in-game photography/screenshot overlay component of the driver.",
+        },
+        new()
+        {
+            Id = "control-panel", Name = "Install driver control panel", Category = "install",
+            Default = true,
+            Description = "Includes the driver control panel application so display and 3D settings can be changed without the store version.",
+        },
+        new()
+        {
+            Id = "driver-telemetry", Name = "Disable driver telemetry", Category = "expert",
+            Experimental = true,
+            Description = "Patches driver-level telemetry endpoints out of the package. Experimental: on a real system this requires rebuilding the driver signature.",
+        },
+        new()
+        {
+            Id = "disable-container", Name = "Disable display container service", Category = "expert",
+            Experimental = true,
+            ConflictsWith = new TweakConflict("control-panel", "Breaks the driver control panel — it is currently selected for install."),
+            Description = "Prevents the background display container service from being installed. Saves memory, but the driver control panel cannot run without it.",
+        },
+        new()
+        {
+            Id = "hd-audio-sleep", Name = "Disable HD-audio device sleep timer", Category = "expert",
+            Reg = true,
+            Description = "Stops the HDMI/DisplayPort audio device from sleeping after inactivity, avoiding the first-second audio dropout some receivers exhibit.",
+        },
+        new()
+        {
+            Id = "msi-mode", Name = "Enable Message Signaled Interrupts (MSI)", Category = "expert",
+            Reg = true,
+            Params = new TweakParams("msi-priority", "Interrupt priority", new[] { "Default", "High" }, "Default"),
+            Description = "Switches the GPU from line-based interrupts to message-signaled interrupts, which can reduce latency and DPC spikes on some systems. Interrupt priority sets the scheduling class used for the GPU's interrupts.",
+            LearnMore = "https://learn.microsoft.com/windows-hardware/drivers/kernel/introduction-to-message-signaled-interrupts",
+        },
+        new()
+        {
+            Id = "disable-hdcp", Name = "Disable HDCP", Category = "expert",
+            Reg = true,
+            Description = "Turns off HDCP content protection on the GPU outputs. Protected streaming services will stop working while disabled.",
+        },
+    };
+
+    private const string Header =
+        "Windows Registry Editor Version 5.00\r\n\r\n" +
+        "; Generated by CleanDriver (clone) — NOT applied automatically.\r\n" +
+        "; Review and import manually if you understand the change.\r\n\r\n";
+
+    public static string? RegSnippet(string id, Selection selection)
+    {
+        switch (id)
+        {
+            case "disable-mpo":
+                return Header +
+                    "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\Dwm]\r\n" +
+                    "\"OverlayTestMode\"=dword:00000005\r\n";
+            case "hd-audio-sleep":
+                return Header +
+                    "[HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e96c-e325-11ce-bfc1-08002be10318}\\0000\\PowerSettings]\r\n" +
+                    "\"ConservationIdleTime\"=hex:ff,ff,ff,ff\r\n" +
+                    "\"PerformanceIdleTime\"=hex:ff,ff,ff,ff\r\n" +
+                    "\"IdlePowerState\"=hex:00,00,00,00\r\n";
+            case "msi-mode":
+            {
+                bool high = selection.TweakString("msi-priority") == "High";
+                var s = Header +
+                    "[HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Enum\\PCI\\VEN_10DE&DEV_0000&SUBSYS_00000000\\0000\\Device Parameters\\Interrupt Management\\MessageSignaledInterruptProperties]\r\n" +
+                    "\"MSISupported\"=dword:00000001\r\n";
+                if (high)
+                {
+                    s += "\r\n[HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Enum\\PCI\\VEN_10DE&DEV_0000&SUBSYS_00000000\\0000\\Device Parameters\\Interrupt Management\\Affinity Policy]\r\n" +
+                         "\"DevicePriority\"=dword:00000003\r\n";
+                }
+                return s;
+            }
+            case "disable-hdcp":
+                return Header +
+                    "[HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}\\0000]\r\n" +
+                    "\"RMHdcpKeyglobZero\"=dword:00000001\r\n";
+            default:
+                return null;
+        }
+    }
+}

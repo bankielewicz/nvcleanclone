@@ -1,0 +1,23 @@
+# AI tooling / session-local (never shipped)
+.claude/
+.delegate/
+.playwright-mcp/
+.*/
+CLAUDE.md
+claude.md
+devforgeai/
+tmp/
+
+# build outputs
+bin/
+obj/
+publish/
+*.user
+
+# runtime artifacts (created by the app beside the exe)
+nvcleanstall/output/
+nvcleanstall/presets/
+
+# stray captures/logs
+*.png
+*.log

@@ -1,0 +1,34 @@
+{
+  "releases": [
+    {
+      "version": "572.16",
+      "channel": "WHQL",
+      "releaseDate": "2026-06-24",
+      "sizeMB": 812
+    },
+    {
+      "version": "571.96",
+      "channel": "WHQL",
+      "releaseDate": "2026-05-30",
+      "sizeMB": 809
+    },
+    {
+      "version": "571.59",
+      "channel": "Beta",
+      "releaseDate": "2026-05-12",
+      "sizeMB": 806
+    },
+    {
+      "version": "570.86",
+      "channel": "WHQL",
+      "releaseDate": "2026-04-08",
+      "sizeMB": 801
+    },
+    {
+      "version": "566.36",
+      "channel": "WHQL",
+      "releaseDate": "2026-02-17",
+      "sizeMB": 774
+    }
+  ]
+}

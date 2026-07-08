@@ -1,0 +1,93 @@
+{
+  "version": "571.96",
+  "channel": "WHQL",
+  "components": [
+    {
+      "id": "display-driver",
+      "name": "Display Driver",
+      "sizeMB": 619,
+      "required": true,
+      "recommended": true,
+      "dependsOn": [],
+      "payload": "display-driver.bin",
+      "description": "Core graphics driver. Everything else is optional; nothing works without this."
+    },
+    {
+      "id": "physx",
+      "name": "PhysX System Software",
+      "sizeMB": 38,
+      "recommended": true,
+      "dependsOn": [],
+      "payload": "physx.bin",
+      "description": "Physics runtime used by older games. Harmless to keep, safe to drop if you never play titles that use it."
+    },
+    {
+      "id": "hd-audio",
+      "name": "HD Audio Driver",
+      "sizeMB": 21,
+      "recommended": true,
+      "dependsOn": [],
+      "payload": "hd-audio.bin",
+      "description": "Audio over HDMI and DisplayPort. Needed if your monitor or receiver gets sound through the graphics card."
+    },
+    {
+      "id": "usbc",
+      "name": "USB-C / VirtualLink Driver",
+      "sizeMB": 9,
+      "dependsOn": [],
+      "payload": "usbc.bin",
+      "description": "Driver for the USB-C port present on some graphics cards. Useless if your card has no USB-C output."
+    },
+    {
+      "id": "gfe",
+      "name": "GeForce Experience",
+      "sizeMB": 87,
+      "dependsOn": [
+        "container",
+        "telemetry"
+      ],
+      "payload": "gfe.bin",
+      "description": "Companion application for driver updates, per-game optimal settings, and capture tools. Optional; the display driver works without it."
+    },
+    {
+      "id": "telemetry",
+      "name": "Telemetry Services",
+      "sizeMB": 12,
+      "dependsOn": [],
+      "payload": "telemetry.bin",
+      "description": "Background services that report usage and diagnostic data. Not required for the driver to function."
+    },
+    {
+      "id": "container",
+      "name": "Container Runtime Services",
+      "sizeMB": 24,
+      "dependsOn": [],
+      "payload": "container.bin",
+      "description": "Host service framework used by the companion app and the driver control panel."
+    },
+    {
+      "id": "shield",
+      "name": "Shield Controller Support",
+      "sizeMB": 6,
+      "dependsOn": [],
+      "payload": "shield.bin",
+      "description": "Driver for the handheld console controller family. Only useful if you own one."
+    },
+    {
+      "id": "stereo3d",
+      "name": "Stereo 3D Support",
+      "sizeMB": 4,
+      "dependsOn": [],
+      "payload": "stereo3d.bin",
+      "description": "Legacy stereoscopic 3D glasses support. Deprecated; almost nobody needs this."
+    },
+    {
+      "id": "notebook",
+      "name": "Notebook Optimizations",
+      "sizeMB": 8,
+      "dependsOn": [],
+      "payload": "notebook.bin",
+      "description": "Power and display tweaks for laptops. No effect on desktop systems."
+    }
+  ]
+}

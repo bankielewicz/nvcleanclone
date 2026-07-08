@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CleanDriver — Screen 5: Action &amp; result</title>
+<style>
+  :root{
+    --font:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif;
+    --mono:"Cascadia Code",Consolas,"SF Mono",ui-monospace,monospace;
+    --r-card:8px; --r-ctrl:4px;
+  }
+  body[data-theme="light"]{
+    --page:#E9E9E9;
+    --win:#F3F3F3; --card:#FFFFFF; --border:#E5E5E5;
+    --text:#1B1B1B; --text2:#5D5D5D;
+    --accent:#2E7D32; --accent-hover:#276B2B; --on-accent:#FFFFFF;
+    --warn-text:#9A6700; --warn-bg:#FFF8E1;
+    --ctrl-bg:#FFFFFF; --ctrl-hover:#F5F5F5; --sel-bg:#EAF3EA;
+    --panel:#FAFAFA; --track:#E5E5E5; --log-bg:#FAFAFA;
+    --banner-bg:#EAF3EA; --banner-border:#2E7D32;
+    --shadow:0 20px 48px rgba(0,0,0,.22);
+    --cap-hover:rgba(0,0,0,.06); --close-hover:#C42B1C;
+  }
+  body[data-theme="dark"]{
+    --page:#171717;
+    --win:#202020; --card:#2B2B2B; --border:#3A3A3A;
+    --text:#FFFFFF; --text2:#C5C5C5;
+    --accent:#66BB6A; --accent-hover:#7BC97F; --on-accent:#103312;
+    --warn-text:#F8D57E; --warn-bg:#3A3115;
+    --ctrl-bg:#303030; --ctrl-hover:#383838; --sel-bg:#2C3A2D;
+    --panel:#242424; --track:#3A3A3A; --log-bg:#1A1A1A;
+    --banner-bg:#22301F; --banner-border:#66BB6A;
+    --shadow:0 20px 48px rgba(0,0,0,.5);
+    --cap-hover:rgba(255,255,255,.08); --close-hover:#C42B1C;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    font-family:var(--font); background:var(--page); color:var(--text);
+    display:flex; flex-direction:column; align-items:center;
+    gap:20px; padding:40px 24px; min-height:100vh;
+    -webkit-font-smoothing:antialiased; font-size:14px; line-height:20px;
+  }
+  a{color:var(--accent); text-decoration:none;}
+  a:hover{color:var(--accent-hover); text-decoration:underline;}
+
+  .toggle{display:inline-flex; padding:3px; gap:2px; border-radius:6px;
+    background:var(--win); border:1px solid var(--border); position:sticky; top:0; z-index:5;}
+  .toggle button{font:inherit; font-size:12px; color:var(--text2);
+    border:0; background:transparent; padding:5px 14px; border-radius:4px; cursor:pointer;}
+  .toggle button.on{background:var(--accent); color:var(--on-accent);}
+
+  .frame-label{font-size:12px; color:var(--text2); align-self:center; margin-bottom:-10px;}
+
+  .window{width:960px; height:640px; flex:0 0 auto; background:var(--win); border-radius:8px;
+    box-shadow:var(--shadow); display:flex; flex-direction:column; overflow:hidden;
+    border:1px solid var(--border);}
+
+  .titlebar{height:44px; flex:0 0 44px; display:flex; align-items:center;
+    padding-left:14px; gap:10px; background:var(--win);}
+  .glyph{width:18px; height:18px; border-radius:5px; background:var(--accent);
+    display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+  .glyph::after{content:""; width:8px; height:8px; border-radius:2px; border:2px solid var(--on-accent);}
+  .appname{font-size:12px; font-weight:600; letter-spacing:.01em;}
+  .tb-spacer{flex:1;}
+  .toolbar{display:flex; gap:6px; margin-right:6px;}
+  .tb-btn{font:inherit; font-size:12px; color:var(--text); background:var(--ctrl-bg);
+    border:1px solid var(--border); border-radius:4px; padding:4px 10px; cursor:pointer;}
+  .tb-btn:hover{background:var(--ctrl-hover);}
+  .caption{display:flex; height:44px;}
+  .cap{width:44px; height:44px; display:flex; align-items:center; justify-content:center; color:var(--text);}
+  .cap:hover{background:var(--cap-hover);}
+  .cap.close:hover{background:var(--close-hover); color:#fff;}
+  .cap svg{width:11px; height:11px;}
+
+  .content{flex:1; padding:16px 24px; overflow:hidden; display:flex; flex-direction:column; gap:14px;}
+  .page-title{font-size:20px; font-weight:600; line-height:26px; margin:0;}
+  .label{font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--text2); font-weight:600;}
+  .caption-txt{font-size:12px; color:var(--text2);}
+
+  .btn{font:inherit; font-size:13px; border-radius:var(--r-ctrl); padding:8px 16px; cursor:pointer; border:1px solid var(--border);}
+  .btn.secondary{background:var(--ctrl-bg); color:var(--text);}
+  .btn.secondary:hover{background:var(--ctrl-hover);}
+  .btn.primary{background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600;}
+  .btn.primary:hover{background:var(--accent-hover);}
+  .btn:focus-visible, .tb-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  /* action grid */
+  .agrid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .acard{position:relative; border:1px solid var(--border); border-radius:var(--r-card);
+    background:var(--card); padding:16px; display:flex; gap:14px; cursor:pointer;}
+  .acard.sel{border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); background:var(--sel-bg);}
+  .ai{width:40px; height:40px; border-radius:8px; background:var(--sel-bg); flex:0 0 auto;
+    display:flex; align-items:center; justify-content:center;}
+  .acard.sel .ai{background:var(--card);}
+  .ai svg{width:22px; height:22px; color:var(--accent);}
+  .at{font-size:14px; font-weight:600;}
+  .ad{font-size:13px; color:var(--text2); margin-top:3px; line-height:18px;}
+  .apick{position:absolute; top:12px; right:12px; width:18px; height:18px; border-radius:50%;
+    border:2px solid var(--text2); display:flex; align-items:center; justify-content:center;}
+  .acard.sel .apick{border-color:var(--accent); background:var(--accent);}
+  .acard.sel .apick svg{width:11px; height:11px; color:var(--on-accent);}
+  .acard:not(.sel) .apick svg{display:none;}
+
+  /* output path row */
+  .out-row.disabled{opacity:.4; pointer-events:none;}
+  .field-label{font-size:13px; margin-bottom:6px;}
+  .path-row{display:flex; gap:8px; align-items:center;}
+  .path-field{flex:1; border:1px solid var(--border); border-radius:var(--r-ctrl);
+    background:var(--ctrl-bg); padding:8px 12px; color:var(--text2); font-size:13px;}
+
+  /* running/result */
+  .run-head{display:flex; align-items:center; gap:12px;}
+  .run-title{font-size:16px; font-weight:600; flex:1;}
+  .status{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--accent); font-weight:600;}
+  .status svg{width:16px; height:16px;}
+  .bar{height:8px; border-radius:6px; background:var(--track); overflow:hidden; margin-top:2px;}
+  .bar-fill{height:100%; width:100%; background:var(--accent); border-radius:6px;}
+  .log{flex:1; background:var(--log-bg); border:1px solid var(--border); border-radius:var(--r-card);
+    padding:12px 14px; overflow:auto; font-family:var(--mono); font-size:12px; line-height:19px; color:var(--text2);}
+  .log .ln{white-space:pre;}
+  .log .ok{color:var(--accent);}
+  .log .mut{opacity:.7;}
+
+  .banner{background:var(--banner-bg); border:1px solid var(--banner-border); border-radius:var(--r-card);
+    padding:14px 16px; display:flex; align-items:center; gap:16px;}
+  .banner .bi{width:34px; height:34px; border-radius:50%; background:var(--accent); flex:0 0 auto;
+    display:flex; align-items:center; justify-content:center;}
+  .banner .bi svg{width:18px; height:18px; color:var(--on-accent);}
+  .banner .btxt{flex:1;}
+  .banner .bt{font-size:14px; font-weight:600;}
+  .banner .bt code{font-family:var(--mono); font-size:13px; font-weight:400; color:var(--text);}
+  .banner .bc{font-size:12px; color:var(--text2); margin-top:2px;}
+  .banner .bbtns{display:flex; gap:8px;}
+
+  .footer{flex:0 0 60px; height:60px; border-top:1px solid var(--border);
+    display:flex; align-items:center; padding:0 24px; gap:16px;}
+  .step{font-size:13px; color:var(--text2);}
+  .step b{color:var(--text); font-weight:600;}
+  .footer .sp{flex:1;}
+  .foot-actions{display:flex; gap:8px;}
+  .foot-actions.hidden{visibility:hidden;}
+</style>
+</head>
+<body data-theme="light">
+
+  <div class="toggle" role="group" aria-label="Theme">
+    <button id="t-light" class="on" onclick="setTheme('light')">Light</button>
+    <button id="t-dark" onclick="setTheme('dark')">Dark</button>
+  </div>
+
+  <!-- ===================== FRAME A — CHOOSE ACTION ===================== -->
+  <div class="frame-label">Frame A — Choose action</div>
+  <div class="window">
+    <div class="titlebar">
+      <div class="glyph"></div>
+      <div class="appname">CleanDriver</div>
+      <div class="tb-spacer"></div>
+      <div class="toolbar">
+        <button class="tb-btn">Save preset…</button>
+        <button class="tb-btn">Load preset…</button>
+      </div>
+      <div class="caption">
+        <div class="cap"><svg viewBox="0 0 10 10"><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1"/></svg></div>
+        <div class="cap close"><svg viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" stroke-width="1"/><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" stroke-width="1"/></svg></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1 class="page-title">Action</h1>
+
+      <div class="agrid">
+        <!-- Install -->
+        <div class="acard sel">
+          <div class="apick"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+          <div class="ai">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 v10 M8 9 l4 4 4-4"/><path d="M4 17 v2 a1 1 0 0 0 1 1 h14 a1 1 0 0 0 1-1 v-2"/></svg>
+          </div>
+          <div>
+            <div class="at">Install</div>
+            <div class="ad">Interactive install with progress.</div>
+          </div>
+        </div>
+        <!-- Silent install -->
+        <div class="acard">
+          <div class="apick"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+          <div class="ai">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 10 h8 M8 14 h5"/></svg>
+          </div>
+          <div>
+            <div class="at">Silent install</div>
+            <div class="ad">No prompts, log only.</div>
+          </div>
+        </div>
+        <!-- Extract only -->
+        <div class="acard">
+          <div class="apick"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+          <div class="ai">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7 a1 1 0 0 1 1-1 h5 l2 2 h8 a1 1 0 0 1 1 1 v9 a1 1 0 0 1-1 1 H4 a1 1 0 0 1-1-1 Z"/><path d="M12 10 v6 M9 13 l3 3 3-3"/></svg>
+          </div>
+          <div>
+            <div class="at">Extract only</div>
+            <div class="ad">Write customized package to a folder.</div>
+          </div>
+        </div>
+        <!-- Build package -->
+        <div class="acard">
+          <div class="apick"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+          <div class="ai">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 l8 4.5 v9 L12 21 4 16.5 v-9 Z"/><path d="M4 7.5 l8 4.5 8-4.5 M12 12 v9"/></svg>
+          </div>
+          <div>
+            <div class="at">Build package</div>
+            <div class="ad">Self-contained installer package.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="out-row disabled">
+        <div class="field-label">Output folder</div>
+        <div class="path-row">
+          <div class="path-field">Choose a destination folder…</div>
+          <button class="btn secondary">Browse…</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="step">Step <b>5</b> of 5 — Action</div>
+      <div class="sp"></div>
+      <div class="foot-actions">
+        <button class="btn secondary">Back</button>
+        <button class="btn primary">Start</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== FRAME B — RUNNING / RESULT ===================== -->
+  <div class="frame-label">Frame B — Running / result</div>
+  <div class="window">
+    <div class="titlebar">
+      <div class="glyph"></div>
+      <div class="appname">CleanDriver</div>
+      <div class="tb-spacer"></div>
+      <div class="toolbar">
+        <button class="tb-btn">Save preset…</button>
+        <button class="tb-btn">Load preset…</button>
+      </div>
+      <div class="caption">
+        <div class="cap"><svg viewBox="0 0 10 10"><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1"/></svg></div>
+        <div class="cap close"><svg viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" stroke-width="1"/><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" stroke-width="1"/></svg></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="run-head">
+        <div class="run-title">Installing customized driver package…</div>
+        <div class="status">
+          <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 8 L7 10.5 L11.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+          Completed
+        </div>
+      </div>
+      <div class="bar"><div class="bar-fill"></div></div>
+
+      <div class="log">
+        <div class="ln">&gt; Removing previous driver traces…</div>
+        <div class="ln mut">&gt; Uninstalling driver 570.86… <span class="ok">done</span></div>
+        <div class="ln">&gt; Copying Display Driver payload (623 MB)…</div>
+        <div class="ln mut">&gt; Skipping deselected components (7)</div>
+        <div class="ln">&gt; Installing PhysX System Software, HD Audio Driver…</div>
+        <div class="ln">&gt; Applying tweaks: clean install, MSI (priority High)…</div>
+        <div class="ln">&gt; Rebuilding digital signature… <span class="ok">done</span></div>
+        <div class="ln">&gt; Writing install receipt… <span class="ok">done</span></div>
+        <div class="ln ok">&gt; Installation finished.</div>
+      </div>
+
+      <div class="banner">
+        <div class="bi"><svg viewBox="0 0 16 16"><path d="M3.5 8.5 L6.5 11.5 L12.5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+        <div class="btxt">
+          <div class="bt">Installation complete — receipt written to <code>output\receipt-2026-07-08.json</code></div>
+          <div class="bc">A reboot is recommended.</div>
+        </div>
+        <div class="bbtns">
+          <button class="btn secondary">Open output folder</button>
+          <button class="btn primary">Finish</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="step">Step <b>5</b> of 5 — Action</div>
+      <div class="sp"></div>
+      <div class="foot-actions hidden">
+        <button class="btn secondary">Back</button>
+        <button class="btn primary">Start</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  function setTheme(t){
+    document.body.setAttribute('data-theme', t);
+    document.getElementById('t-light').classList.toggle('on', t==='light');
+    document.getElementById('t-dark').classList.toggle('on', t==='dark');
+  }
+</script>
+</body>
+</html>

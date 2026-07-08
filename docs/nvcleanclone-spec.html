@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spec — NVClone (NVCleanInstall Clone) · v1.0 · 2026-07-04</title>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1a1a1a; --muted:#5a5f66; --line:#d9dde3;
+    --accent:#0b6b3a; --accent-bg:#eef6f1; --code-bg:#f5f6f8; --code-fg:#24292f;
+    --warn-bg:#fdf3e7; --warn-bd:#e09b3d; --danger-bg:#fbeceb; --danger-bd:#c53030;
+    --note-bg:#eef2fb; --note-bd:#3b6db5; --kw:#b3134b;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  .wrap{display:flex;min-height:100vh}
+  nav.toc{
+    width:300px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;
+    height:100vh;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);
+    background:#fafbfc;font-size:13.5px;
+  }
+  nav.toc h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 6px}
+  nav.toc h2:first-child{margin-top:0}
+  nav.toc a{display:block;color:var(--fg);text-decoration:none;padding:3px 8px;border-radius:4px;line-height:1.35}
+  nav.toc a:hover{background:var(--accent-bg);color:var(--accent)}
+  nav.toc .title{font-weight:700;font-size:15px;margin-bottom:4px;color:var(--accent)}
+  nav.toc .meta{font-size:11.5px;color:var(--muted);margin-bottom:14px}
+  main{flex:1;min-width:0;max-width:980px;margin:0 auto;padding:40px 48px 120px}
+  h1{font-size:30px;line-height:1.2;margin:0 0 6px}
+  h2{font-size:23px;margin:42px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--line)}
+  h3{font-size:18px;margin:30px 0 8px}
+  h4{font-size:15.5px;margin:22px 0 6px;color:#222}
+  p{margin:9px 0}
+  .lead{font-size:16.5px;color:#333}
+  code,kbd{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;font-size:13px}
+  code.inline{background:var(--code-bg);color:var(--code-fg);padding:1px 5px;border-radius:3px}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:6px;padding:13px 15px;overflow-x:auto;margin:12px 0}
+  pre code{background:none;padding:0;color:var(--code-fg);font-size:13px;line-height:1.5}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:#f3f5f7;font-weight:600}
+  tr:nth-child(even) td{background:#fbfcfd}
+  .callout{border-left:4px solid;padding:11px 15px;border-radius:0 6px 6px 0;margin:14px 0}
+  .callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+  .note{background:var(--note-bg);border-color:var(--note-bd)}
+  .warn{background:var(--warn-bg);border-color:var(--warn-bd)}
+  .danger{background:var(--danger-bg);border-color:var(--danger-bd)}
+  .callout .lbl{font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.06em;display:block;margin-bottom:2px}
+  .note .lbl{color:var(--note-bd)} .warn .lbl{color:#a36a14} .danger .lbl{color:var(--danger-bd)}
+  ul,ol{padding-left:24px;margin:9px 0}
+  li{margin:3px 0}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11.5px;font-weight:600;letter-spacing:.02em}
+  .pill.full{background:#e3f3e8;color:#1a7d43}
+  .pill.partial{background:#fdf0dd;color:#a36a14}
+  .pill.na{background:#eeeef0;color:#666}
+  .pill.must{background:#fbe5e5;color:#b3134b}
+  hr{border:none;border-top:1px solid var(--line);margin:30px 0}
+  .docbar{background:var(--accent);color:#fff;padding:14px 48px;font-size:13px;display:flex;gap:18px;flex-wrap:wrap}
+  .docbar b{font-weight:600}
+  .docbar .st{margin-left:auto;background:rgba(255,255,255,.18);padding:2px 10px;border-radius:10px;font-weight:600}
+  @media(max-width:920px){.wrap{flex-direction:column}nav.toc{position:static;width:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}main{padding:24px}}
+  @media print{nav.toc{display:none}main{max-width:none}}
+</style>
+</head>
+<body>
+<div class="docbar">
+  <span><b>NVClone</b> — Engineering Specification</span>
+  <span>Doc v1.0</span>
+  <span>Target: Windows 11</span>
+  <span>Date: 2026-07-04</span>
+  <span class="st">STATUS: READY TO BUILD</span>
+</div>
+<div class="wrap">
+<nav class="toc">
+  <div class="title">NVClone Spec</div>
+  <div class="meta">Full-fidelity NVCleanInstall clone · zero ambiguity · non-aspirational</div>
+  <h2>Overview</h2>
+  <a href="#summary">1. Executive Summary</a>
+  <a href="#principles">2. Design Principles</a>
+  <a href="#scope">3. Scope (In / Out)</a>
+  <a href="#env">4. Target Environment</a>
+  <h2>Decisions</h2>
+  <a href="#stack">5. Technology Stack</a>
+  <a href="#parity">6. Feature Parity Matrix</a>
+  <a href="#arch">7. Architecture</a>
+  <h2>Reference</h2>
+  <a href="#anatomy">8. NVIDIA Package Anatomy</a>
+  <a href="#components">9. Component Exclusion Logic</a>
+  <a href="#telemetry">10. Telemetry Removal Targets</a>
+  <a href="#install">11. Driver Installation Mechanics</a>
+  <h2>Feature Specs</h2>
+  <a href="#f-load">12. Package Load &amp; Extract</a>
+  <a href="#f-detect">13. Package Detection &amp; Parsing</a>
+  <a href="#f-select">14. Component Selection UI</a>
+  <a href="#f-build">15. Package Build (Trim/Strip)</a>
+  <a href="#f-sign">16. Driver Signing (Advanced)</a>
+  <a href="#f-download">17. Download from NVIDIA</a>
+  <a href="#f-clean">18. Previous-Driver Cleanup</a>
+  <a href="#f-tweaks">19. Post-Install Tweaks</a>
+  <a href="#f-cli">20. CLI / Silent Mode</a>
+  <a href="#f-log">21. Logging &amp; Diagnostics</a>
+  <a href="#f-elevate">22. Elevation &amp; Bootstrapping</a>
+  <h2>Delivery</h2>
+  <a href="#build">23. Build &amp; Publish</a>
+  <a href="#test">24. Test Strategy</a>
+  <a href="#risks">25. Risks &amp; Mitigations</a>
+  <a href="#milestones">26. Milestones</a>
+  <a href="#refs">27. References</a>
+</nav>
+
+<main>
+
+<h1 id="summary">NVClone — A clean-install tool for NVIDIA drivers</h1>
+<p class="lead"><b>NVClone</b> is a full-fidelity, drop-in functional clone of <b>TechPowerUp NVCleanInstall</b>. It takes a downloaded NVIDIA driver <code class="inline">.exe</code>, strips unwanted components and telemetry, optionally re-signs the modified package, and installs only the display driver (plus user-selected extras) onto Windows 11 — without GeForce Experience, without the NVIDIA App, and without background telemetry services.</p>
+
+<p>This document is the complete, build-ready specification. Every behavior is described concretely: exact folders, exact INFs, exact <code class="inline">pnputil</code> commands, exact registry keys, and exact acceptance criteria. There is no aspirational scope; anything not proven-feasible is listed in <a href="#scope">§3 Out of Scope</a>.</p>
+
+<h3 id="non-negotiables">Non-negotiable requirements</h3>
+<ol>
+  <li><b>Functional parity</b> with NVCleanInstall's core loop: Load → Detect → Select → Trim → (optional Sign) → Install.</li>
+  <li><b>Signature safety by default.</b> The default install path must never require re-signing and must never break the WHQL catalog.</li>
+  <li><b>Runs elevated, ships as one portable <code class="inline">.exe</code>.</b></li>
+  <li><b>No telemetry of its own</b>, no network calls except an optional, user-initiated driver download.</li>
+</ol>
+
+<h2 id="principles">2. Design Principles</h2>
+<ul>
+  <li><b>Deterministic.</b> Same input package + same options ⇒ identical output package (byte-for-byte except timestamps).</li>
+  <li><b>Fail loud.</b> Any unexpected state (unknown INF layout, missing file the catalog expects, unsupported driver branch) halts with a precise error before any system change.</li>
+  <li><b>Reversible-by-default where possible.</b> Pre-install cleanup offers a restore point; post-install telemetry removal only deletes files that exist and records each action to the log.</li>
+  <li><b>No magic constants.</b> Every registry key, service name, and file pattern is named in this spec, not discovered at runtime.</li>
+</ul>
+
+<h2 id="scope">3. Scope</h2>
+<h3>In scope <span class="pill full">FULL</span></h3>
+<ul>
+  <li>Loading a local NVIDIA driver <code class="inline">.exe</code> (7z SFX) and extracting it.</li>
+  <li>Detecting driver version, DCH vs Standard, branch, supported GPUs (from INF).</li>
+  <li>Selecting/excluding components: Display Driver (core), PhysX, HD Audio, USB-C, Optimus, NVContainer, GeForce Experience / NVIDIA App.</li>
+  <li>Removing telemetry files, services, and registry entries (post-install, signature-safe).</li>
+  <li>Installing via <code class="inline">pnputil</code> (primary); SetupAPI P/Invoke documented as advanced path.</li>
+  <li>Optional self-signed certificate generation + catalog re-signing for INF-edited packages.</li>
+  <li>Optional driver download from NVIDIA's download endpoint.</li>
+  <li>Optional pre-install cleanup of existing NVIDIA driver packages + services.</li>
+  <li>Post-install power/quality tweaks (Prefer Maximum Performance, disable audio power-saving, etc.).</li>
+  <li>GUI wizard + silent CLI mode.</li>
+</ul>
+<h3>Out of scope <span class="pill na">N/A</span></h3>
+<ul>
+  <li><b>Linux / macOS / Windows-on-ARM host</b> — Windows 11 x64 host only.</li>
+  <li><b>AMD / Intel GPU drivers.</b> NVIDIA-only.</li>
+  <li><b>Direct DDU-style display-driver-uninstaller functionality</b> (we <i>can</i> remove prior NVIDIA packages, but we are not a general uninstaller for third-party software).</li>
+  <li><b>NVIDIA Studio vs Game Ready branch auto-selection.</b> User picks which <code class="inline">.exe</code> to load.</li>
+  <li><b>Mobile GPU (OEM INF) modding / device-ID injection.</b> We install the package as NVIDIA ships it for the GPUs it declares; we do not rewrite INF device lists.</li>
+  <li><b>Cloud sync, accounts, profiles.</b> None.</li>
+</ul>
+
+<h2 id="env">4. Target Environment</h2>
+<table>
+  <tr><th>Attribute</th><th>Value</th></tr>
+  <tr><td>Host OS</td><td>Windows 11 (21H2 and later), x64. Tested on 23H2/24H2/25H2.</td></tr>
+  <tr><td>Architecture</td><td>x64 only (matches NVIDIA desktop driver distribution).</td></tr>
+  <tr><td>Privilege</td><td>Administrator (UAC elevation required; see <a href="#f-elevate">§22</a>).</td></tr>
+  <tr><td>.NET runtime</td><td>.NET 10 LTS (released 2025-11-11, supported to 2028-11). Self-contained, no user install needed.</td></tr>
+  <tr><td>Distribution</td><td>Single portable <code class="inline">.exe</code>, ~80–110 MB (self-contained + bundled <code class="inline">7za.exe</code> + <code class="inline">signtool</code> subset is NOT bundled; signing uses <code class="inline">osslsigncode</code> or PowerShell <code class="inline">Set-AuthenticodeSignature</code> — see <a href="#f-sign">§16</a>).</td></tr>
+  <tr><td>GPU requirement</td><td>One or more NVIDIA adapters present (GeForce/Tesla/Quadro). Detected via <code class="inline">SetupDi</code>.</td></tr>
+  <tr><td>Disk</td><td>~2 GB free for extraction working dir + DriverStore growth.</td></tr>
+</table>
+
+<h2 id="stack">5. Technology Stack</h2>
+<p>The dominant constraint is that this is a <b>privileged system utility</b> doing deep Win32 interop, shipped as a single self-contained executable. That constraint selects the stack.</p>
+
+<h3>5.1 Decisions</h3>
+<table>
+  <tr><th>Concern</th><th>Choice</th><th>Rationale</th></tr>
+  <tr>
+    <td>Language</td>
+    <td><b>C# 13</b> on <b>.NET 10 (LTS)</b></td>
+    <td>LTS, 3-year support to 2028-11, mature single-file self-contained publish, first-class Win32 interop via <code class="inline">[LibraryImport]</code>.</td>
+  </tr>
+  <tr>
+    <td>UI framework</td>
+    <td><b>WPF</b> (ships with .NET 10 SDK)</td>
+    <td>Runs elevated without ceremony; trivial Win32/HWND interop; mature single-file publish; no MSIX/runtime-bootstrap dependency. WinUI 3 is Microsoft's future-facing push (Build 2026) but is awkward for elevated, portable, single-exe system tools. <i>WPF is in maintenance on .NET 10 but fully supported for the lifetime of .NET 10.</i></td>
+  </tr>
+  <tr>
+    <td>MVVM</td>
+    <td><b>CommunityToolkit.Mvvm 8.x</b> (stable)</td>
+    <td>Source-generator-based <code class="inline">[ObservableProperty]</code>/<code class="inline">[RelayCommand]</code>; zero runtime reflection cost; Microsoft-blessed.</td>
+  </tr>
+  <tr>
+    <td>Win32 interop</td>
+    <td><b>Hand-authored <code class="inline">[LibraryImport]</code> P/Invoke</b> (built into .NET 10)</td>
+    <td>Stable, marshal-free at compile time, no external beta dependency. <span style="color:var(--muted)">Alternative: <code class="inline">Microsoft.Windows.CsWin32</code> 0.3.x (still beta; not chosen to avoid a beta core dependency).</span></td>
+  </tr>
+  <tr>
+    <td>Archive extraction</td>
+    <td><b>Bundled <code class="inline">7za.exe</code></b> (LGPL, standalone console, ~1.6 MB), invoked as child process</td>
+    <td>NVIDIA <code class="inline">.exe</code> payloads are 7z; <code class="inline">7za</code> is the reference implementation and handles every branch reliably. Pure-.NET 7z decoders (SharpCompress) are partial and historically fail on LZMA2/BCJ edge cases. Bundling <code class="inline">7za.exe</code> as an embedded resource + extract-on-run keeps the app a single file.</td>
+  </tr>
+  <tr>
+    <td>INF parsing</td>
+    <td><b>Hand-rolled INF reader</b> (INI-style, section/key)</td>
+    <td>Windows has <code class="inline">SetupAPI</code> (SetupGetIntField / SetupGetLineText) which we wrap for correctness on <i>installed</i> INFs; for the source package we parse directly. No NuGet needed.</td>
+  </tr>
+  <tr>
+    <td>Driver install</td>
+    <td><b><code class="inline">pnputil.exe</code></b> (system built-in), invoked as child process; exit-code + published-name parsing</td>
+    <td>Stable since Win10 1607; documented output. SetupAPI <code class="inline">DiInstallDriverW</code> is documented as the advanced alternative (more control, more code).</td>
+  </tr>
+  <tr>
+    <td>Service control</td>
+    <td><b>ADVAPI32 P/Invoke</b> (<code class="inline">OpenSCManager</code> / <code class="inline">OpenService</code> / <code class="inline">ChangeServiceConfig</code> / <code class="inline">DeleteService</code>)</td>
+    <td>Synchronous, parseable, no shell quoting risk. <code class="inline">sc.exe</code> fallback for ad-hoc only.</td>
+  </tr>
+  <tr>
+    <td>Registry</td>
+    <td><b><code class="inline">Microsoft.Win32.Registry</code></b> (BCL)</td>
+    <td>Built-in; supports WOW64 view flags (<code class="inline">RegistryView.Registry64</code>).</td>
+  </tr>
+  <tr>
+    <td>Crypto / signing</td>
+    <td><b>.NET <code class="inline">System.Security.Cryptography</code></b> (X509 self-signed cert gen) + <b>PowerShell <code class="inline">Set-AuthenticodeSignature</code></b> or bundled <code class="inline">signtool.exe</code> for catalog signing</td>
+    <td>Cert generation is native; catalog signing needs <code class="inline">signtool</code> from the Windows SDK or <code class="inline">Set-AuthenticodeSignature</code> (Windows PowerShell 5.1, always present on Win11).</td>
+  </tr>
+  <tr>
+    <td>Catalog regeneration</td>
+    <td><b><code class="inline">inf2cat.exe</code></b> (Windows SDK, optional)</td>
+    <td>Only required when the user enables INF editing + clean-source install. Distributed as an optional sidecar, never required for default flow.</td>
+  </tr>
+  <tr>
+    <td>HTTP (download)</td>
+    <td><b><code class="inline">HttpClient</code></b> + manual HTML scrape of NVIDIA download flow</td>
+    <td>NVIDIA has no stable public JSON API; the search page + redirect is the de-facto interface used by community tools.</td>
+  </tr>
+  <tr>
+    <td>Logging</td>
+    <td><b><code class="inline">Microsoft.Extensions.Logging</code></b> + custom file provider, rolling</td>
+    <td>Standard, structured, no third-party logging dep.</td>
+  </tr>
+  <tr>
+    <td>Build</td>
+    <td><b>MSBuild / <code class="inline">dotnet publish</code></b>, single-file self-contained, <code class="inline">ReadyToRun</code> optional</td>
+    <td>One <code class="inline">.exe</code>, no separate runtime install for end users.</td>
+  </tr>
+</table>
+
+<h3>5.2 Why WPF and not WinUI 3</h3>
+<div class="callout note">
+  <span class="lbl">Decision record</span>
+  <p>WinUI 3 is the correct choice for consumer-facing, modern-design Windows apps. It is the <i>wrong</i> choice here for four concrete reasons:</p>
+  <ol style="margin-bottom:0">
+    <li><b>Elevation.</b> MSIX-packaged WinUI 3 apps cannot run elevated. Unpackaged WinUI 3 can, but the bootstrap-API init path inside an elevated context is fragile. A driver installer <i>must</i> be elevated and <i>must</i> be unpackaged/portable.</li>
+    <li><b>Win32 interop density.</b> This app is ~60% Win32 calls (SetupAPI, ADVAPI32, registry, service control). WPF's interop story is a decade more mature; WinUI 3's HWND-interop adds friction for nothing we gain.</li>
+    <li><b>Single-file publish.</b> WPF self-contained single-file is rock-solid and small. WinUI 3 single-file is possible but heavier and historically finicky with the WinAppSDK runtime.</li>
+    <li><b>UI complexity is low.</b> The app is a wizard with checkboxes, a few combo boxes, and a progress log. There is no win from Fluent/mica/acrylic that justifies the interop cost.</li>
+  </ol>
+  <p style="margin-bottom:0">WPF on .NET 10 is in maintenance mode, which is exactly the correct posture for a system utility: stable, supported for 3 years, no churn.</p>
+</div>
+
+<h2 id="parity">6. Feature Parity Matrix</h2>
+<p>Mapped against NVCleanInstall's observable behavior. <span class="pill full">FULL</span> = behavior reproduced; <span class="pill partial">PARTIAL</span> = reproduced with documented difference; <span class="pill na">N/A</span> = out of scope.</p>
+<table>
+  <tr><th>NVCleanInstall feature</th><th>NVClone behavior</th><th>Status</th></tr>
+  <tr><td>Load local driver <code class="inline">.exe</code></td><td>File picker + drag-drop; validates 7z SFX header.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>Download driver from NVIDIA</td><td>GPU/OS/product pickers → scrape NVIDIA search → mirror redirect → save <code class="inline">.exe</code>.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>Component checkboxes (Display, PhysX, HD Audio, USB-C, Optimus, NVContainer, GFE/App)</td><td>Identical set; defaults match NVCleanInstall (Display on, others off).</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>Telemetry removal</td><td>Post-install file/service/registry cleanup, signature-safe.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>"Disable GeForce Experience / NVIDIA App"</td><td>Exclude folder + remove coinstaller reference in trimmed package.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>Self-signed cert + sign driver option</td><td>Generate self-signed code-signing cert → trust root+publisher → re-sign modified <code class="inline">.cat</code>.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>Clean previous install before installing</td><td>Enumerate published NVIDIA driver packages via <code class="inline">pnputil /enum-drivers</code>; force-delete; stop+disable NVIDIA services; reboot prompt.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>Power tweak: Prefer Maximum Performance</td><td>Set per-GPU registry power policy under <code class="inline">HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-...}\&lt;nnnn&gt;</code>.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>Disable NVIDIA HD Audio power-saving</td><td>Set <code class="inline">HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e96c...}\&lt;nnnn&gt;\PowerMgmt</code> key.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>Disable USB-C / MST support</td><td>Exclude <code class="inline">Display.NvContainer\USB-C</code> subtree + corresponding INF copy section.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>Disable NVContainer (service)</td><td>Set service start type = disabled after install (with warning that NVCP-from-Store depends on it).</td><td><span class="pill partial">PARTIAL</span></td></tr>
+  <tr><td>Installer-language selection</td><td>Trim <code class="inline">NVI2\</code> and <code class="inline">Display.Driver\</code> localization files to the chosen language.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>Output a modified folder (no install)</td><td>"Export package" option writes trimmed tree to a chosen directory.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>Silent CLI mode</td><td><code class="inline">NVClone.exe --install --driver X.exe --components display,physx --no-telemetry</code>.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>Auto-reboot handling</td><td>Detect <code class="inline">ERROR_SUCCESS_REBOOT_REQUIRED</code> from pnputil; prompt.</td><td><span class="pill full">FULL</span></td></tr>
+  <tr><td>NVCleanInstall's "disable installer check" / tweak bundle</td><td>Subset only: power + audio + telemetry (the reliably-effective ones). NVCleanInstall-specific exotic tweaks (e.g. undocumented INF patches) are <span class="pill na">N/A</span> unless individually re-validated.</td><td><span class="pill partial">PARTIAL</span></td></tr>
+</table>
+
+<h2 id="arch">7. Architecture</h2>
+
+<h3>7.1 Solution layout</h3>
+<pre><code>src/
+├─ NVClone.sln
+├─ NVClone.App/                 # WPF entry point (bootstrapper + views)
+│  ├─ App.xaml(.cs)
+│  ├─ Bootstrapper.cs           # elevation check, single-instance, DI
+│  ├─ Views/                    # MainWindow + wizard pages (Load/Detect/Select/Build/Install/Log)
+│  ├─ ViewModels/
+│  └─ NVClone.App.csproj        # net10.0-windows; UseWPF; SingleFile publish
+├─ NVClone.Core/                # OS-agnostic logic (no WPF dependency; unit-testable)
+│  ├─ Packages/
+│  │  ├─ DriverPackageLoader.cs # validates + extracts SFX
+│  │  ├─ PackageParser.cs       # INF + setup.cfg + .nvi parsing
+│  │  └─ PackageBuilder.cs      # trims/strips → output tree
+│  ├─ Components/               # Component definitions (folder/INF map) — §9
+│  ├─ Telemetry/                # TelemetryTarget table — §10
+│  ├─ Install/
+│  │  ├─ PnpUtilInstaller.cs    # child-process pnputil driver installer
+│  │  ├─ ServiceController.cs   # ADVAPI32 wrappers
+│  │  └─ RegistryCleaner.cs
+│  ├─ Signing/                  # cert gen + catalog sign
+│  ├─ Download/                 # NVIDIA download flow
+│  ├─ Tweaks/                   # post-install power/audio tweaks
+│  └─ Logging/
+├─ NVClone.Interop/             # all [LibraryImport] declarations (SetupAPI, ADVAPI32, Kernel32, Crypt32)
+├─ NVClone.Contracts/           # interfaces + DTOs shared by App and Core
+└─ tests/
+   ├─ NVClone.Core.Tests/       # xUnit; INF/parser/component-map fixtures
+   └─ NVClone.E2E.Tests/        # dry-run install on a VM snapshot (manual gating)</code></pre>
+
+<h3>7.2 Layers &amp; dependencies</h3>
+<pre><code>App (WPF) ──▶ Contracts ◀── Core ──▶ Interop
+                                  └──▶ (7za.exe, pnputil.exe, signtool via Process)</code></pre>
+<p>Core never references WPF; this keeps the parser/installer logic unit-testable from a console harness and is what the CLI (<a href="#f-cli">§20</a>) reuses directly.</p>
+
+<h3>7.3 End-to-end flow</h3>
+<pre><code>┌─────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌─────────┐   ┌────────┐
+│ 1. LOAD │──▶│ 2.DETECT │──▶│ 3.SELECT │──▶│ 4.BUILD  │──▶│5.(SIGN) │──▶│6.INSTAL│
+│ SFX .exe│   │ version  │   │components│   │ trim+    │   │ optional│   │pnputil │
+│ + extract│  │ DCH/branch│  │ + options│   │ strip    │   │ if INFed│   │ +clean │
+└─────────┘   └──────────┘   └──────────┘   └──────────┘   └─────────┘   └────┬───┘
+                                                                              ▼
+                                                                       ┌────────────┐
+                                                                       │7.POST-INST │
+                                                                       │ telemetry  │
+                                                                       │ + tweaks   │
+                                                                       └────────────┘</code></pre>
+
+<hr>
+
+<h2 id="anatomy">8. NVIDIA Driver Package Anatomy (reference)</h2>
+<p>The NVIDIA <code class="inline">.exe</code> is a 7-Zip SFX. Extracting yields this canonical tree (DCH branch, ~580–600 series):</p>
+<table>
+  <tr><th>Path</th><th>Role</th><th>Touched by NVClone?</th></tr>
+  <tr><td><code class="inline">setup.exe</code></td><td>NVIDIA's installer launcher (reads NVI2).</td><td><b>Never executed by NVClone.</b></td></tr>
+  <tr><td><code class="inline">NVI2\</code></td><td>NVIDIA installer framework + <code class="inline">setup.cfg</code>, <code class="inline">.nvi</code> install manifest, localization.</td><td>Read for component/version metadata; rewritten if "Export modified setup" is chosen; otherwise unused.</td></tr>
+  <tr><td><code class="inline">Display.Driver\</code></td><td>Core display driver: <code class="inline">nv_dispi.inf</code> (DCH) / <code class="inline">nvami.inf</code> (reference desktop) / <code class="inline">nvdmi.inf</code> / <code class="inline">nvmi.inf</code> etc.; <code class="inline">nvlddmkm.sys</code>, <code class="inline">nvapi64.dll</code>, <code class="inline">*.cat</code>.</td><td><b>Always installed.</b> Source of truth for INF parsing.</td></tr>
+  <tr><td><code class="inline">Display.NvContainer\</code></td><td>DCH NVContainer service binaries + plugin DLLs (incl. telemetry plugin).</td><td>Installed iff NVContainer selected; telemetry files stripped (<a href="#telemetry">§10</a>).</td></tr>
+  <tr><td><code class="inline">Display.Optimus\</code></td><td>Optimus / hybrid-GPU power management (laptops).</td><td>Installed iff Optimus selected.</td></tr>
+  <tr><td><code class="inline">HDAudio\</code></td><td>HDMI/DP audio driver (<code class="inline">nvhda.inf</code>, <code class="inline">nvhdad64.sys</code>).</td><td>Installed iff HD Audio selected.</td></tr>
+  <tr><td><code class="inline">PhysX\</code></td><td>PhysX System Software MSI.</td><td>Installed iff PhysX selected (via <code class="inline">msiexec</code>).</td></tr>
+  <tr><td><code class="inline">USB-C\</code> or within NvContainer</td><td>USB-C / DisplayPort MST.</td><td>Excluded if USB-C unchecked.</td></tr>
+  <tr><td><code class="inline">GFExperience\</code></td><td>GeForce Experience (legacy installer).</td><td><b>Always excluded.</b></td></tr>
+  <tr><td><code class="inline">App\</code> or <code class="inline">NVIDIA App\</code></td><td>NVIDIA App (GFE successor).</td><td><b>Always excluded by default</b>; opt-in only.</td></tr>
+  <tr><td><code class="inline">DPInst\</code></td><td>Microsoft Driver Package Installer (used by NVIDIA setup).</td><td>Unused; NVClone uses <code class="inline">pnputil</code>.</td></tr>
+  <tr><td><code class="inline">EULA.txt</code>, <code class="inline">ListDevices.txt</code></td><td>EULA + supported PCI device IDs.</td><td>Displayed; parsed for supported-GPU detection.</td></tr>
+</table>
+
+<h3>8.1 INF files of interest</h3>
+<ul>
+  <li><code class="inline">Display.Driver\nv_dispi.inf</code> — primary DCH consumer INF.</li>
+  <li><code class="inline">Display.Driver\nvami.inf</code> — reference desktop.</li>
+  <li><code class="inline">Display.Driver\nvdmi.inf</code>, <code class="inline">nvmi.inf</code>, <code class="inline">nvcvi.inf</code> — OEM variants.</li>
+  <li><code class="inline">HDAudio\nvhda.inf</code> — HDMI audio.</li>
+</ul>
+<p>NVClone picks the active INF by matching the installed GPU's PCI vendor/device ID against each INF's <code class="inline">[Models]</code> section (see <a href="#f-detect">§13</a>).</p>
+
+<h2 id="components">9. Component Exclusion Logic</h2>
+<p>Each component is defined as a data row (not hardcoded logic). The map below is the authoritative definition.</p>
+<table>
+  <tr><th>Component</th><th>Default</th><th>Folders included when selected</th><th>Install mechanism</th></tr>
+  <tr>
+    <td><b>Display Driver</b> <span class="pill must">REQUIRED</span></td><td>On (locked)</td>
+    <td><code class="inline">Display.Driver\</code></td>
+    <td><code class="inline">pnputil /add-driver &lt;activeINF&gt; /install</code></td>
+  </tr>
+  <tr>
+    <td>PhysX</td><td>Off</td>
+    <td><code class="inline">PhysX\</code></td>
+    <td><code class="inline">msiexec /i PhysX_*.msi /qn</code> + verify <code class="inline">HKLM\SOFTWARE\AGEIA Technologies</code></td>
+  </tr>
+  <tr>
+    <td>HD Audio</td><td>Off</td>
+    <td><code class="inline">HDAudio\</code></td>
+    <td><code class="inline">pnputil /add-driver HDAudio\nvhda.inf /install</code></td>
+  </tr>
+  <tr>
+    <td>Optimus</td><td>Off (auto-on if laptop detected)</td>
+    <td><code class="inline">Display.Optimus\</code></td>
+    <td><code class="inline">pnputil /add-driver Display.Optimus\&lt;inf&gt; /install</code></td>
+  </tr>
+  <tr>
+    <td>NVContainer</td><td>Off</td>
+    <td><code class="inline">Display.NvContainer\</code> (minus telemetry files — §10)</td>
+    <td><code class="inline">pnputil /add-driver Display.NvContainer\&lt;inf&gt; /install</code>; service config tuned post-install</td>
+  </tr>
+  <tr>
+    <td>USB-C / MST</td><td>Off</td>
+    <td>USB-C subtree within NvContainer or top-level <code class="inline">USBC\</code> if present</td>
+    <td><code class="inline">pnputil /add-driver &lt;inf&gt; /install</code></td>
+  </tr>
+  <tr>
+    <td>GeForce Experience</td><td><b>Off, always excluded</b></td>
+    <td><i>none</i></td>
+    <td>Folder deleted from working tree</td>
+  </tr>
+  <tr>
+    <td>NVIDIA App</td><td>Off (opt-in)</td>
+    <td><code class="inline">App\</code> / <code class="inline">NVIDIA App\</code></td>
+    <td>Launched as separate <code class="inline">.exe</code> installer (no INF)</td>
+  </tr>
+</table>
+<p><b>Exclusion algorithm</b> (Build phase, <a href="#f-build">§15</a>): for every component NOT selected, delete its folder(s) from the extracted working tree, then remove the corresponding <code class="inline">Include</code>/<code class="inline">Needs</code> references from the primary INF <i>only if</i> the "Edit INFs (advanced, requires resign)" option is on. Default = folder deletion only, which keeps the NVIDIA catalog valid.</p>
+
+<div class="callout warn">
+  <span class="lbl">Signature invariant</span>
+  <p>Deleting an entire component folder does <b>not</b> invalidate the display-driver <code class="inline">.cat</code> catalog <i>as long as the display-driver INF's <code class="inline">[SourceDisksFiles]</code> does not list files from that folder</i>. NVIDIA's structure satisfies this for PhysX/HDAudio/Optimus/NvContainer because each is its own self-contained package with its own INF/catalog. <b>Telemetry DLLs located inside <code class="inline">Display.Driver\</code></b> are the exception — those are referenced by the display INF and must be handled post-install (§10), not by source-tree deletion.</p>
+</div>
+
+<h2 id="telemetry">10. Telemetry Removal Targets</h2>
+<p>Telemetry removal runs <b>post-install</b> against the live system + DriverStore, never against the source INF (to preserve signature). Targets are enumerated; NVClone deletes only what exists and logs each.</p>
+
+<h3>10.1 Files</h3>
+<pre><code>%ProgramFiles%\NVIDIA Corporation\NvContainer\plugins\NvContainerTelemetryApi.dll
+%ProgramFiles%\NVIDIA Corporation\NvBackend\                           (entire dir, if GFE/App was installed)
+%ProgramFiles%\NVIDIA Corporation\NVIDIA Share\*  (NvShare telemetry helper; only if Share service present)
+DriverStore\FileRepository\nv_dispi.inf_*/NvTelemetry64.dll            (matched via pnputil /enum-drivers → published name → FileRepository path)
+DriverStore\FileRepository\nv_dispi.inf_*/NvTelemetryContainer.dll</code></pre>
+
+<h3>10.2 Services (stop + disable + delete — only the telemetry/helper ones, never the core)</h3>
+<table>
+  <tr><th>Service</th><th>Action</th><th>Notes</th></tr>
+  <tr><td><code class="inline">NvBackend</code></td><td>Stop → set Disabled → Delete</td><td>Only present with GFE/App. Safe to remove.</td></tr>
+  <tr><td><code class="inline">NvContainerNetworkService</code> (if present as separate)</td><td>Stop → Disabled</td><td>Telemetry transport.</td></tr>
+  <tr><td><code class="inline">NvStreamer</code> / <code class="inline">NvStreamSvc</code></td><td>Stop → Disabled → Delete</td><td>GameStream (SHIELD streaming); not needed without GFE.</td></tr>
+</table>
+<div class="callout danger">
+  <span class="lbl">Never touch</span>
+  <p><code class="inline">NVDisplay.ContainerLocalSystem</code> / <code class="inline">nvlddmkm</code> / <code class="inline">NvContainer</code> (the core one hosting NVCP runtime) are <b>load-bearing for the display driver and NVIDIA Control Panel</b>. They are <b>never</b> stopped, disabled, or deleted by NVClone telemetry cleanup. If the user separately enables "Disable NVContainer" (advanced), the consequence (NVCP requires the Store version) is shown in a confirmation dialog first.</p>
+</div>
+
+<h3>10.3 Registry</h3>
+<pre><code>HKLM\SOFTWARE\NVIDIA Corporation\Global\FTS\  → set "EnableRIDefinition" / "RID" / "RISENabled" = 0 (if present)
+HKLM\SOFTWARE\NVIDIA Corporation\NvDriverSession  → delete key (session telemetry)
+HKLM\SOFTWARE\NVIDIA Corporation\Global\NGXFEDllCount  → leave (DLSS-related, not telemetry)
+HKLM\SYSTEM\CurrentControlSet\Services\NvTelemetryContainer  → delete key if service absent-but-key-remains</code></pre>
+<p>All writes use <code class="inline">RegistryView.Registry64</code> and wrap each operation in try/except with structured logging; missing keys are not errors.</p>
+
+<h2 id="install">11. Driver Installation Mechanics</h2>
+
+<h3>11.1 Primary mechanism — <code class="inline">pnputil</code></h3>
+<p>For each selected component with an INF:</p>
+<pre><code>pnputil.exe /add-driver "&lt;WorkDir&gt;\&lt;ComponentFolder&gt;\&lt;inf&gt;" /install</code></pre>
+<ul>
+  <li>Launched as a child <code class="inline">Process</code> with <code class="inline">Verb</code> not set (already elevated), <code class="inline">CreateNoWindow=true</code>, redirected stdout/stderr, UTF-8.</li>
+  <li><b>Exit codes:</b> <code class="inline">0</code> = OK; <code class="inline">3010</code> = <code class="inline">ERROR_SUCCESS_REBOOT_REQUIRED</code> (surface reboot prompt); anything else = hard fail with full captured output in the log.</li>
+  <li><b>Published-name parsing:</b> parse stdout for lines matching <code class="inline">Published Name:\\&lt;...&gt;\oemNN.inf</code> (regex <code class="inline">Published Name:\s*(\\.*?oem\d+\.inf)</code>). Stored per-component for later cleanup (<a href="#f-clean">§18</a>).</li>
+  <li><b>Timeout:</b> 600s per INF; on timeout, kill + fail loud (do not leave a half-staged package).</li>
+</ul>
+
+<h3>11.2 Advanced mechanism — SetupAPI P/Invoke</h3>
+<p>Documented and stubbed; enabled behind <code class="inline">--use-setupapi</code>. Calls <code class="inline">DiInstallDriverW(hwndParent, InfPath, flags, &amp;needReboot)</code> via <code class="inline">newdev.dll</code>. Returns the same semantics. Use when pnputil output format drifts (defensive), or for binding a specific INF to a specific device instance via <code class="inline">DiInstallDevice</code>.</p>
+
+<h3>11.3 PhysX (non-INF component)</h3>
+<pre><code>msiexec.exe /i "&lt;WorkDir&gt;\PhysX\&lt;PhysX_*_SystemSoftware.msi&gt;" /qn /norestart INSTALLDIR="&lt;ProgramFiles&gt;\NVIDIA Corporation\PhysX"</code></pre>
+<p>Exit code 0 = success. MSI log captured to <code class="inline">%TEMP%\nvclone-physx.log</code>.</p>
+
+<h3>11.4 NVIDIA App / GFE (opt-in only)</h3>
+<p>If the user explicitly opts in, run the component's own installer <code class="inline">.exe</code> with its documented silent switch (typically <code class="inline">-s</code>). Default = excluded entirely.</p>
+
+<h3>11.5 Reboot policy</h3>
+<p>If any component returned <code class="inline">3010</code> OR if a prior cleanup required reboot, prompt: "Reboot now / Reboot later / Skip." Never auto-reboot without consent (except in CLI mode with <code class="inline">--reboot</code>).</p>
+
+<hr>
+
+<h2 id="f-load">12. Feature: Package Load &amp; Extract</h2>
+<h4>Inputs</h4>
+<ul><li>Path to NVIDIA driver <code class="inline">.exe</code> (file picker, drag-drop, or CLI arg).</li></ul>
+<h4>Steps</h4>
+<ol>
+  <li><b>Validate</b> file exists, &gt; 50 MB, has PE header AND a trailing/embedded 7z signature. Read first 2 bytes (<code class="inline">MZ</code>) and scan for 7z magic <code class="inline">37 7A BC AF 27 1C</code>.</li>
+  <li><b>Extract 7za.exe</b> from embedded resource to <code class="inline">%TEMP%\nvclone\7za.exe</code> (LGPL notice shown in About).</li>
+  <li><b>Working dir:</b> <code class="inline">%TEMP%\nvclone\work\&lt;sha256-of-exe-path[:12]&gt;\</code> — cleared on start, reused across pages, deleted on app exit.</li>
+  <li><b>Run:</b> <code class="inline">7za.exe x "&lt;driver.exe&gt;" -o"&lt;WorkDir&gt;" -y -aoa</code></li>
+  <li><b>Verify</b> extraction: <code class="inline">WorkDir\Display.Driver\</code> exists and contains ≥1 <code class="inline">.inf</code> + ≥1 <code class="inline">.cat</code>. Else → fail with "Not a recognized NVIDIA driver package."</li>
+</ol>
+<h4>Acceptance</h4>
+<ul>
+  <li>Loading the same <code class="inline">.exe</code> twice yields identical working trees.</li>
+  <li>A non-driver 7z SFX is rejected with a precise message before any UI state changes.</li>
+  <li>Disk full during extraction → partial cleanup + clear error.</li>
+</ul>
+
+<h2 id="f-detect">13. Feature: Package Detection &amp; Parsing</h2>
+<h4>Outputs</h4>
+<ul>
+  <li>Driver version (e.g. <code class="inline">600.84</code>), branch, WHQL/DCH flag, build date.</li>
+  <li>List of present components (folders actually in the package).</li>
+  <li>Active INF + matching GPU (if any NVIDIA adapter present).</li>
+  <li>Supported PCI device IDs (from <code class="inline">ListDevices.txt</code> + INF <code class="inline">[Models]</code>).</li>
+</ul>
+<h4>Steps</h4>
+<ol>
+  <li><b>Version</b>: parse <code class="inline">NVI2\setup.cfg</code> <code class="inline">[CheckMe]</code> / <code class="inline">[Version]</code> for <code class="inline">DriverVer</code>; cross-check against <code class="inline">Display.Driver\nv_dispi.inf</code> <code class="inline">[Version]</code> <code class="inline">DriverVer</code>.</li>
+  <li><b>DCH vs Standard</b>: presence of <code class="inline">Display.NvContainer\</code> ⇒ DCH. Absent + presence of <code class="inline">nv_disp.inf</code> ⇒ Standard. Surface in UI.</li>
+  <li><b>Active INF</b>: enumerate installed NVIDIA adapters via <code class="inline">SetupDiEnumDeviceInfo</code> + <code class="inline">SetupDiGetDeviceRegistryProperty(SPDRP_HARDWAREID)</code>. Match the PCI ID (e.g. <code class="inline">PCI\VEN_10DE&amp;DEV_2484&amp;SUBSYS_...</code>) against each candidate INF's <code class="inline">[Models]</code>/<code class="inline">[NvidiaDevices]</code> section. First match = active INF.</li>
+  <li><b>Components present</b>: scan top-level folders; intersect with the component map (<a href="#components">§9</a>).</li>
+</ol>
+<h4>Acceptance</h4>
+<ul>
+  <li>If no NVIDIA adapter is present, install still proceeds (use first INF) but a warning is shown.</li>
+  <li>DCH/Standard detection is correct for ≥95% of shipped drivers since branch 430 (validated against a fixture set).</li>
+</ul>
+
+<h2 id="f-select">14. Feature: Component Selection UI</h2>
+<p>Wizard page 3. One checkbox per component from <a href="#components">§9</a>. Defaults:</p>
+<ul>
+  <li>Display Driver: <b>on, locked</b> (cannot uncheck — core requirement).</li>
+  <li>PhysX, HD Audio, NVContainer, USB-C, NVIDIA App: <b>off</b>.</li>
+  <li>Optimus: <b>auto-on if laptop</b> (battery detected via <code class="inline">GetSystemPowerStatus</code>).</li>
+  <li>GeForce Experience: <b>hidden / forced-off</b> (we don't show a checkbox; we just never include it).</li>
+</ul>
+<p>Additional options panel:</p>
+<ul>
+  <li>☑ Remove telemetry (default on).</li>
+  <li>☑ Disable NVIDIA HD Audio power-saving (default off).</li>
+  <li>☑ Prefer Maximum Performance (default off).</li>
+  <li>☐ Disable NVContainer (advanced; warns NVCP needs Store version).</li>
+  <li>☐ Clean previous driver before install (default off).</li>
+  <li>☐ Edit INFs (advanced; requires re-sign — see §16).</li>
+  <li>☐ Export package only (don't install).</li>
+  <li>Language selector (default = OS UI language; falls back to English).</li>
+</ul>
+
+<h2 id="f-build">15. Feature: Package Build (Trim / Strip)</h2>
+<h4>Inputs</h4>
+<p>Extracted working tree + selection state.</p>
+<h4>Steps</h4>
+<ol>
+  <li>Compute the <b>excluded folder set</b> from selection.</li>
+  <li>Delete each excluded folder from <code class="inline">WorkDir</code>.</li>
+  <li><b>Telemetry files inside <code class="inline">Display.Driver\</code></b>: do <i>not</i> delete here (would break catalog). Marked for post-install removal.</li>
+  <li>If <b>Edit INFs</b> on: rewrite the active INF's <code class="inline">[SourceDisksFiles]</code>, <code class="inline">[NvidiaDevices.CopyFiles]</code>, <code class="inline">[CoInstallers]</code>, and telemetry-named copy lines to drop deleted files; then regenerate <code class="inline">.cat</code> with <code class="inline">inf2cat</code> and re-sign (<a href="#f-sign">§16</a>).</li>
+  <li>If <b>Export</b> on: <code class="inline">robocopy</code>/<code class="inline">Directory.Copy</code> to chosen output path; stop.</li>
+  <li>Else: hand off <code class="inline">WorkDir</code> to Install phase.</li>
+</ol>
+<h4>Acceptance</h4>
+<ul>
+  <li>Build with all defaults produces a tree containing only <code class="inline">Display.Driver\</code>.</li>
+  <li>Build is deterministic given identical input + options.</li>
+  <li>Without Edit-INFs, no <code class="inline">.cat</code>/<code class="inline">.inf</code> is modified.</li>
+</ul>
+
+<h2 id="f-sign">16. Feature: Driver Signing (Advanced)</h2>
+<div class="callout warn">
+  <span class="lbl">Only required when</span>
+  <p>The user enabled <b>Edit INFs</b> in §14, which modifies the display INF and invalidates the WHQL catalog. The default flow (folder-deletion only) does <b>not</b> need this.</p>
+</div>
+<h4>Steps</h4>
+<ol>
+  <li><b>Generate self-signed code-signing cert</b> (ECC P-256, CN=<code class="inline">NVClone Self-Sign</code>, 1-year validity) via <code class="inline">CertificateRequest.Create</code> + <code class="inline">X509Certificate2</code>.</li>
+  <li><b>Install</b> into <code class="inline">Cert:\LocalMachine\Root</code> and <code class="inline">Cert:\LocalMachine\TrustedPublisher</code> (so Windows trusts the re-signed catalog during staging).</li>
+  <li><b>Regenerate catalog</b>: <code class="inline">inf2cat.exe /driver:"&lt;WorkDir&gt;\Display.Driver" /os:10_x64</code>.</li>
+  <li><b>Re-sign catalog</b>: <code class="inline">signtool sign /fd SHA256 /sha1 &lt;thumbprint&gt; "&lt;WorkDir&gt;\Display.Driver\nv_dispi.cat"</code> (signtool bundled as optional sidecar) OR PowerShell <code class="inline">Set-AuthenticodeSignature -FilePath ... -Certificate $cert -HashAlgorithm SHA256</code>.</li>
+  <li><b>Record</b> cert thumbprint + uninstall path in the log, so the user can remove the self-signed root later.</li>
+</ol>
+<h4>Acceptance</h4>
+<ul>
+  <li>After sign, <code class="inline">pnputil /add-driver</code> succeeds without signature errors.</li>
+  <li>The self-signed root is removable from a one-click "Remove NVClone self-sign cert" action.</li>
+</ul>
+
+<h2 id="f-download">17. Feature: Download from NVIDIA</h2>
+<p>Optional page. NVIDIA has no stable JSON API; we scrape the documented download flow.</p>
+<h4>Steps</h4>
+<ol>
+  <li>User picks Product Type (GeForce/Quadro/Tesla), Series, Model, OS, Branch (Game Ready/Studio), language.</li>
+  <li>GET <code class="inline">https://www.nvidia.com/Download/processFind.aspx?psid=&lt;psid&gt;&amp;pfid=&lt;pfid&gt;&amp;osid=&lt;osid&gt;&amp;lid=&lt;lid&gt;&amp;whql=&amp;lang=&lt;lang&gt;</code> — returns HTML with the driver detail page link + download <code class="inline">chk</code> value.</li>
+  <li>Parse the detail page for the <code class="inline">downloadUrl</code> JS var → resolves through <code class="inline">processDriver.aspx</code> → final <code class="inline">*.exe</code> on <code class="inline">us.download.nvidia.com</code> / <code class="inline">international.download.nvidia.com</code>.</li>
+  <li>Stream to <code class="inline">%TEMP%\nvclone\downloads\&lt;suggestedName&gt;</code> with progress reporting via <code class="inline">HttpClient.SendAsync</code> + <code class="inline">HttpCompletionMode.ResponseHeadersRead</code>.</li>
+  <li>Verify SHA-256 if NVIDIA publishes one on the detail page; warn (don't fail) on mismatch.</li>
+</ol>
+<div class="callout note">
+  <span class="lbl">Maintenance note</span>
+  <p>NVIDIA can change their HTML at any time. The parser is isolated in <code class="inline">Download/NvidiaDriverSearch.cs</code> behind an interface, with two selector strategies (XPath + regex fallback). Failure to parse → user is told to download manually from nvidia.com/Download and load the local <code class="inline">.exe</code> (the primary path). This is the only "best-effort" surface in the spec and it degrades gracefully.</p>
+</div>
+
+<h2 id="f-clean">18. Feature: Previous-Driver Cleanup</h2>
+<h4>Steps</h4>
+<ol>
+  <li><b>System Restore point</b>: create via WMI <code class="inline">CreateRestorePoint</code> (best-effort; log if SR is disabled).</li>
+  <li><b>Enumerate</b> published NVIDIA driver packages: <code class="inline">pnputil /enum-drivers</code>, filter lines where Original Name starts with <code class="inline">nv</code> (covers <code class="inline">nv_dispi.inf</code>, <code class="inline">nvhda.inf</code>, <code class="inline">nvami.inf</code> etc.). Collect <code class="inline">Published Name</code> = <code class="inline">oemNN.inf</code>.</li>
+  <li><b>Force-delete</b> each: <code class="inline">pnputil /delete-driver oemNN.inf /uninstall /force</code>. Tolerate "in use" → request reboot.</li>
+  <li><b>Services</b>: stop <code class="inline">NVDisplay.ContainerLocalSystem</code> temporarily is <b>NOT</b> done (would black-screen). Instead only the helper services from §10.2 are touched.</li>
+  <li><b>Files</b>: delete <code class="inline">%ProgramFiles%\NVIDIA Corporation\</code> subfolders that belong to removed components (NvBackend, Display.NvContainer plugins) — never <code class="inline">Drs</code> (NVCP profiles) or <code class="inline">Control Panel Client</code>.</li>
+</ol>
+<h4>Acceptance</h4>
+<ul>
+  <li>Cleanup never leaves the display adapter without a bound driver for more than the reboot window.</li>
+  <li>Restore point exists or is logged as unavailable.</li>
+</ul>
+
+<h2 id="f-tweaks">19. Feature: Post-Install Tweaks</h2>
+<table>
+  <tr><th>Tweak</th><th>Mechanism</th><th>Default</th></tr>
+  <tr>
+    <td>Prefer Maximum Performance</td>
+    <td>For each NVIDIA device instance key under <code class="inline">HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\&lt;nnnn&gt;</code>, set <code class="inline">PerfLevelSrc</code> = <code class="inline">0x3322</code> and <code class="inline">PowerMizerEnable</code> = <code class="inline">1</code>, <code class="inline">PowerMizerLevel</code> = <code class="inline">1</code>, <code class="inline">PowerMizerLevelAC</code> = <code class="inline">1</code>.</td>
+    <td>Off</td>
+  </tr>
+  <tr>
+    <td>Disable HD Audio power-saving</td>
+    <td>Under the NVIDIA HD Audio class key <code class="inline">{4d36e96c-e325-11ce-bfc1-08002be10318}\&lt;nnnn&gt;</code>, set <code class="inline">PowerSetting</code> DWORDs to disable idle power-down.</td>
+    <td>Off</td>
+  </tr>
+  <tr>
+    <td>Telemetry removal</td>
+    <td>See <a href="#telemetry">§10</a>.</td>
+    <td>On</td>
+  </tr>
+</table>
+<p>Each tweak is independently toggled and independently logged.</p>
+
+<h2 id="f-cli">20. Feature: CLI / Silent Mode</h2>
+<p>Same Core pipeline, no WPF. Invoked when any argument is present.</p>
+<pre><code>NVClone.exe &lt;command&gt; [options]
+
+Commands:
+  install       Load → detect → build → install → post-install. (default)
+  export        Load → build → write trimmed folder. No install.
+  list-gpus     Print detected NVIDIA adapters. No install.
+  clean         Run previous-driver cleanup only. No install.
+
+Options:
+  --driver &lt;path&gt;          Driver .exe path (required for install/export).
+  --components &lt;csv&gt;        display,physx,hdaudio,optimus,nvcontainer,usbc,app
+                           (default: display)
+  --no-telemetry            Skip telemetry removal.
+  --clean-first             Remove prior NVIDIA driver packages first.
+  --maxperf                 Apply Prefer Maximum Performance tweak.
+  --no-hdaudio-powersave    Disable HD Audio power-saving.
+  --edit-infs / --sign      Enable INF editing + self-sign (advanced).
+  --cert-cn &lt;name&gt;          Self-signed cert CN (default: "NVClone Self-Sign").
+  --workdir &lt;path&gt;          Override working directory.
+  --outdir &lt;path&gt;           export: output directory.
+  --lang &lt;tag&gt;              e.g. en-US, de-DE.
+  --reboot                  Auto-reboot if required (no prompt).
+  --log &lt;path&gt;              Override log file location.
+  --verbose                 Verbose console.
+  --dry-run                 Resolve + validate + log plan; change nothing.
+
+Exit codes:
+   0  OK
+   1  OK, reboot required
+   2  Invalid arguments
+   3  Package not recognized
+   4  Disk / IO error
+   5  Install failed (see log)
+   6  Cancelled by user (GUI)
+   9  Internal error (see log)</pre></pre>
+
+<h2 id="f-log">21. Feature: Logging &amp; Diagnostics</h2>
+<ul>
+  <li><b>Location:</b> <code class="inline">%ProgramData%\NVClone\Logs\NVClone-YYYYMMDD-HHmmss.log</code> (rolling; keep last 20).</li>
+  <li><b>Levels:</b> Trace/Debug/Info/Warn/Error. Default Info; <code class="inline">--verbose</code> ⇒ Debug.</li>
+  <li><b>Captured:</b> every <code class="inline">pnputil</code>/<code class="inline">7za</code>/<code class="inline">msiexec</code> command + full stdout/stderr + exit code; every registry/service/file action with before/after; INF edits as unified diff.</li>
+  <li><b>Privacy:</b> scrub current username and machine name; never log the self-signed cert private key.</li>
+  <li><b>"Save diagnostics bundle"</b> button zips the last log + <code class="inline">pnputil /enum-drivers</code> output + <code class="inline">dxdiag</code> (user-consented) for support.</li>
+</ul>
+
+<h2 id="f-elevate">22. Feature: Elevation &amp; Bootstrapping</h2>
+<ul>
+  <li>App manifest: <code class="inline">&lt;requestedExecutionLevel level="requireAdministrator" uiAccess="false"/&gt;</code>. UAC prompt on launch; no in-app re-elevation needed.</li>
+  <li>Single-instance via named mutex <code class="inline">Global\NVClone_SingleInstance</code>.</li>
+  <li>If launched with <code class="inline">--wait-for-pid &lt;n&gt;</code>, parent (unelevated) can spawn the elevated helper and read its exit code — used for "Run as admin" from a non-elevated shell.</li>
+  <li>Critical operations wrapped in a top-level try/catch that writes a crash dump path to <code class="inline">%ProgramData%\NVClone\Crash\</code> and shows a dialog.</li>
+</ul>
+
+<hr>
+
+<h2 id="build">23. Build &amp; Publish</h2>
+<h3>23.1 Prerequisites (build machine)</h3>
+<ul>
+  <li>.NET 10 SDK (LTS).</li>
+  <li>Visual Studio 2026 or VS Build Tools 2026 (for WPF designer — optional; CLI build is sufficient).</li>
+  <li>Windows SDK 10.0.26100+ (for <code class="inline">signtool.exe</code> / <code class="inline">inf2cat.exe</code>, optional sidecar packaging).</li>
+</ul>
+<h3>23.2 Publish command (release, single-file, self-contained)</h3>
+<pre><code>dotnet publish src/NVClone.App/NVClone.App.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -p:PublishSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true `
+  -p:EnableCompressionInSingleFile=true `
+  -p:DebugType=embedded `
+  -o dist
+
+# Embed 7za.exe + (optional) inf2cat/signtool sidecars
+# 7za.exe is an Embedded Resource in NVClone.Core; extracted at runtime.</code></pre>
+<h3>23.3 Output</h3>
+<p><code class="inline">dist\NVClone.exe</code> (~85 MB self-contained). No installer; portable. Optionally wrapped in an Inno Setup installer for Start Menu pinning (out of core scope; provided as <code class="inline">installer/installer.iss</code>).</p>
+<h3>23.4 Dependencies (NuGet)</h3>
+<table>
+  <tr><th>Package</th><th>Version</th><th>Purpose</th></tr>
+  <tr><td><code class="inline">CommunityToolkit.Mvvm</code></td><td>8.4.x (latest stable)</td><td>MVVM source generators</td></tr>
+  <tr><td><code class="inline">Microsoft.Extensions.DependencyInjection</code></td><td>10.0.x</td><td>DI</td></tr>
+  <tr><td><code class="inline">Microsoft.Extensions.Logging</code></td><td>10.0.x</td><td>Logging abstraction</td></tr>
+  <tr><td><code class="inline">Microsoft.Extensions.Logging.Console</code></td><td>10.0.x</td><td>CLI console output</td></tr>
+  <tr><td colspan="3"><i>No CsWin32, no SharpCompress, no Serilog, no WinAppSDK.</i> P/Invoke is hand-authored; 7z via bundled <code class="inline">7za.exe</code>; logging via custom file provider.</td></tr>
+</table>
+
+<h2 id="test">24. Test Strategy</h2>
+<h3>24.1 Unit (xUnit, <code class="inline">NVClone.Core.Tests</code>)</h3>
+<ul>
+  <li><b>PackageParser</b>: feed fixture INFs (real, anonymized branches 4xx–6xx) and assert version/DCH/component extraction.</li>
+  <li><b>ComponentMap</b>: assert every component folder maps 1:1 and unknown folders are ignored.</li>
+  <li><b>TelemetryTarget</b>: assert regex matches for FileRepository paths.</li>
+  <li><b>pnputil output parser</b>: golden outputs → published names + exit code mapping.</li>
+  <li><b>CLI arg parser</b>: every option round-trips.</li>
+</ul>
+<h3>24.2 Integration (gated, manual or CI-with-VM)</h3>
+<ul>
+  <li>Snapshotted Win11 VM; install a known driver via NVClone; assert Device Manager shows the new driver version, telemetry files absent, services absent, registry keys absent.</li>
+  <li>Round-trip: install → clean → install different version.</li>
+  <li>Reboot-required path (driver in use) returns exit 1.</li>
+</ul>
+<h3>24.3 Regression fixtures</h3>
+<p>One anonymized <code class="inline">.exe</code>-derived tree per supported major branch (current target: 580/590/600 series as of 2026-07). Stored in <code class="inline">tests/fixtures/</code> (LFS, not in repo proper).</p>
+
+<h2 id="risks">25. Risks &amp; Mitigations</h2>
+<table>
+  <tr><th>Risk</th><th>Likelihood</th><th>Mitigation</th></tr>
+  <tr><td>NVIDIA changes INF layout / adds a new folder.</td><td>Medium</td><td>Unknown folders are ignored, not fatal. Component map is data-driven; new entries added without recompiling logic. Unknown INF layout → halt with "unsupported package, please report."</td></tr>
+  <tr><td>NVIDIA download HTML changes.</td><td>Medium-High</td><td>Two parser strategies + graceful degrade to "download manually." Isolated behind interface.</td></tr>
+  <tr><td><code class="inline">pnputil</code> output format changes in future Win11.</td><td>Low</td><td>Exit-code is source of truth; stdout parsing only for published names. SetupAPI path is the fallback.</td></tr>
+  <tr><td>Self-signed cert lingers after uninstall.</td><td>Medium</td><td>One-click cert-removal action; cert CN is fixed/identifiable; logged thumbprint.</td></tr>
+  <tr><td>User blackscreens mid-cleanup.</td><td>Low (we don't stop core services)</td><td>§18 explicitly avoids stopping <code class="inline">NVDisplay.ContainerLocalSystem</code> + <code class="inline">nvlddmkm</code>.</td></tr>
+  <tr><td>Telemetry DLL locked by running process.</td><td>Medium</td><td>Stop the owning service first; if still locked, schedule delete-on-reboot via <code class="inline">MoveFileEx(MOVEFILE_DELAY_UNTIL_REBOOT)</code> and prompt reboot.</td></tr>
+  <tr><td>AV flags self-signed driver.</td><td>Low-Medium</td><td>Document expected exclusions; cert is in TrustedPublisher. No EDR bypass attempted.</td></tr>
+  <tr><td>PhysX MSI fails on newer Windows.</td><td>Low</td><td>Treated as non-fatal; install continues; logged.</td></tr>
+</table>
+
+<h2 id="milestones">26. Milestones</h2>
+<table>
+  <tr><th>#</th><th>Milestone</th><th>Deliverable</th></tr>
+  <tr><td>M1</td><td>Skeleton + Load + Detect</td><td>WPF wizard loads a real <code class="inline">.exe</code>, extracts, shows version + components. No install.</td></tr>
+  <tr><td>M2</td><td>Build (trim) + Export</td><td>"Export package" produces a correct trimmed tree.</td></tr>
+  <tr><td>M3</td><td>Install (display only)</td><td><code class="inline">pnputil</code> install of display driver end-to-end on a VM; reboot handling.</td></tr>
+  <tr><td>M4</td><td>Optional components</td><td>PhysX / HD Audio / Optimus / NVContainer selectable + installing.</td></tr>
+  <tr><td>M5</td><td>Telemetry + tweaks</td><td>§10 + §19 verified post-install.</td></tr>
+  <tr><td>M6</td><td>Clean previous + download</td><td>§17 + §18.</td></tr>
+  <tr><td>M7</td><td>Signing (advanced)</td><td>§16 — Edit INFs + self-sign + re-stage.</td></tr>
+  <tr><td>M8</td><td>CLI + publish</td><td>§20 + §23. Single-file <code class="inline">.exe</code>.</td></tr>
+  <tr><td>M9</td><td>Hardening + docs</td><td>Full logging, crash dumps, README, release.</td></tr>
+</table>
+
+<h2 id="refs">27. References</h2>
+<ul>
+  <li>.NET 10 release notes (LTS, 2025-11-11 → 2028-11) — <a href="https://github.com/dotnet/core/blob/main/release-notes/10.0/README.md">github.com/dotnet/core</a></li>
+  <li>PnPUtil Command Syntax — <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/pnputil-command-syntax">learn.microsoft.com</a></li>
+  <li>PnPUtil Examples — <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/pnputil-examples">learn.microsoft.com</a></li>
+  <li>SetupAPI uninstall / DiInstallDriverW — <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/install/using-setupapi-to-uninstall-devices-and-driver-packages">learn.microsoft.com</a></li>
+  <li>Components of a Driver Package — <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/install/components-of-a-driver-package">learn.microsoft.com</a></li>
+  <li>P/Invoke source generation (<code class="inline">[LibraryImport]</code>) — <a href="https://learn.microsoft.com/en-us/dotnet/standard/native-interop/pinvoke-source-generation">learn.microsoft.com</a></li>
+  <li>NVIDIA driver INF internals / modding reference — <a href="https://forums.guru3d.com/threads/nvidia-inf-driver-modding-guide.377158/">forums.guru3d.com</a></li>
+  <li>NVIDIA telemetry deep-dive — <a href="https://forum.level1techs.com/t/taking-a-deeper-look-at-the-nvidia-telemetry/109200">forum.level1techs.com</a></li>
+  <li>privacy.sexy NVIDIA telemetry issue (#308) — <a href="https://github.com/undergroundwires/privacy.sexy/issues/308">github.com/undergroundwires/privacy.sexy</a></li>
+  <li>WinUI 3 vs WPF practical comparison (2026) — <a href="https://www.ctco.blog/posts/winui-vs-wpf-2026-practical-comparison/">ctco.blog</a></li>
+  <li>Build 2026: WinUI as native production platform — <a href="https://windowsforum.com/threads/build-2026-microsoft-makes-winui-the-native-production-platform-for-windows-apps.422404/">windowsforum.com</a></li>
+  <li>7-Zip SFX switches — <a href="https://techspace.co.th/help/kb/apps/utility/how-to-make-a-self-extracting-archive-that-runs-your-setup-exe-with-7zip-sfx-switch">techspace.co.th</a></li>
+  <li>Original reference tool: TechPowerUp NVCleanInstall — <a href="https://www.techpowerup.com/nvcleaninstall">techpowerup.com/nvcleaninstall</a> (behavioral reference only; this spec is an independent implementation)</li>
+</ul>
+
+<hr>
+<p style="color:var(--muted);font-size:12.5px">Spec NVClone v1.0 · 2026-07-04 · Status: READY TO BUILD. Every behavior above is implementable with the stated stack on Windows 11 today; no item depends on unreleased or preview technology. Behavioral parity is with NVCleanInstall's documented/observable features; the implementation is original and shares no code with the reference tool.</p>
+
+</main>
+</div>
+</body>
+</html>

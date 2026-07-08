@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CleanDriver — Screen 4: Tweaks</title>
+<style>
+  :root{
+    --font:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif;
+    --mono:"Cascadia Code",Consolas,"SF Mono",ui-monospace,monospace;
+    --r-card:8px; --r-ctrl:4px;
+  }
+  body[data-theme="light"]{
+    --page:#E9E9E9;
+    --win:#F3F3F3; --card:#FFFFFF; --border:#E5E5E5;
+    --text:#1B1B1B; --text2:#5D5D5D;
+    --accent:#2E7D32; --accent-hover:#276B2B; --on-accent:#FFFFFF;
+    --warn-text:#9A6700; --warn-bg:#FFF8E1;
+    --ctrl-bg:#FFFFFF; --ctrl-hover:#F5F5F5; --sel-bg:#EAF3EA;
+    --panel:#FAFAFA; --track:#B8B8B8;
+    --shadow:0 20px 48px rgba(0,0,0,.22);
+    --cap-hover:rgba(0,0,0,.06); --close-hover:#C42B1C;
+  }
+  body[data-theme="dark"]{
+    --page:#171717;
+    --win:#202020; --card:#2B2B2B; --border:#3A3A3A;
+    --text:#FFFFFF; --text2:#C5C5C5;
+    --accent:#66BB6A; --accent-hover:#7BC97F; --on-accent:#103312;
+    --warn-text:#F8D57E; --warn-bg:#3A3115;
+    --ctrl-bg:#303030; --ctrl-hover:#383838; --sel-bg:#2C3A2D;
+    --panel:#242424; --track:#5A5A5A;
+    --shadow:0 20px 48px rgba(0,0,0,.5);
+    --cap-hover:rgba(255,255,255,.08); --close-hover:#C42B1C;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:var(--font); background:var(--page); color:var(--text);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:16px; padding:40px 24px; min-height:100vh;
+    -webkit-font-smoothing:antialiased; font-size:14px; line-height:20px;
+  }
+  a{color:var(--accent); text-decoration:none;}
+  a:hover{color:var(--accent-hover); text-decoration:underline;}
+
+  .toggle{display:inline-flex; padding:3px; gap:2px; border-radius:6px;
+    background:var(--win); border:1px solid var(--border);}
+  .toggle button{font:inherit; font-size:12px; color:var(--text2);
+    border:0; background:transparent; padding:5px 14px; border-radius:4px; cursor:pointer;}
+  .toggle button.on{background:var(--accent); color:var(--on-accent);}
+
+  .window{width:960px; height:640px; flex:0 0 auto; background:var(--win); border-radius:8px;
+    box-shadow:var(--shadow); display:flex; flex-direction:column; overflow:hidden;
+    border:1px solid var(--border);}
+
+  .titlebar{height:44px; flex:0 0 44px; display:flex; align-items:center;
+    padding-left:14px; gap:10px; background:var(--win);}
+  .glyph{width:18px; height:18px; border-radius:5px; background:var(--accent);
+    display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+  .glyph::after{content:""; width:8px; height:8px; border-radius:2px; border:2px solid var(--on-accent);}
+  .appname{font-size:12px; font-weight:600; letter-spacing:.01em;}
+  .tb-spacer{flex:1;}
+  .toolbar{display:flex; gap:6px; margin-right:6px;}
+  .tb-btn{font:inherit; font-size:12px; color:var(--text); background:var(--ctrl-bg);
+    border:1px solid var(--border); border-radius:4px; padding:4px 10px; cursor:pointer;}
+  .tb-btn:hover{background:var(--ctrl-hover);}
+  .caption{display:flex; height:44px;}
+  .cap{width:44px; height:44px; display:flex; align-items:center; justify-content:center; color:var(--text);}
+  .cap:hover{background:var(--cap-hover);}
+  .cap.close:hover{background:var(--close-hover); color:#fff;}
+  .cap svg{width:11px; height:11px;}
+
+  .content{flex:1; padding:12px 24px; overflow:hidden; display:flex; flex-direction:column; gap:10px;}
+  .page-title{font-size:20px; font-weight:600; line-height:26px; margin:0;}
+  .label{font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--text2); font-weight:600;}
+
+  .btn{font:inherit; font-size:13px; border-radius:var(--r-ctrl); padding:8px 16px; cursor:pointer; border:1px solid var(--border);}
+  .btn.secondary{background:var(--ctrl-bg); color:var(--text);}
+  .btn.secondary:hover{background:var(--ctrl-hover);}
+  .btn.primary{background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600;}
+  .btn.primary:hover{background:var(--accent-hover);}
+  .btn:focus-visible, .tb-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  /* two-pane card */
+  .panes{flex:1; display:flex; background:var(--card); border:1px solid var(--border);
+    border-radius:var(--r-card); overflow:hidden;}
+  .left{width:560px; flex:0 0 560px; display:flex; flex-direction:column; border-right:1px solid var(--border);}
+  .list{flex:1; overflow:auto; padding:6px 0 10px;}
+  .sec-head{padding:10px 16px 6px; display:flex; align-items:center; gap:8px;}
+  .trow{display:flex; align-items:center; gap:12px; padding:0 16px; min-height:34px; cursor:pointer;}
+  .trow:hover{background:var(--ctrl-hover);}
+  .trow.hi{background:var(--sel-bg); box-shadow:inset 3px 0 0 var(--accent);}
+  .trow.sub{padding-left:46px;}
+  .cb{width:18px; height:18px; border-radius:var(--r-ctrl); border:2px solid var(--text2);
+    flex:0 0 auto; display:flex; align-items:center; justify-content:center; background:transparent;}
+  .cb.on{background:var(--accent); border-color:var(--accent);}
+  .cb.on svg{width:12px; height:12px; color:var(--on-accent);}
+  .tname{flex:1; font-size:14px;}
+  .badge{font-size:11px; font-weight:600; padding:1px 8px; border-radius:10px;
+    background:var(--warn-bg); color:var(--warn-text);}
+
+  /* switch row */
+  .switch-row{display:flex; align-items:center; gap:12px; padding:12px 16px; margin:6px 0;
+    border-top:1px solid var(--border); border-bottom:1px solid var(--border);}
+  .sw{width:40px; height:22px; border-radius:11px; background:var(--accent); position:relative; flex:0 0 auto;}
+  .sw .knob{position:absolute; top:3px; left:21px; width:16px; height:16px; border-radius:50%; background:var(--on-accent);}
+  .switch-row .tname{font-weight:600;}
+
+  /* warning banner */
+  .warn-banner{margin:2px 16px 6px 46px; background:var(--warn-bg); color:var(--warn-text);
+    border-radius:var(--r-ctrl); padding:9px 12px; font-size:13px; line-height:18px;}
+
+  /* segmented */
+  .seg-row{display:flex; align-items:center; gap:12px; padding:6px 16px 8px 46px;}
+  .seg-row .lbl{font-size:13px; color:var(--text2);}
+  .seg{display:inline-flex; border:1px solid var(--border); border-radius:var(--r-ctrl); overflow:hidden;}
+  .seg span{font-size:13px; padding:4px 14px; cursor:pointer; color:var(--text);}
+  .seg span + span{border-left:1px solid var(--border);}
+  .seg span.on{background:var(--accent); color:var(--on-accent); font-weight:600;}
+
+  .right{flex:1; padding:20px; background:var(--panel); display:flex; flex-direction:column; gap:12px;}
+  .rp-eyebrow{font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--text2); font-weight:600;}
+  .rp-title{font-size:17px; font-weight:600;}
+  .rp-desc{font-size:14px; color:var(--text2); line-height:21px;}
+
+  .footer{flex:0 0 60px; height:60px; border-top:1px solid var(--border);
+    display:flex; align-items:center; padding:0 24px; gap:16px;}
+  .step{font-size:13px; color:var(--text2);}
+  .step b{color:var(--text); font-weight:600;}
+  .footer .sp{flex:1;}
+  .foot-actions{display:flex; gap:8px;}
+</style>
+</head>
+<body data-theme="light">
+
+  <div class="toggle" role="group" aria-label="Theme">
+    <button id="t-light" class="on" onclick="setTheme('light')">Light</button>
+    <button id="t-dark" onclick="setTheme('dark')">Dark</button>
+  </div>
+
+  <div class="window">
+    <div class="titlebar">
+      <div class="glyph"></div>
+      <div class="appname">CleanDriver</div>
+      <div class="tb-spacer"></div>
+      <div class="toolbar">
+        <button class="tb-btn">Save preset…</button>
+        <button class="tb-btn">Load preset…</button>
+      </div>
+      <div class="caption">
+        <div class="cap"><svg viewBox="0 0 10 10"><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1"/></svg></div>
+        <div class="cap close"><svg viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" stroke-width="1"/><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" stroke-width="1"/></svg></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1 class="page-title">Tweaks</h1>
+
+      <div class="panes">
+        <!-- left -->
+        <div class="left">
+          <div class="list">
+
+            <div class="sec-head"><span class="label">Installation tweaks</span></div>
+
+            <div class="trow">
+              <span class="cb on"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+              <span class="tname">Disable installer telemetry &amp; advertising</span>
+            </div>
+            <div class="trow">
+              <span class="cb on"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+              <span class="tname">Unattended express installation</span>
+            </div>
+            <div class="trow sub">
+              <span class="cb"></span>
+              <span class="tname">Allow automatic reboot</span>
+            </div>
+            <div class="trow">
+              <span class="cb on"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+              <span class="tname">Perform clean installation</span>
+            </div>
+            <div class="trow">
+              <span class="cb"></span>
+              <span class="tname">Disable Multi-Plane Overlay (MPO)</span>
+            </div>
+            <div class="trow">
+              <span class="cb"></span>
+              <span class="tname">Disable Ansel</span>
+            </div>
+            <div class="trow">
+              <span class="cb on"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+              <span class="tname">Install driver control panel</span>
+            </div>
+
+            <!-- expert toggle -->
+            <div class="switch-row">
+              <div class="sw"><div class="knob"></div></div>
+              <span class="tname">Show expert tweaks</span>
+            </div>
+
+            <div class="sec-head"><span class="label">Expert tweaks</span></div>
+
+            <div class="trow">
+              <span class="cb"></span>
+              <span class="tname">Disable driver telemetry</span>
+              <span class="badge">Experimental</span>
+            </div>
+            <div class="trow">
+              <span class="cb on"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+              <span class="tname">Disable display container service</span>
+              <span class="badge">Experimental</span>
+            </div>
+            <div class="warn-banner">Breaks the driver control panel — it is currently selected for install.</div>
+            <div class="trow">
+              <span class="cb"></span>
+              <span class="tname">Disable HD-audio device sleep timer</span>
+            </div>
+            <div class="trow hi">
+              <span class="cb on"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+              <span class="tname">Enable Message Signaled Interrupts (MSI)</span>
+            </div>
+            <div class="seg-row">
+              <span class="lbl">Interrupt priority:</span>
+              <div class="seg"><span>Default</span><span class="on">High</span></div>
+            </div>
+            <div class="trow">
+              <span class="cb"></span>
+              <span class="tname">Disable HDCP</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- right -->
+        <div class="right">
+          <div class="rp-eyebrow">Tweak</div>
+          <div class="rp-title">Enable Message Signaled Interrupts (MSI)</div>
+          <div class="rp-desc">Switches the GPU from line-based interrupts to message-signaled interrupts, which can reduce latency and DPC spikes on some systems. Interrupt priority sets the scheduling class used for the GPU's interrupts. <a href="#">Learn more</a></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="step">Step <b>4</b> of 5 — Tweaks</div>
+      <div class="sp"></div>
+      <div class="foot-actions">
+        <button class="btn secondary">Back</button>
+        <button class="btn primary">Next</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  function setTheme(t){
+    document.body.setAttribute('data-theme', t);
+    document.getElementById('t-light').classList.toggle('on', t==='light');
+    document.getElementById('t-dark').classList.toggle('on', t==='dark');
+  }
+</script>
+</body>
+</html>
