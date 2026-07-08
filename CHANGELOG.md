@@ -6,14 +6,15 @@ merged, or is explicitly marked as an open PR.
 
 ## Unreleased (open PRs)
 
-- **PR #1 — `docs/gap-register`:** adds `docs/gaps_analysis.md` (authoritative gap register:
-  6 gaps / 6 sequential PRs closing the 10 simplified features toward real-driver parity,
-  with pre-flight gates and an out-of-scope fence) and
-  `prompts/gap-01-implementation-prompt.md` (cold-session kickoff for GAP-01, live NVIDIA
-  version lookup). Awaiting owner review/merge.
+- none
 
 ## 2026-07-08
 
+- **`46d9f63` (PR #1, merged)** — Added `docs/gaps_analysis.md` (authoritative gap register:
+  6 gaps / 6 sequential PRs closing the 10 simplified features toward real-driver parity,
+  with pre-flight gates and an out-of-scope fence) and
+  `prompts/gap-01-implementation-prompt.md` (cold-session kickoff for GAP-01, live NVIDIA
+  version lookup).
 - **`0e3eef5`** — Versioned `CLAUDE.md` (removed from `.gitignore`) so git worktree sessions
   inherit the Claude Code working notes.
 - **`c94de87`** — Added `CONTRIBUTING.md`: mandatory TDD (red→green→refactor, reproducing
