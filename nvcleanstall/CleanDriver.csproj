@@ -21,4 +21,13 @@
     <Content Include="data\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The test project lives in a subdirectory (per CONTRIBUTING.md); keep its
+       sources out of the app project's default compile/content globs. -->
+  <ItemGroup>
+    <Compile Remove="CleanDriver.Tests\**" />
+    <Content Remove="CleanDriver.Tests\**" />
+    <EmbeddedResource Remove="CleanDriver.Tests\**" />
+    <None Remove="CleanDriver.Tests\**" />
+  </ItemGroup>
+
 </Project>
