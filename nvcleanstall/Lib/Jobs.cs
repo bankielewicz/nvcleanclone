@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace CleanDriver.Lib;
 
@@ -111,6 +112,17 @@ public static class Jobs
 
     // ---- real download (GAP-02): fetch bytes to disk, never executed --------
 
+    // Route-by-source: only a server-resolved live release with a real URL streams
+    // for real; mock and mock-stamped fallback releases keep the simulation.
+    public static bool ShouldRealDownload(Release release) =>
+        release.Source == "live" && !string.IsNullOrWhiteSpace(release.DownloadUrl);
+
+    // Untrusted live version strings are used to build a file path — accept only NNN.NN.
+    private static readonly Regex DriverVersionRe = new(@"^\d{3}\.\d{2}$", RegexOptions.Compiled);
+
+    // In-flight real downloads keyed by version, for idempotent double-click handling.
+    private static readonly ConcurrentDictionary<string, string> ActiveDownloads = new();
+
     // A separate client from GAP-01's 5s metadata client: a real installer legitimately
     // takes minutes, so the client has no overall timeout (ResponseHeadersRead + a
     // per-read stall timeout enforce liveness instead).
@@ -150,9 +162,26 @@ public static class Jobs
 
     public static Job StartRealDownload(Release release, string destDir, HttpMessageHandler? handler = null)
     {
+        var version = release.Version ?? "";
+
+        // Idempotent: a second request for a version already downloading returns the
+        // in-flight job rather than starting a second interleaved stream.
+        if (ActiveDownloads.TryGetValue(version, out var existingId)
+            && Get(existingId) is { Status: "running" } existing)
+            return existing;
+
         var job = Create("download");
-        job.Version = release.Version;
+        job.Version = version;
         job.TotalMB = release.SizeMB;
+
+        // Reject path-injecting / malformed versions before any filesystem call.
+        if (!DriverVersionRe.IsMatch(version))
+        {
+            job.Status = "failed";
+            job.Error = "invalid driver version";
+            job.Completion = Task.CompletedTask;
+            return job;
+        }
 
         bool ownsHandler = handler == null;
         var http = new HttpClient(handler ?? new SocketsHttpHandler(), disposeHandler: ownsHandler)
@@ -161,6 +190,7 @@ public static class Jobs
         };
         var cts = new CancellationTokenSource();
         job.Cancellation = cts;
+        ActiveDownloads[version] = job.Id;
         job.Completion = Task.Run(() => RunRealDownloadAsync(job, release, destDir, http, cts));
         return job;
     }
@@ -250,6 +280,7 @@ public static class Jobs
         }
         finally
         {
+            ActiveDownloads.TryRemove(new KeyValuePair<string, string>(release.Version ?? "", job.Id));
             http.Dispose();
             cancelCts.Dispose();
         }

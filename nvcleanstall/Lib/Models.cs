@@ -20,6 +20,11 @@ public record Manifest
     public string Version { get; init; } = "";
     public string Channel { get; init; } = "";
     public List<ComponentDef> Components { get; init; } = new();
+
+    // Additive (GAP-02): set when the component list is a sample stand-in for a live
+    // download (real package parsing is out of scope — GAP-OUT-1). Mock manifests
+    // deserialize with this false and are unaffected.
+    public bool SampleComponents { get; init; }
 }
 
 public record Release

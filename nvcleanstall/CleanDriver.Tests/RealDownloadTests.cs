@@ -137,4 +137,37 @@ public class RealDownloadTests
         }
         finally { Jobs.StallTimeout = prior; }
     }
+
+    // REQUIRED edge case: a version that isn't NNN.NN is rejected before any
+    // filesystem call — no path traversal, no file created.
+    [Fact]
+    public async Task StartRealDownload_RejectsPathInjectingVersion()
+    {
+        var dir = TempDir.Create();
+        var rel = LiveRelease.New() with { Version = @"..\..\evil" };
+
+        var job = Jobs.StartRealDownload(rel, dir, DownloadHandler.Bytes(new byte[16]));
+        await job.Completion!;
+
+        Assert.Equal("failed", job.Status);
+        Assert.Empty(Directory.GetFiles(dir));
+        Assert.Empty(Directory.GetFiles(Directory.GetParent(dir)!.FullName, "*evil*"));
+    }
+
+    // REQUIRED edge case: a second download of a version already in flight returns the
+    // existing job (idempotent) — no interleaved writes to the same .part.
+    [Fact]
+    public async Task StartRealDownload_DuplicateVersion_ReturnsExistingJob()
+    {
+        var dir = TempDir.Create();
+        var first = Jobs.StartRealDownload(LiveRelease.New(version: "599.99"), dir,
+            DownloadHandler.Stream(new ScriptedStream(64 * 1024, blockAfterPrefix: true)));
+        var second = Jobs.StartRealDownload(LiveRelease.New(version: "599.99"), dir,
+            DownloadHandler.Stream(new ScriptedStream(64 * 1024, blockAfterPrefix: true)));
+
+        Assert.Equal(first.Id, second.Id);
+
+        Jobs.Cancel(first.Id);
+        await first.Completion!;
+    }
 }
