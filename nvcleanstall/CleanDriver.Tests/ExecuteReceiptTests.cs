@@ -118,6 +118,31 @@ public class ExecuteReceiptTests
         Assert.True(r.GetProperty("simulated").GetBoolean());
     }
 
+    // FEAT-011 ("Unattended (+auto-reboot) … log reflects it; never reboots"): with the
+    // auto-reboot flag on, the log carries an explicit reboot notice that states no reboot
+    // is performed. Applies on both paths (like unattended/clean-install), so no artifact.
+    [Fact]
+    public async Task StartExecute_AutoRebootOn_LogsSimulatedRebootNotice()
+    {
+        var job = Jobs.StartExecute("install", M(), Src(),
+            Sel(new[] { "display" }, "unattended", "auto-reboot"), null, G());
+        await job.Completion!;
+
+        var log = JsonSerializer.Serialize(job.Snapshot(), Json.Web);
+        Assert.Contains("reboot", log, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("not performed", log);
+    }
+
+    // Off by default: no auto-reboot flag -> no reboot notice in the log.
+    [Fact]
+    public async Task StartExecute_AutoRebootOff_NoRebootNotice()
+    {
+        var job = Jobs.StartExecute("install", M(), Src(), Sel(new[] { "display" }), null, G());
+        await job.Completion!;
+
+        Assert.DoesNotContain("not performed", JsonSerializer.Serialize(job.Snapshot(), Json.Web));
+    }
+
     // Back-compat pin: the pre-GAP-04 6-arg call (no artifact) still compiles and behaves
     // as before — receipt carries no driver fields (mock path unchanged).
     [Fact]

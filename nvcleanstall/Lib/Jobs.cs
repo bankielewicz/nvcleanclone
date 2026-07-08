@@ -384,6 +384,11 @@ public static class Jobs
                 job.LogLine("> Writing install receipt… done");
             }));
             steps.Add((200, () => job.LogLine("> Installation finished.", "ok")));
+            // FEAT-011 "never reboots": honor the auto-reboot flag in the log only — the
+            // reboot is declared and explicitly NOT performed (no OS restart API is called).
+            if (selection.TweakOn("auto-reboot"))
+                steps.Add((150, () => job.LogLine(
+                    "> Automatic reboot allowed — not performed (simulated; no system reboot).", "mut")));
         }
         else // extract | package
         {
