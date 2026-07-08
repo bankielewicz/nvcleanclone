@@ -19,8 +19,8 @@ public class MockCatalogProviderTests
             releases.Select(r => r.Version).ToArray());
 
         // Core fields unchanged from stock data.
-        var beta = Assert.Single(releases.Where(r => r.Channel == "Beta"));
-        Assert.Equal("571.59", beta.Version);
+        Assert.Single(releases, r => r.Channel == "Beta");
+        Assert.Contains(releases, r => r.Channel == "Beta" && r.Version == "571.59");
         Assert.Equal("2026-06-24", releases[0].ReleaseDate);
         Assert.Equal(812, releases[0].SizeMB);
 

@@ -1,0 +1,26 @@
+{
+  "_comment": "GPU name -> NVIDIA manual-lookup ids (psid = product series, pfid = product). Captured from nvidia.com lookupValueSearch (PF-2, GAP-01). osId 135 = Windows 11; languageCode 1033 = English (US). Names match GpuInfo.Name (WMI name with the leading 'NVIDIA ' stripped).",
+  "osId": 135,
+  "languageCode": 1033,
+  "products": [
+    { "name": "GeForce RTX 4090 D", "psid": 127, "pfid": 1036 },
+    { "name": "GeForce RTX 4090", "psid": 127, "pfid": 995 },
+    { "name": "GeForce RTX 4080 SUPER", "psid": 127, "pfid": 1041 },
+    { "name": "GeForce RTX 4080", "psid": 127, "pfid": 999 },
+    { "name": "GeForce RTX 4070 Ti SUPER", "psid": 127, "pfid": 1040 },
+    { "name": "GeForce RTX 4070 Ti", "psid": 127, "pfid": 1001 },
+    { "name": "GeForce RTX 4070 SUPER", "psid": 127, "pfid": 1039 },
+    { "name": "GeForce RTX 4070", "psid": 127, "pfid": 1015 },
+    { "name": "GeForce RTX 4060 Ti", "psid": 127, "pfid": 1022 },
+    { "name": "GeForce RTX 4060", "psid": 127, "pfid": 1023 },
+    { "name": "GeForce RTX 5090 D v2", "psid": 131, "pfid": 1092 },
+    { "name": "GeForce RTX 5090 D", "psid": 131, "pfid": 1067 },
+    { "name": "GeForce RTX 5090", "psid": 131, "pfid": 1066 },
+    { "name": "GeForce RTX 5080", "psid": 131, "pfid": 1065 },
+    { "name": "GeForce RTX 5070 Ti", "psid": 131, "pfid": 1068 },
+    { "name": "GeForce RTX 5070", "psid": 131, "pfid": 1070 },
+    { "name": "GeForce RTX 5060 Ti", "psid": 131, "pfid": 1076 },
+    { "name": "GeForce RTX 5060", "psid": 131, "pfid": 1078 },
+    { "name": "GeForce RTX 5050", "psid": 131, "pfid": 1090 }
+  ]
+}
