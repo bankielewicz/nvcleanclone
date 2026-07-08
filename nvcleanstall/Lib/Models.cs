@@ -28,6 +28,11 @@ public record Release
     public string Channel { get; init; } = "";
     public string ReleaseDate { get; init; } = "";
     public int SizeMB { get; init; }
+
+    // Additive/nullable (GAP-01): mock data in catalog.json deserializes unchanged.
+    // DownloadUrl is populated only for live NVIDIA releases; Source is "live" | "mock".
+    public string? DownloadUrl { get; init; }
+    public string? Source { get; init; }
 }
 
 public record Selection
