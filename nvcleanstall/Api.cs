@@ -17,11 +17,15 @@ public static class Api
     private record PresetSaveRequest(string Name, Selection Selection);
     private record OpenFolderRequest(string? Path);
 
-    public static void Map(WebApplication app)
+    public static void Map(WebApplication app, ICatalogProvider catalog)
     {
         app.MapGet("/api/system", () => Results.Json(Gpu.Detect(), Json.Web));
 
-        app.MapGet("/api/catalog", () => Results.Json(new { releases = Catalog.Releases() }, Json.Web));
+        // Catalog reads route through the provider seam (GAP-01): live NVIDIA lookup or
+        // mock, each release carrying a source marker. Response is a superset of the
+        // original shape (releases[] + a source field).
+        app.MapGet("/api/catalog", () =>
+            Results.Json(CatalogEndpoint.Build(catalog, Gpu.Detect()), Json.Web));
 
         app.MapGet("/api/tweaks", () => Results.Json(new { tweaks = Tweaks.All }, Json.Web));
 
