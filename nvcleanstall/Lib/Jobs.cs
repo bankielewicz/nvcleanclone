@@ -80,7 +80,10 @@ public static class Jobs
     {
         var job = Get(id);
         if (job == null) return false;
-        job.Cancellation?.Cancel();
+        // A cancel racing the worker's finally (or any late/duplicate cancel) can hit
+        // an already-disposed CTS; a late cancel on a finished job is a harmless no-op.
+        try { job.Cancellation?.Cancel(); }
+        catch (ObjectDisposedException) { /* download already completed */ }
         return true;
     }
 

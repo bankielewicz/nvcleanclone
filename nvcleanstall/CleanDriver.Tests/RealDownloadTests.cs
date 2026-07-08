@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using CleanDriver.Lib;
@@ -169,5 +170,19 @@ public class RealDownloadTests
 
         Jobs.Cancel(first.Id);
         await first.Completion!;
+    }
+
+    // G2-F1 (reviewer repro, verbatim): a cancel arriving after the download has
+    // completed must not throw (the worker disposed the CTS) — else the route 500s.
+    [Fact]
+    public async Task Cancel_AfterJobCompleted_MustNotThrow()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "cd-" + Guid.NewGuid().ToString("N"));
+        var release = new Release { Version = "610.74", Channel = "WHQL", SizeMB = 1,
+            Source = "live", DownloadUrl = "https://us.download.nvidia.com/x.exe" };
+        var job = Jobs.StartRealDownload(release, dir, DownloadHandler.Bytes(new byte[64]));
+        await job.Completion!;
+        Assert.Equal("done", job.Status);
+        Assert.Null(Record.Exception(() => Jobs.Cancel(job.Id)));
     }
 }
