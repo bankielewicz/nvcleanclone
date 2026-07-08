@@ -46,6 +46,59 @@ public class NvidiaCatalogProviderTests
         Assert.Contains("psid=127", url);
     }
 
+    // AC-2: a transport failure falls back to the mock catalog, marked source == "mock".
+    [Fact]
+    public void GetReleases_WhenHandlerThrows_FallsBackToMock()
+    {
+        var provider = new NvidiaCatalogProvider(StubHandler.Throws());
+
+        var releases = provider.GetReleases(Rtx4070);
+
+        Assert.Equal(5, releases.Count); // the five mock releases
+        Assert.All(releases, r => Assert.Equal("mock", r.Source));
+        Assert.Contains(releases, r => r.Version == "572.16");
+    }
+
+    // AC-2: a non-200 response also falls back to the mock catalog.
+    [Fact]
+    public void GetReleases_WhenServerErrors_FallsBackToMock()
+    {
+        var provider = new NvidiaCatalogProvider(StubHandler.Status(System.Net.HttpStatusCode.ServiceUnavailable));
+
+        var releases = provider.GetReleases(Rtx4070);
+
+        Assert.Equal(5, releases.Count);
+        Assert.All(releases, r => Assert.Equal("mock", r.Source));
+    }
+
+    // AC-2: a simulated GPU never touches the network and returns the mock catalog.
+    [Fact]
+    public void GetReleases_WhenGpuSimulated_ReturnsMockWithoutHttp()
+    {
+        var handler = StubHandler.Ok(Fixtures.Load(Fixtures.NvidiaLookup));
+        var provider = new NvidiaCatalogProvider(handler);
+
+        var releases = provider.GetReleases(Gpu.Simulated);
+
+        Assert.Null(handler.LastRequest); // no HTTP attempted
+        Assert.Equal(5, releases.Count);
+        Assert.All(releases, r => Assert.Equal("mock", r.Source));
+    }
+
+    // AC-2: an unrecognized GPU name (not in the pfid table) falls back without HTTP.
+    [Fact]
+    public void GetReleases_WhenGpuUnknown_ReturnsMockWithoutHttp()
+    {
+        var handler = StubHandler.Ok(Fixtures.Load(Fixtures.NvidiaLookup));
+        var provider = new NvidiaCatalogProvider(handler);
+        var unknown = new GpuInfo { Name = "GeForce GTX 1080 Ti", IsSimulated = false };
+
+        var releases = provider.GetReleases(unknown);
+
+        Assert.Null(handler.LastRequest);
+        Assert.All(releases, r => Assert.Equal("mock", r.Source));
+    }
+
     // Channel-mapping branch: a beta row (IsBeta == 1) maps to the Beta channel.
     [Fact]
     public void GetReleases_MapsBetaFlag_ToBetaChannel()

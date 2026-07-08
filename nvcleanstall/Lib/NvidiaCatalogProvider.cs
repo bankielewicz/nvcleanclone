@@ -19,18 +19,42 @@ public sealed class NvidiaCatalogProvider : ICatalogProvider
 
     private readonly HttpClient _http;
     private readonly GpuPfidMap _map;
+    private readonly ICatalogProvider _fallback;
+    private readonly Action<string> _log;
 
-    public NvidiaCatalogProvider(HttpMessageHandler handler, GpuPfidMap? map = null)
+    public NvidiaCatalogProvider(HttpMessageHandler handler, GpuPfidMap? map = null,
+        ICatalogProvider? fallback = null, Action<string>? log = null)
     {
         _http = new HttpClient(handler, disposeHandler: false) { Timeout = Timeout };
         _map = map ?? GpuPfidMap.Bundled();
+        _fallback = fallback ?? new MockCatalogProvider();
+        _log = log ?? (_ => { });
     }
 
+    // Any failure (unresolved GPU, timeout, non-200, empty/parse error) falls back to
+    // the mock catalog and is logged — never thrown to the UI.
     public IReadOnlyList<Release> GetReleases(GpuInfo gpu)
     {
-        _map.TryResolve(gpu.Name, out var psid, out var pfid);
-        var json = Fetch(psid, pfid);
-        return Parse(json);
+        if (gpu.IsSimulated)
+            return Fallback(gpu, "GPU is simulated");
+        if (!_map.TryResolve(gpu.Name, out var psid, out var pfid))
+            return Fallback(gpu, $"GPU '{gpu.Name}' not in pfid table");
+
+        try
+        {
+            var releases = Parse(Fetch(psid, pfid));
+            return releases.Count > 0 ? releases : Fallback(gpu, "live lookup returned no rows");
+        }
+        catch (Exception ex)
+        {
+            return Fallback(gpu, $"live lookup failed: {ex.GetType().Name}");
+        }
+    }
+
+    private IReadOnlyList<Release> Fallback(GpuInfo gpu, string reason)
+    {
+        _log($"NvidiaCatalogProvider: using mock catalog ({reason}).");
+        return _fallback.GetReleases(gpu);
     }
 
     private string Fetch(int psid, int pfid)
