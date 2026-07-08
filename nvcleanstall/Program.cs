@@ -21,9 +21,17 @@ public static class Program
         var app = builder.Build();
         app.UseDefaultFiles();
         app.UseStaticFiles();
-        Api.Map(app);
 
-        Console.WriteLine($"CleanDriver running at {urls}{(headless ? " (headless)" : "")}");
+        // Select the catalog provider: live NVIDIA lookup by default, mock when
+        // --mock-catalog / CLEANDRIVER_MOCK_CATALOG=1 (deterministic/offline runs).
+        var catalog = CatalogProviderFactory.Create(
+            args, Environment.GetEnvironmentVariable,
+            log: msg => app.Logger.LogWarning("{Message}", msg));
+        Api.Map(app, catalog);
+
+        Console.WriteLine($"CleanDriver running at {urls} " +
+            $"(catalog: {(CatalogProviderFactory.UseMock(args, Environment.GetEnvironmentVariable) ? "mock" : "live")})" +
+            $"{(headless ? " (headless)" : "")}");
 
         if (headless)
         {
