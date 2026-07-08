@@ -29,6 +29,7 @@ public class Job
     // real-download-specific (GAP-02, additive)
     public string? FilePath { get; set; }
     public Task? Completion { get; internal set; }          // not serialized; tests await it
+    internal CancellationTokenSource? Cancellation { get; set; } // null for simulated jobs
 
     public void LogLine(string text, string cls = "")
     {
@@ -66,6 +67,21 @@ public static class Jobs
     }
 
     public static Job? Get(string id) => Store.GetValueOrDefault(id);
+
+    // Per-read stall window (public seam so tests can shorten it; no UI knob — §4).
+    public static TimeSpan StallTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    // Cancels a running real download (aborts the stream; the worker deletes the
+    // .part and marks the job "cancelled"). A no-op for simulated jobs, which carry
+    // no CancellationTokenSource — the simulation finishes harmlessly, preserving
+    // the mock-path byte-identity pin. Returns false only when the job is unknown.
+    public static bool Cancel(string id)
+    {
+        var job = Get(id);
+        if (job == null) return false;
+        job.Cancellation?.Cancel();
+        return true;
+    }
 
     // ---- simulated download -------------------------------------------------
 
@@ -143,13 +159,16 @@ public static class Jobs
         {
             Timeout = System.Threading.Timeout.InfiniteTimeSpan,
         };
-        job.Completion = Task.Run(() => RunRealDownloadAsync(job, release, destDir, http, ownsHandler));
+        var cts = new CancellationTokenSource();
+        job.Cancellation = cts;
+        job.Completion = Task.Run(() => RunRealDownloadAsync(job, release, destDir, http, cts));
         return job;
     }
 
     private static async Task RunRealDownloadAsync(Job job, Release release, string destDir,
-        HttpClient http, bool ownsHandler)
+        HttpClient http, CancellationTokenSource cancelCts)
     {
+        var cancelToken = cancelCts.Token;
         var type = TypeTag(release.Channel);
         var finalPath = Path.Combine(destDir, $"{release.Version}-{type}.exe");
         var partPath = finalPath + ".part";
@@ -164,7 +183,8 @@ public static class Jobs
 
             Directory.CreateDirectory(destDir);
             long maxBytes = MaxDownloadBytes();
-            using var resp = await http.GetAsync(release.DownloadUrl, HttpCompletionOption.ResponseHeadersRead);
+            using var resp = await http.GetAsync(release.DownloadUrl,
+                HttpCompletionOption.ResponseHeadersRead, cancelToken);
             resp.EnsureSuccessStatusCode();
             long? total = resp.Content.Headers.ContentLength;
             if (total is 0) throw new IOException("download is empty (Content-Length 0)");
@@ -183,10 +203,15 @@ public static class Jobs
             await using (var dst = new FileStream(partPath, FileMode.Create, FileAccess.Write, FileShare.None))
             {
                 var buf = new byte[128 * 1024];
-                int n;
-                while ((n = await src.ReadAsync(buf)) > 0)
+                while (true)
                 {
-                    await dst.WriteAsync(buf.AsMemory(0, n));
+                    // Each read gets a fresh stall window; the job's cancel token is
+                    // linked in so a cancel aborts an in-flight read immediately.
+                    using var stall = new CancellationTokenSource(StallTimeout);
+                    using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancelToken, stall.Token);
+                    int n = await src.ReadAsync(buf, linked.Token);
+                    if (n == 0) break;
+                    await dst.WriteAsync(buf.AsMemory(0, n), cancelToken);
                     read += n;
                     if (read > maxBytes) throw new IOException($"download exceeded max size ({maxBytes} bytes)");
                     job.DoneMB = (int)Math.Round(read / (1024.0 * 1024.0));
@@ -210,15 +235,23 @@ public static class Jobs
             job.Progress = 1.0;
             job.Status = "done";
         }
+        catch (OperationCanceledException) when (cancelCts.IsCancellationRequested)
+        {
+            TryDelete(partPath);
+            job.Status = "cancelled";
+            job.Error = "download cancelled";
+        }
         catch (Exception ex)
         {
             TryDelete(partPath);
             job.Status = "failed";
-            job.Error = ex.Message;
+            // A cancellation not tied to the job's token is a per-read stall.
+            job.Error = ex is OperationCanceledException ? "download stalled" : ex.Message;
         }
         finally
         {
             http.Dispose();
+            cancelCts.Dispose();
         }
     }
 

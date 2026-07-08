@@ -89,4 +89,52 @@ public class RealDownloadTests
         Assert.Equal("failed", job.Status);
         Assert.Empty(Directory.GetFiles(dir));
     }
+
+    // Cancel (register prose): cancelling a real download aborts it, deletes the
+    // .part, and ends Status=="cancelled".
+    [Fact]
+    public async Task Cancel_RealDownload_AbortsAndDeletesPart()
+    {
+        var dir = TempDir.Create();
+        var stream = new ScriptedStream(prefixLen: 64 * 1024, blockAfterPrefix: true);
+
+        var job = Jobs.StartRealDownload(LiveRelease.New(), dir, DownloadHandler.Stream(stream));
+        await Task.Delay(80);           // let it get mid-stream
+        Assert.True(Jobs.Cancel(job.Id));
+        await job.Completion!;
+
+        Assert.Equal("cancelled", job.Status);
+        Assert.Empty(Directory.GetFiles(dir));
+    }
+
+    // Cancel on a simulated (mock-path) job is a safe no-op — no CTS, simulation
+    // finishes harmlessly (preserves the AC-4 byte-identity pin). Unknown id -> false.
+    [Fact]
+    public void Cancel_SimulatedJob_IsSafeNoOp()
+    {
+        var sim = Jobs.StartDownload(LiveRelease.New(version: "572.16"));
+        Assert.True(Jobs.Cancel(sim.Id));      // job exists -> true, but nothing to abort
+        Assert.NotEqual("cancelled", sim.Status);
+        Assert.False(Jobs.Cancel("no-such-job"));
+    }
+
+    // Liveness: a stream that stalls past the per-read timeout fails (not hangs).
+    [Fact]
+    public async Task StartRealDownload_Stall_FailsWithStalledMessage()
+    {
+        var dir = TempDir.Create();
+        var prior = Jobs.StallTimeout;
+        Jobs.StallTimeout = System.TimeSpan.FromMilliseconds(150);
+        try
+        {
+            var stream = new ScriptedStream(prefixLen: 64 * 1024, blockAfterPrefix: true);
+            var job = Jobs.StartRealDownload(LiveRelease.New(), dir, DownloadHandler.Stream(stream));
+            await job.Completion!;
+
+            Assert.Equal("failed", job.Status);
+            Assert.Contains("stall", job.Error ?? "", System.StringComparison.OrdinalIgnoreCase);
+            Assert.Empty(Directory.GetFiles(dir));
+        }
+        finally { Jobs.StallTimeout = prior; }
+    }
 }
