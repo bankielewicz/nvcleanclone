@@ -92,4 +92,30 @@ public class GpuDetectionTests
     {
         Assert.Equal("570.86", Gpu.MarketingVersion("320157086"));
     }
+
+    // Hardening: a non-numeric driver string has no derivable marketing version and
+    // must return null (previously the dot-strip yielded a garbage value like
+    // "5ab.cd"), so the caller can fall back to the raw string.
+    [Theory]
+    [InlineData("garbage-version")]
+    [InlineData("31.0.15.abcd")]
+    [InlineData("N/A")]
+    public void MarketingVersion_NonNumeric_ReturnsNull(string wmiVersion)
+    {
+        Assert.Null(Gpu.MarketingVersion(wmiVersion));
+    }
+
+    // AC (malformed driver string): an NVIDIA adapter whose driver version can't be
+    // parsed is still detected — the raw driver string is surfaced verbatim rather
+    // than a fabricated marketing version, and the GPU is not dropped.
+    [Fact]
+    public void ParseVideoControllers_MalformedDriverString_FallsBackToRawVersion()
+    {
+        var gpu = Gpu.ParseVideoControllers("NVIDIA GeForce RTX 5070|garbage-version");
+
+        Assert.NotNull(gpu);
+        Assert.Equal("GeForce RTX 5070", gpu!.Name);
+        Assert.Equal("garbage-version", gpu.InstalledDriverVersion);
+        Assert.False(gpu.IsSimulated);
+    }
 }

@@ -28,7 +28,10 @@ public static class Gpu
     public static string? MarketingVersion(string? wmiVersion)
     {
         var digits = Regex.Replace(wmiVersion ?? "", @"\.", "");
-        if (digits.Length < 5) return null;
+        // A real NVIDIA WMI version is all digits once dots are removed (e.g.
+        // 32.0.15.7086). Anything else (letters, too short) has no derivable
+        // marketing version — return null so the caller surfaces the raw string.
+        if (digits.Length < 5 || !digits.All(char.IsAsciiDigit)) return null;
         return $"{digits[^5..^2]}.{digits[^2..]}";
     }
 
