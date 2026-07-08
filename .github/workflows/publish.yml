@@ -1,0 +1,50 @@
+name: Publish single-file exe
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # needed only for the tag-triggered GitHub Release step
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish self-contained single file
+        run: >
+          dotnet publish nvcleanstall/CleanDriver.csproj -c Release -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish-out
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CleanDriver-win-x64-${{ github.ref_name }}
+          path: |
+            publish-out/CleanDriver.exe
+            publish-out/wwwroot/**
+            publish-out/data/**
+          retention-days: 30
+
+      - name: Create GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          $zip = "CleanDriver-$env:TAG-win-x64.zip"
+          Compress-Archive -Path publish-out/* -DestinationPath $zip
+          gh release create "$env:TAG" "$zip" --title "CleanDriver $env:TAG" --generate-notes

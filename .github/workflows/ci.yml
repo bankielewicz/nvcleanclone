@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build (Release)
+        run: dotnet build nvcleanstall/CleanDriver.csproj -c Release
+
+      - name: Test (xunit — required once CleanDriver.Tests exists)
+        shell: pwsh
+        run: |
+          if (Test-Path 'nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj') {
+            dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj -c Release --logger 'console;verbosity=normal'
+          } else {
+            Write-Host '::warning::No test project yet (pre-GAP-01 baseline). This step becomes a hard gate when nvcleanstall/CleanDriver.Tests exists.'
+          }
+
+      - name: Headless smoke test (server boots, catalog serves)
+        shell: pwsh
+        run: |
+          $proc = Start-Process dotnet -ArgumentList 'run','--project','nvcleanstall','-c','Release','--no-build','--','--headless' -PassThru -NoNewWindow
+          try {
+            $ok = $false
+            foreach ($i in 1..30) {
+              Start-Sleep -Seconds 2
+              try {
+                $resp = Invoke-RestMethod -Uri 'http://localhost:4780/api/catalog' -TimeoutSec 5
+                if ($resp.releases.Count -ge 1) { $ok = $true; break }
+              } catch { }
+            }
+            if (-not $ok) { throw 'Server did not serve /api/catalog within 60s' }
+            Write-Host "Smoke OK: catalog returned $($resp.releases.Count) release(s), newest $($resp.releases[0].version)"
+            $sys = Invoke-RestMethod -Uri 'http://localhost:4780/api/system' -TimeoutSec 5
+            Write-Host "GPU detection path: $($sys.detectedVia)"
+          }
+          finally {
+            if ($proc -and -not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+            Get-Process CleanDriver -ErrorAction SilentlyContinue | Stop-Process -Force
+          }
+
+      - name: Whitespace check
+        shell: bash
+        run: git diff --check HEAD~1 HEAD || { echo '::error::git diff --check found whitespace errors'; exit 1; }
+        if: github.event_name == 'push'
