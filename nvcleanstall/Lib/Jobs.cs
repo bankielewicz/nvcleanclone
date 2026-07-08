@@ -53,6 +53,16 @@ public class Job
     }
 }
 
+// GAP-04: facts about the real installer fetched by GAP-02, threaded into the (still
+// simulated) install/silent run so its receipt/log reflect the actual artifact. Present
+// only for live-path downloads; null on the mock path (keeping mock receipts identical).
+public record DownloadArtifact
+{
+    public string FilePath { get; init; } = "";
+    public long SizeBytes { get; init; }
+    public string? Source { get; init; } // mirrors Release.Source: "live" | "mock"
+}
+
 public static class Jobs
 {
     public static string OutputDir => Path.Combine(AppContext.BaseDirectory, "output");
@@ -305,9 +315,12 @@ public static class Jobs
     // ---- execute (install / silent / extract / package) ---------------------
 
     public static Job StartExecute(string action, Manifest manifest, PackageSource source,
-        Selection selection, string? outputPath, GpuInfo gpu)
+        Selection selection, string? outputPath, GpuInfo gpu, DownloadArtifact? artifact = null)
     {
         var job = Create(action);
+        // Enrich only when the driver came from the live path (GAP-02 real download).
+        // A mock/absent artifact leaves the receipt byte-identical to before GAP-04.
+        bool liveArtifact = artifact is { Source: "live" } && !string.IsNullOrEmpty(artifact.FilePath);
         var selected = manifest.Components.Where(c => selection.Components.Contains(c.Id)).ToList();
         var deselected = manifest.Components.Where(c => !selection.Components.Contains(c.Id)).ToList();
         bool modified = deselected.Count > 0;
@@ -322,6 +335,9 @@ public static class Jobs
 
         if (action is "install" or "silent")
         {
+            if (liveArtifact)
+                job.LogLine($"> Using downloaded installer {artifact!.FilePath} " +
+                            $"({Math.Round(artifact.SizeBytes / (1024.0 * 1024.0))} MB · {artifact.SizeBytes} bytes).", "mut");
             if (selection.TweakOn("unattended"))
                 job.LogLine("> Unattended mode: no prompts will be shown.", "mut");
             if (selection.TweakOn("clean-install"))
@@ -359,6 +375,10 @@ public static class Jobs
                     unattended = selection.TweakOn("unattended"),
                     autoReboot = selection.TweakOn("auto-reboot"),
                     cleanInstall = selection.TweakOn("clean-install"),
+                    // GAP-04: real-artifact facts, live path only. Null on the mock path,
+                    // so WhenWritingNull omits them and mock receipts stay byte-identical.
+                    driverFile = liveArtifact ? artifact!.FilePath : null,
+                    driverFileBytes = liveArtifact ? artifact!.SizeBytes : (long?)null,
                 }, Json.Web));
                 job.Receipt = receiptPath;
                 job.LogLine("> Writing install receipt… done");
@@ -420,7 +440,9 @@ public static class Jobs
                 $"> {(action == "package" ? "Package build" : "Extraction")} finished.", "ok")));
         }
 
-        _ = Task.Run(async () =>
+        // Expose the worker as Completion so callers/tests can await the run deterministically
+        // rather than poll (avoids depending on shared static timing state — PR#5 note).
+        job.Completion = Task.Run(async () =>
         {
             int i = 0;
             foreach (var (delayMs, fn) in steps)
