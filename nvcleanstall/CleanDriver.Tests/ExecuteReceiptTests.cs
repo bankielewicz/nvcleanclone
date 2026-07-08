@@ -153,4 +153,34 @@ public class ExecuteReceiptTests
 
         Assert.DoesNotContain("driverFile", File.ReadAllText(job.Receipt!));
     }
+
+    // GAP-05 signature honesty: deselecting a component makes the package "modified", so
+    // the signature is "rebuilt" (back-compat pin — value unchanged) AND the receipt gains
+    // signatureSimulated:true; the rebuild log line gains the "no real signing" qualifier.
+    [Fact]
+    public async Task StartExecute_ModifiedInstall_MarksSignatureSimulated()
+    {
+        var job = Jobs.StartExecute("install", M(), Src(), Sel(new[] { "display" }), null, G());
+        await job.Completion!;
+
+        var r = Receipt(job);
+        Assert.Equal("rebuilt", r.GetProperty("signature").GetString());
+        Assert.True(r.GetProperty("signatureSimulated").GetBoolean());
+
+        var log = JsonSerializer.Serialize(job.Snapshot(), Json.Web);
+        Assert.Contains("Rebuilding digital signature", log);
+        Assert.Contains("no real signing performed", log);
+    }
+
+    // Stock install (all components selected): signature "stock", no signatureSimulated.
+    [Fact]
+    public async Task StartExecute_StockInstall_OmitsSignatureSimulated()
+    {
+        var job = Jobs.StartExecute("install", M(), Src(), Sel(new[] { "display", "hd-audio" }), null, G());
+        await job.Completion!;
+
+        var text = File.ReadAllText(job.Receipt!);
+        Assert.Contains("\"signature\": \"stock\"", text);
+        Assert.DoesNotContain("signatureSimulated", text);
+    }
 }

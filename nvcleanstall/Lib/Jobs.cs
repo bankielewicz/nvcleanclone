@@ -369,7 +369,8 @@ public static class Jobs
                 if (applied.Count > 0) job.LogLine($"> Applying tweaks: {string.Join(", ", applied)}…");
             }));
             if (modified)
-                steps.Add((450, () => job.LogLine("> Rebuilding digital signature… done")));
+                steps.Add((450, () => job.LogLine(
+                    "> Rebuilding digital signature… done (simulated — no real signing performed)")));
             steps.Add((350, () =>
             {
                 Directory.CreateDirectory(OutputDir);
@@ -384,6 +385,9 @@ public static class Jobs
                     components = selected.Select(c => c.Id),
                     tweaks = selection.Tweaks,
                     signature = modified ? "rebuilt" : "stock",
+                    // GAP-05: additive + null-omitted honesty marker; `signature` value is
+                    // unchanged (back-compat pin) — the rebuild is simulated, never real.
+                    signatureSimulated = modified ? (bool?)true : null,
                     unattended = selection.TweakOn("unattended"),
                     autoReboot = selection.TweakOn("auto-reboot"),
                     cleanInstall = selection.TweakOn("clean-install"),
@@ -452,7 +456,8 @@ public static class Jobs
                 }));
             }
             if (modified)
-                steps.Add((400, () => job.LogLine("> Rebuilding digital signature… done")));
+                steps.Add((400, () => job.LogLine(
+                    "> Rebuilding digital signature… done (simulated — no real signing performed)")));
             steps.Add((200, () => job.LogLine(
                 $"> {(action == "package" ? "Package build" : "Extraction")} finished.", "ok")));
         }

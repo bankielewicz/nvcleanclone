@@ -103,6 +103,10 @@ public static class Packages
             customizedBy = "CleanDriver",
             customizedAt = DateTime.UtcNow.ToString("o"),
             signature = modified ? "rebuilt" : "stock",
+            // GAP-05 honesty marker: additive + null-omitted (WhenWritingNull), so stock
+            // manifests stay byte-identical and `signature` consumers are unaffected — the
+            // "rebuilt" signature is simulated, never a real re-sign.
+            signatureSimulated = modified ? (bool?)true : null,
             components = selected,
             tweaks,
         };
