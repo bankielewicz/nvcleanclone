@@ -183,4 +183,28 @@ public class ExecuteReceiptTests
         Assert.Contains("\"signature\": \"stock\"", text);
         Assert.DoesNotContain("signatureSimulated", text);
     }
+
+    // GAP-05 telemetry honesty: driver-telemetry on → the receipt marks
+    // driverTelemetrySimulated:true and the log carries the "no real patching" qualifier.
+    [Fact]
+    public async Task StartExecute_TelemetryOn_MarksTelemetrySimulated()
+    {
+        var job = Jobs.StartExecute("install", M(), Src(), Sel(new[] { "display" }, "driver-telemetry"), null, G());
+        await job.Completion!;
+
+        Assert.True(Receipt(job).GetProperty("driverTelemetrySimulated").GetBoolean());
+        var log = JsonSerializer.Serialize(job.Snapshot(), Json.Web);
+        Assert.Contains("Patching driver telemetry endpoints", log);
+        Assert.Contains("no real patching performed", log);
+    }
+
+    // Off → omitted.
+    [Fact]
+    public async Task StartExecute_TelemetryOff_OmitsTelemetrySimulated()
+    {
+        var job = Jobs.StartExecute("install", M(), Src(), Sel(new[] { "display" }), null, G());
+        await job.Completion!;
+
+        Assert.DoesNotContain("driverTelemetrySimulated", File.ReadAllText(job.Receipt!));
+    }
 }
