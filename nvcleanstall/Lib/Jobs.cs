@@ -98,11 +98,39 @@ public static class Jobs
     // A separate client from GAP-01's 5s metadata client: a real installer legitimately
     // takes minutes, so the client has no overall timeout (ResponseHeadersRead + a
     // per-read stall timeout enforce liveness instead).
-    private static readonly TimeSpan StreamBufferFlush = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan SpeedSampleWindow = TimeSpan.FromSeconds(1);
+
+    // Configurable cap (register): env override, else 2 GiB (real packages are ~1 GB).
+    public static long MaxDownloadBytes()
+    {
+        var env = Environment.GetEnvironmentVariable("CLEANDRIVER_MAX_DOWNLOAD_MB");
+        return long.TryParse(env, out var mb) && mb > 0 ? mb * 1024L * 1024L : 2L * 1024 * 1024 * 1024;
+    }
 
     // <type> is derived from our own channel enum, never from response text.
     private static string TypeTag(string channel) =>
         channel.Equals("Beta", StringComparison.OrdinalIgnoreCase) ? "beta" : "whql";
+
+    private static void EnsureDiskSpace(string destDir, long needed)
+    {
+        var root = Path.GetPathRoot(Path.GetFullPath(destDir));
+        if (string.IsNullOrEmpty(root)) return;
+        try
+        {
+            var free = new DriveInfo(root).AvailableFreeSpace;
+            if (free < needed + 64L * 1024 * 1024)
+                throw new IOException("insufficient disk space for download");
+        }
+        catch (ArgumentException) { /* non-fixed / UNC path — skip the check */ }
+    }
+
+    // Delete swallows-and-ignores: a cleanup failure (e.g. an AV lock on the .part)
+    // must never mask the original error that triggered cleanup.
+    private static void TryDelete(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); }
+        catch { /* best effort */ }
+    }
 
     public static Job StartRealDownload(Release release, string destDir, HttpMessageHandler? handler = null)
     {
@@ -127,11 +155,25 @@ public static class Jobs
         var partPath = finalPath + ".part";
         try
         {
+            // Defense-in-depth: only ever fetch from NVIDIA (on top of server-side
+            // provider re-resolution). Removable for mirrors — see PR body.
+            var host = new Uri(release.DownloadUrl ?? throw new IOException("release has no download URL")).Host;
+            if (!(host.Equals("nvidia.com", StringComparison.OrdinalIgnoreCase) ||
+                  host.EndsWith(".nvidia.com", StringComparison.OrdinalIgnoreCase)))
+                throw new IOException($"refusing download from non-NVIDIA host: {host}");
+
             Directory.CreateDirectory(destDir);
+            long maxBytes = MaxDownloadBytes();
             using var resp = await http.GetAsync(release.DownloadUrl, HttpCompletionOption.ResponseHeadersRead);
             resp.EnsureSuccessStatusCode();
             long? total = resp.Content.Headers.ContentLength;
-            if (total is long t) job.TotalMB = (int)Math.Round(t / (1024.0 * 1024.0));
+            if (total is 0) throw new IOException("download is empty (Content-Length 0)");
+            if (total is long t)
+            {
+                if (t > maxBytes) throw new IOException($"download too large ({t} bytes exceeds {maxBytes})");
+                EnsureDiskSpace(destDir, t);
+                job.TotalMB = (int)Math.Round(t / (1024.0 * 1024.0));
+            }
             long denom = total ?? (long)release.SizeMB * 1024 * 1024;
 
             long read = 0;
@@ -146,12 +188,13 @@ public static class Jobs
                 {
                     await dst.WriteAsync(buf.AsMemory(0, n));
                     read += n;
+                    if (read > maxBytes) throw new IOException($"download exceeded max size ({maxBytes} bytes)");
                     job.DoneMB = (int)Math.Round(read / (1024.0 * 1024.0));
                     double prog = denom > 0 ? (double)read / denom : 0;
                     job.Progress = total.HasValue ? Math.Min(1.0, prog) : Math.Min(0.99, prog);
                     var now = DateTime.UtcNow;
                     var dt = (now - lastSample).TotalSeconds;
-                    if (dt >= StreamBufferFlush.TotalSeconds)
+                    if (dt >= SpeedSampleWindow.TotalSeconds)
                     {
                         job.Speed = $"{((read - lastBytes) / (1024.0 * 1024.0)) / dt:F1} MB/s";
                         lastSample = now;
@@ -160,11 +203,18 @@ public static class Jobs
                 }
             } // streams disposed here, before the move
 
+            if (read == 0) throw new IOException("download produced no bytes");
             File.Move(partPath, finalPath, overwrite: true);
             job.FilePath = finalPath;
             job.DoneMB = (int)Math.Round(read / (1024.0 * 1024.0));
             job.Progress = 1.0;
             job.Status = "done";
+        }
+        catch (Exception ex)
+        {
+            TryDelete(partPath);
+            job.Status = "failed";
+            job.Error = ex.Message;
         }
         finally
         {

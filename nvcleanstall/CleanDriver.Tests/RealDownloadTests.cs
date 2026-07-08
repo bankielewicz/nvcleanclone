@@ -31,4 +31,62 @@ public class RealDownloadTests
         Assert.Equal(3, job.DoneMB);
         Assert.Equal(final, job.FilePath);
     }
+
+    // AC-2: a mid-stream failure deletes the partial file and fails the job, no .part residue.
+    [Fact]
+    public async Task StartRealDownload_MidStreamFailure_DeletesPartAndFails()
+    {
+        var dir = TempDir.Create();
+        var stream = new ScriptedStream(prefixLen: 512 * 1024, throwAfterPrefix: true);
+
+        var job = Jobs.StartRealDownload(LiveRelease.New(), dir, DownloadHandler.Stream(stream));
+        await job.Completion!;
+
+        Assert.Equal("failed", job.Status);
+        Assert.False(string.IsNullOrEmpty(job.Error));
+        Assert.Empty(Directory.GetFiles(dir)); // neither final nor .part left behind
+    }
+
+    // Safety: an empty (zero-byte) body is a failure, not a 0-byte "success".
+    [Fact]
+    public async Task StartRealDownload_EmptyBody_Fails()
+    {
+        var dir = TempDir.Create();
+        var job = Jobs.StartRealDownload(LiveRelease.New(), dir, DownloadHandler.Bytes(System.Array.Empty<byte>()));
+        await job.Completion!;
+
+        Assert.Equal("failed", job.Status);
+        Assert.Empty(Directory.GetFiles(dir));
+    }
+
+    // Safety: a body exceeding the configured max size fails before/while writing.
+    [Fact]
+    public async Task StartRealDownload_ExceedsMaxSize_Fails()
+    {
+        var dir = TempDir.Create();
+        Environment.SetEnvironmentVariable("CLEANDRIVER_MAX_DOWNLOAD_MB", "1");
+        try
+        {
+            var body = new byte[2 * 1024 * 1024]; // 2 MiB > 1 MiB cap
+            var job = Jobs.StartRealDownload(LiveRelease.New(), dir, DownloadHandler.Bytes(body));
+            await job.Completion!;
+
+            Assert.Equal("failed", job.Status);
+            Assert.Empty(Directory.GetFiles(dir));
+        }
+        finally { Environment.SetEnvironmentVariable("CLEANDRIVER_MAX_DOWNLOAD_MB", null); }
+    }
+
+    // Defense-in-depth: refuse to fetch from a non-NVIDIA host (no request attempted).
+    [Fact]
+    public async Task StartRealDownload_NonNvidiaHost_Fails()
+    {
+        var dir = TempDir.Create();
+        var rel = LiveRelease.New() with { DownloadUrl = "https://evil.example.com/610.74/driver.exe" };
+        var job = Jobs.StartRealDownload(rel, dir, DownloadHandler.Bytes(new byte[16]));
+        await job.Completion!;
+
+        Assert.Equal("failed", job.Status);
+        Assert.Empty(Directory.GetFiles(dir));
+    }
 }
