@@ -37,6 +37,7 @@ public class GpuDetectionTests
         Assert.Equal("GeForce RTX 5070", gpu!.Name);
         Assert.Equal("570.86", gpu.InstalledDriverVersion);
         Assert.False(gpu.IsSimulated);
+        Assert.Equal("system query (WMI Win32_VideoController)", gpu.DetectedVia);
     }
 
     // AC (no NVIDIA): no adapter matches -> null, which is the documented trigger
@@ -117,5 +118,6 @@ public class GpuDetectionTests
         Assert.Equal("GeForce RTX 5070", gpu!.Name);
         Assert.Equal("garbage-version", gpu.InstalledDriverVersion);
         Assert.False(gpu.IsSimulated);
+        Assert.Equal("system query (WMI Win32_VideoController)", gpu.DetectedVia);
     }
 }
