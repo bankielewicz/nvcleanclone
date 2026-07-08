@@ -26,6 +26,10 @@ public class Job
     public bool Modified { get; set; }
     public bool RebootRecommended { get; set; }
 
+    // real-download-specific (GAP-02, additive)
+    public string? FilePath { get; set; }
+    public Task? Completion { get; internal set; }          // not serialized; tests await it
+
     public void LogLine(string text, string cls = "")
     {
         lock (_lock) _log.Add(new { text, cls });
@@ -40,7 +44,7 @@ public class Job
                 id = Id, type = Type, status = Status, progress = Progress, error = Error,
                 version = Version, totalMB = TotalMB, doneMB = DoneMB, speed = Speed,
                 receipt = Receipt, outDir = OutDir, modified = Modified,
-                rebootRecommended = RebootRecommended,
+                rebootRecommended = RebootRecommended, filePath = FilePath,
                 log = _log.ToList(),
             };
         }
@@ -87,6 +91,85 @@ public static class Jobs
             }
         });
         return job;
+    }
+
+    // ---- real download (GAP-02): fetch bytes to disk, never executed --------
+
+    // A separate client from GAP-01's 5s metadata client: a real installer legitimately
+    // takes minutes, so the client has no overall timeout (ResponseHeadersRead + a
+    // per-read stall timeout enforce liveness instead).
+    private static readonly TimeSpan StreamBufferFlush = TimeSpan.FromSeconds(1);
+
+    // <type> is derived from our own channel enum, never from response text.
+    private static string TypeTag(string channel) =>
+        channel.Equals("Beta", StringComparison.OrdinalIgnoreCase) ? "beta" : "whql";
+
+    public static Job StartRealDownload(Release release, string destDir, HttpMessageHandler? handler = null)
+    {
+        var job = Create("download");
+        job.Version = release.Version;
+        job.TotalMB = release.SizeMB;
+
+        bool ownsHandler = handler == null;
+        var http = new HttpClient(handler ?? new SocketsHttpHandler(), disposeHandler: ownsHandler)
+        {
+            Timeout = System.Threading.Timeout.InfiniteTimeSpan,
+        };
+        job.Completion = Task.Run(() => RunRealDownloadAsync(job, release, destDir, http, ownsHandler));
+        return job;
+    }
+
+    private static async Task RunRealDownloadAsync(Job job, Release release, string destDir,
+        HttpClient http, bool ownsHandler)
+    {
+        var type = TypeTag(release.Channel);
+        var finalPath = Path.Combine(destDir, $"{release.Version}-{type}.exe");
+        var partPath = finalPath + ".part";
+        try
+        {
+            Directory.CreateDirectory(destDir);
+            using var resp = await http.GetAsync(release.DownloadUrl, HttpCompletionOption.ResponseHeadersRead);
+            resp.EnsureSuccessStatusCode();
+            long? total = resp.Content.Headers.ContentLength;
+            if (total is long t) job.TotalMB = (int)Math.Round(t / (1024.0 * 1024.0));
+            long denom = total ?? (long)release.SizeMB * 1024 * 1024;
+
+            long read = 0;
+            var lastSample = DateTime.UtcNow;
+            long lastBytes = 0;
+            await using (var src = await resp.Content.ReadAsStreamAsync())
+            await using (var dst = new FileStream(partPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                var buf = new byte[128 * 1024];
+                int n;
+                while ((n = await src.ReadAsync(buf)) > 0)
+                {
+                    await dst.WriteAsync(buf.AsMemory(0, n));
+                    read += n;
+                    job.DoneMB = (int)Math.Round(read / (1024.0 * 1024.0));
+                    double prog = denom > 0 ? (double)read / denom : 0;
+                    job.Progress = total.HasValue ? Math.Min(1.0, prog) : Math.Min(0.99, prog);
+                    var now = DateTime.UtcNow;
+                    var dt = (now - lastSample).TotalSeconds;
+                    if (dt >= StreamBufferFlush.TotalSeconds)
+                    {
+                        job.Speed = $"{((read - lastBytes) / (1024.0 * 1024.0)) / dt:F1} MB/s";
+                        lastSample = now;
+                        lastBytes = read;
+                    }
+                }
+            } // streams disposed here, before the move
+
+            File.Move(partPath, finalPath, overwrite: true);
+            job.FilePath = finalPath;
+            job.DoneMB = (int)Math.Round(read / (1024.0 * 1024.0));
+            job.Progress = 1.0;
+            job.Status = "done";
+        }
+        finally
+        {
+            http.Dispose();
+        }
     }
 
     // ---- execute (install / silent / extract / package) ---------------------
