@@ -160,6 +160,18 @@ public static class Jobs
         catch { /* best effort */ }
     }
 
+    // Atomic same-volume rename (MoveFileEx REPLACE_EXISTING). The write stream is
+    // already disposed by the caller. Retries a few times to ride out a transient
+    // antivirus lock on the freshly written file.
+    private static void MoveIntoPlace(string part, string final)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try { File.Move(part, final, overwrite: true); return; }
+            catch (IOException) when (attempt < 3) { Thread.Sleep(200); }
+        }
+    }
+
     public static Job StartRealDownload(Release release, string destDir, HttpMessageHandler? handler = null)
     {
         var version = release.Version ?? "";
@@ -259,7 +271,8 @@ public static class Jobs
             } // streams disposed here, before the move
 
             if (read == 0) throw new IOException("download produced no bytes");
-            File.Move(partPath, finalPath, overwrite: true);
+            if (File.Exists(finalPath)) job.LogLine("> Overwriting previous download.", "mut");
+            MoveIntoPlace(partPath, finalPath); // streams above are disposed before this
             job.FilePath = finalPath;
             job.DoneMB = (int)Math.Round(read / (1024.0 * 1024.0));
             job.Progress = 1.0;
