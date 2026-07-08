@@ -79,6 +79,18 @@ public static class Jobs
 
     public static Job? Get(string id) => Store.GetValueOrDefault(id);
 
+    // GAP-04: the final path of the most recent completed real download for a version, or
+    // null if none this session. Simulated/mock jobs carry no FilePath and are excluded,
+    // so the execute route reflects a real artifact only when one was actually downloaded —
+    // without trusting any client-supplied path. Same version -> same finalPath, so the
+    // unordered Store scan cannot return a wrong file.
+    public static string? DownloadedFile(string version) =>
+        Store.Values
+            .Where(j => j.Type == "download" && j.Version == version
+                        && j.Status == "done" && !string.IsNullOrEmpty(j.FilePath))
+            .Select(j => j.FilePath)
+            .LastOrDefault();
+
     // Per-read stall window (public seam so tests can shorten it; no UI knob — §4).
     public static TimeSpan StallTimeout { get; set; } = TimeSpan.FromSeconds(30);
 

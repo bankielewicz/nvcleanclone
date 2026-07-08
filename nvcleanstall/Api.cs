@@ -94,8 +94,14 @@ public static class Api
                 return Results.Json(new { error = "unknown action" }, Json.Web, statusCode: 400);
             try
             {
+                // GAP-04: if this version was really downloaded (GAP-02, live path) this
+                // session, reflect the actual artifact in the (still simulated) receipt/log.
+                var file = Jobs.DownloadedFile(src.manifest.Version);
+                DownloadArtifact? artifact = file != null && File.Exists(file)
+                    ? new DownloadArtifact { FilePath = file, SizeBytes = new FileInfo(file).Length, Source = "live" }
+                    : null;
                 var job = Jobs.StartExecute(req.Action, src.manifest, src.source,
-                    req.Selection ?? new Selection(), req.OutputPath, Gpu.Detect());
+                    req.Selection ?? new Selection(), req.OutputPath, Gpu.Detect(), artifact);
                 return Results.Json(new { jobId = job.Id }, Json.Web);
             }
             catch (Exception ex) when (ex is IOException or InvalidDataException)
