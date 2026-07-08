@@ -10,6 +10,15 @@ merged, or is explicitly marked as an open PR.
 
 ## 2026-07-08
 
+- **CI workflows** (`.github/workflows/`): `ci.yml` — Windows-runner build, xunit tests
+  (hard gate once `CleanDriver.Tests` exists, warning until then), and a real headless
+  smoke test (boots the server, asserts `/api/catalog` serves); `publish.yml` — manual or
+  tag-triggered self-contained single-file publish, artifact upload, GitHub Release on
+  `v*` tags.
+- **Strict TDD enforcement** (`5e6ae8a`): hardened `CONTRIBUTING.md` rules (no production
+  code without a failing test, commit ordering proves discipline, red-then-green evidence
+  required), matching directive in `CLAUDE.md`, and a PR template
+  (`.github/pull_request_template.md`) that demands the evidence table on every PR.
 - **`46d9f63` (PR #1, merged)** — Added `docs/gaps_analysis.md` (authoritative gap register:
   6 gaps / 6 sequential PRs closing the 10 simplified features toward real-driver parity,
   with pre-flight gates and an out-of-scope fence) and
