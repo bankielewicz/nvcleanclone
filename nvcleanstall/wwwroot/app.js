@@ -521,6 +521,10 @@ $('btn-load-preset').onclick = async () => {
   state.releases = cat.releases;
   state.tweakDefs = tw.tweaks;
 
+  // GAP-01: mark the mock-fallback state (GPU not matched / offline) so the sample
+  // catalog isn't mistaken for live NVIDIA releases. Only shown when source is mock.
+  $('catalog-source-note').classList.toggle('hidden', cat.source !== 'mock');
+
   $('gpu-name').textContent = sys.name;
   $('gpu-driver').textContent = sys.installedDriverVersion;
   $('gpu-via').textContent = sys.isSimulated ? 'simulated device' : 'detected via system query';
