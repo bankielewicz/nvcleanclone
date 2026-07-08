@@ -6,10 +6,37 @@ merged, or is explicitly marked as an open PR.
 
 ## Unreleased (open PRs)
 
-- none
+- **GAP-04 — Install/silent simulation fidelity from the real download** (PR #6, open):
+  the (still simulated) install/silent run now reflects the **real** downloaded artifact
+  from GAP-02 — the receipt records the installer's on-disk path (`driverFile`) and exact
+  size (`driverFileBytes`) when the driver came from the live path, and the log carries a
+  real-artifact line. The **auto-reboot** flag is now honored in the log (states a reboot
+  is *allowed but not performed — simulated*; FEAT-011 "never reboots"), backed by a
+  shape-without-function guard that no reboot/OS-restart API is invoked. Correlation is
+  server-side (`Jobs.DownloadedFile`), so the real path is never trusted from the client;
+  mock-path receipts stay byte-identical. Realizes FEAT-011/FEAT-024/FEAT-025. Seam:
+  `Jobs.StartExecute` + `/api/execute`. No real execution added (§4).
 
 ## 2026-07-08
 
+- **`65b7fa0` (PR #5, merged) — GAP-03: real GPU detection hardening.** Extracted the
+  WMI-line→`GpuInfo` parsing out of the live `powershell` call into pure, unit-testable
+  seams (`Gpu.ParseVideoControllers` / `DetectFrom`) with deterministic multi-GPU NVIDIA
+  selection and a documented `WMI → simulated` fallback; hardened `MarketingVersion` so a
+  non-numeric driver string surfaces the raw value instead of a fabricated version. No
+  `GpuInfo` shape change (back-compat pin). Realizes `parity.md` FEAT-001.
+- **`4aba9d0` (PR #4, merged) — GAP-02: real installer download to disk, never executed.**
+  `Jobs.StartRealDownload` streams a live release's `DownloadURL` to
+  `output/drivers/<version>-<type>.exe` with real `Content-Length` progress, atomic
+  `.part`→final rename, cancel/failure cleanup, max-size + disk-space checks, and an
+  NVIDIA-host guard; a no-execution/extraction guard test pins the safety boundary. Live
+  path only — the mock path keeps the simulation (byte-identity pin). Realizes FEAT-005.
+- **`e8b5d39` (PR #3, merged) — GAP-01: live NVIDIA version lookup behind a catalog-provider
+  seam.** Introduced `ICatalogProvider` with interchangeable `MockCatalogProvider` /
+  `NvidiaCatalogProvider`; `GET /api/catalog` now returns releases plus a `source`
+  (`"live"` | `"mock"`), selectable via `--mock-catalog` / `CLEANDRIVER_MOCK_CATALOG`. All
+  HTTP goes through an injectable handler (5s timeout, mock fallback on any failure);
+  metadata only, no driver bytes. Realizes FEAT-002/FEAT-003.
 - **CI workflows** (`.github/workflows/`): `ci.yml` — Windows-runner build, xunit tests
   (hard gate once `CleanDriver.Tests` exists, warning until then), and a real headless
   smoke test (boots the server, asserts `/api/catalog` serves); `publish.yml` — manual or
