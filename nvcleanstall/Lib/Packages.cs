@@ -51,6 +51,11 @@ public static class Packages
         throw new InvalidDataException("expected a package folder or .zip file");
     }
 
+    // GAP-05: is a boolean tweak set true in the raw selection dict? (WriteCustomized
+    // receives tweaks as JsonElements, not a Selection.)
+    private static bool TweakTrue(Dictionary<string, JsonElement>? tweaks, string id) =>
+        tweaks != null && tweaks.TryGetValue(id, out var v) && v.ValueKind == JsonValueKind.True;
+
     private static Manifest ReadManifest(string json)
     {
         var m = JsonSerializer.Deserialize<Manifest>(json, Json.Web)
@@ -103,6 +108,11 @@ public static class Packages
             customizedBy = "CleanDriver",
             customizedAt = DateTime.UtcNow.ToString("o"),
             signature = modified ? "rebuilt" : "stock",
+            // GAP-05 honesty markers: additive + null-omitted (WhenWritingNull), so stock
+            // manifests stay byte-identical and `signature` consumers are unaffected — the
+            // "rebuilt" signature and the driver-telemetry patch are simulated, never real.
+            signatureSimulated = modified ? (bool?)true : null,
+            driverTelemetrySimulated = TweakTrue(tweaks, "driver-telemetry") ? (bool?)true : null,
             components = selected,
             tweaks,
         };

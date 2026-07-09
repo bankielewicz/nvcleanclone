@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architect PR-Validation Workflow — CleanDriver · 2026-07-08</title>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1a1a1a; --muted:#5a5f66; --line:#d9dde3;
+    --accent:#0b6b3a; --accent-bg:#eef6f1; --code-bg:#f5f6f8; --code-fg:#24292f;
+    --warn-bg:#fdf3e7; --warn-bd:#e09b3d; --danger-bg:#fbeceb; --danger-bd:#c53030;
+    --note-bg:#eef2fb; --note-bd:#3b6db5; --kw:#b3134b;
+    --toc-bg:#fafbfc; --th-bg:#f3f5f7; --tr-bg:#fbfcfd;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#16181c; --fg:#e6e8eb; --muted:#9aa2ad; --line:#2e333b;
+      --accent:#4cbf82; --accent-bg:#16301f; --code-bg:#1c1f25; --code-fg:#d5d9df;
+      --warn-bg:#33260f; --warn-bd:#c98b2f; --danger-bg:#3a1c1b; --danger-bd:#e06c6c;
+      --note-bg:#182337; --note-bd:#5b8cc7; --kw:#e0668f;
+      --toc-bg:#131519; --th-bg:#1e2127; --tr-bg:#1a1d22;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  .wrap{display:flex;min-height:100vh}
+  nav.toc{
+    width:300px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;
+    height:100vh;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);
+    background:var(--toc-bg);font-size:13.5px;
+  }
+  nav.toc h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 6px}
+  nav.toc h2:first-child{margin-top:0}
+  nav.toc a{display:block;color:var(--fg);text-decoration:none;padding:3px 8px;border-radius:4px;line-height:1.35}
+  nav.toc a:hover{background:var(--accent-bg);color:var(--accent)}
+  nav.toc .title{font-weight:700;font-size:15px;margin-bottom:4px;color:var(--accent)}
+  nav.toc .meta{font-size:11.5px;color:var(--muted);margin-bottom:14px}
+  main{flex:1;min-width:0;max-width:980px;margin:0 auto;padding:40px 48px 120px}
+  h1{font-size:30px;line-height:1.2;margin:0 0 6px}
+  h2{font-size:23px;margin:42px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--line)}
+  h3{font-size:18px;margin:30px 0 8px}
+  h4{font-size:15.5px;margin:22px 0 6px}
+  p{margin:9px 0}
+  .lead{font-size:16.5px;color:var(--muted)}
+  code,kbd{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;font-size:13px}
+  code.inline{background:var(--code-bg);color:var(--code-fg);padding:1px 5px;border-radius:3px}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:6px;padding:13px 15px;overflow-x:auto;margin:12px 0}
+  pre code{background:none;padding:0;color:var(--code-fg);font-size:13px;line-height:1.5}
+  .tablewrap{overflow-x:auto;margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--th-bg);font-weight:600}
+  tr:nth-child(even) td{background:var(--tr-bg)}
+  .callout{border-left:4px solid;padding:11px 15px;border-radius:0 6px 6px 0;margin:14px 0}
+  .callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+  .note{background:var(--note-bg);border-color:var(--note-bd)}
+  .warn{background:var(--warn-bg);border-color:var(--warn-bd)}
+  .danger{background:var(--danger-bg);border-color:var(--danger-bd)}
+  .callout .lbl{font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.06em;display:block;margin-bottom:2px}
+  .note .lbl{color:var(--note-bd)} .warn .lbl{color:var(--warn-bd)} .danger .lbl{color:var(--danger-bd)}
+  ul,ol{padding-left:24px;margin:9px 0}
+  li{margin:3px 0}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11.5px;font-weight:600;letter-spacing:.02em}
+  .pill.full{background:#e3f3e8;color:#1a7d43}
+  .pill.partial{background:#fdf0dd;color:#a36a14}
+  .pill.must{background:#fbe5e5;color:#b3134b}
+  .pill.na{background:#eeeef0;color:#666}
+  @media (prefers-color-scheme: dark){
+    .pill.full{background:#16301f;color:#5fd396}
+    .pill.partial{background:#33260f;color:#e0ab5c}
+    .pill.must{background:#3a1c1b;color:#f08d8d}
+    .pill.na{background:#25282e;color:#9aa2ad}
+  }
+  .stage{border:1px solid var(--line);border-radius:8px;padding:2px 18px 14px;margin:18px 0;background:var(--tr-bg)}
+  .stage h3{margin-top:18px}
+  .flow{background:var(--code-bg);border:1px solid var(--line);border-radius:6px;padding:16px;overflow-x:auto;
+        font-family:"SFMono-Regular",Consolas,monospace;font-size:12.5px;line-height:1.7;white-space:pre;margin:14px 0}
+  .flow .hl{color:var(--accent);font-weight:700}
+  footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+  @media (max-width:900px){
+    .wrap{flex-direction:column}
+    nav.toc{width:100%;height:auto;position:static;border-right:0;border-bottom:1px solid var(--line)}
+    main{padding:24px 18px 80px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="toc">
+  <div class="title">Architect PR-Validation Workflow</div>
+  <div class="meta">CleanDriver · 2026-07-08<br>Reviews of PRs #3–#6</div>
+  <h2>Foundation</h2>
+  <a href="#why">Why this exists</a>
+  <a href="#invariants">The two invariants</a>
+  <h2>The eight stages</h2>
+  <a href="#s1">1 · CI triage first</a>
+  <a href="#s2">2 · Isolated worktree</a>
+  <a href="#s3">3 · Re-run the gates</a>
+  <a href="#s4">4 · Finder pass</a>
+  <a href="#s5">5 · Adversarial verify</a>
+  <a href="#s6">6 · The verdict document</a>
+  <a href="#s7">7 · Feedback to the builder</a>
+  <a href="#s8">8 · Report to the owner</a>
+  <h2>Evidence</h2>
+  <a href="#ledger">Case ledger — PRs #3–#6</a>
+  <h2>Reference</h2>
+  <a href="#checklist">Reviewer's checklist</a>
+</nav>
+
+<main>
+
+<h1>Architect PR-Validation Workflow</h1>
+<p class="lead">How a pull request written by a cold AI builder session gets validated before the owner merges it — including the feedback loop back to that session when the PR needs more work.</p>
+
+<!-- ─────────────────────────────────────────────── -->
+<h2 id="why">Why this exists</h2>
+
+<p>This repository runs a <strong>delegation loop</strong>. A closed task register (<code class="inline">docs/gaps_analysis.md</code>) defines the work; a <em>cold</em> Claude Code builder session — no chat history, no context beyond its kickoff prompt — implements exactly one gap and opens exactly one PR; a standing <strong>architect</strong> session independently reviews that PR; the <strong>owner</strong> merges. Nobody else merges, ever.</p>
+
+<div class="flow">register (gaps_analysis.md)
+      │
+      ▼
+kickoff prompt ──▶ <span class="hl">cold builder session</span> ──▶ PR opened, builder STOPS
+                                                     │
+                                                     ▼
+                                        <span class="hl">architect review</span> (this document)
+                                                     │
+                        ┌────────────────────────────┴───────────────────────┐
+                        ▼                                                    ▼
+           punch list → builder fixes                            verdict: "merge it"
+           (same branch, F&lt;n&gt;: commits)                                     │
+                        │                                                    ▼
+                        └──▶ delta re-review ────────────────────▶  <span class="hl">owner merges</span></div>
+
+<p>The review stage is the one that catches what the builder cannot see about itself. It has run four times (PRs #3–#6) producing three approvals and one request-for-changes. That single finding — a crash on a race the builder's own green test suite never exercised — is the whole justification for the stage, and it was only found because the reviewer <em>reproduced it with a failing test</em> instead of reading the diff and reasoning about it.</p>
+
+<h3 id="invariants">The two invariants</h3>
+
+<div class="callout danger">
+  <span class="lbl">Invariant 1</span>
+  <p><strong>The reviewer never merges.</strong> Not "usually doesn't" — never. The architect posts a verdict; the owner decides. This keeps a single human accountable for what enters <code class="inline">main</code>, and it is enforced server-side by branch protection.</p>
+</div>
+
+<div class="callout danger">
+  <span class="lbl">Invariant 2</span>
+  <p><strong>A builder's self-report is a claim, not a fact.</strong> "All gates green locally" is a hypothesis about a machine you did not observe. Every claim that matters gets re-run by the reviewer, on the reviewer's own checkout, before it appears in a verdict.</p>
+</div>
+
+<p>A third rule governs when the verdict is delivered: <strong>review before relay.</strong> The owner merges fast, so any message resembling "the PR is ready" <em>is</em> a merge trigger. The independent review therefore completes <em>before</em> the PR is reported with anything that sounds like approval.</p>
+
+<!-- ─────────────────────────────────────────────── -->
+<h2 id="s1">Stage 1 · CI triage first</h2>
+<div class="stage">
+<p>Before spending a single minute reading the diff, check the build:</p>
+<pre><code>gh pr checks 6
+# build-test-smoke   pass   1m20s   https://github.com/.../runs/...</code></pre>
+
+<p>If CI is red, root-cause it yourself and stop there — its cause decides whether anything else in the review even matters. The builder's "green locally" does not settle it: local and CI environments differ in parallelism, resources, and available hardware.</p>
+
+<div class="callout note">
+  <span class="lbl">The compounding effect</span>
+  <p>Before GAP-01 there was no test project, so CI could only build. GAP-01's first commit scaffolded <code class="inline">CleanDriver.Tests</code>, and from that moment <code class="inline">dotnet test</code> became a <strong>hard CI gate</strong>. By PR #6, "53 tests pass" is a machine-verified fact about a specific commit SHA, not a claim in a summary. Each wave's infrastructure makes the next wave's review cheaper.</p>
+</div>
+</div>
+
+<!-- ─────────────────────────────────────────────── -->
+<h2 id="s2">Stage 2 · Isolated worktree at the PR head</h2>
+<div class="stage">
+<pre><code>git fetch origin feat/gap-02-real-download
+git worktree add ../nvcleanclone-review4 origin/feat/gap-02-real-download
+git -C ../nvcleanclone-review4 diff --stat origin/main...HEAD</code></pre>
+
+<p>The reviewed range is always <code class="inline">origin/main...HEAD</code> — merge-base to head, so an out-of-date branch doesn't smear unrelated commits into the diff.</p>
+
+<p>Isolation buys two things. The working checkout stays untouched (no stashing, no accidental cross-contamination of the builder's branch), and — critically — the reviewer gets a <strong>scratch space to write throwaway repro tests</strong> in, which is what Stage 5 depends on.</p>
+
+<div class="callout warn">
+  <span class="lbl">Always clean up</span>
+  <p><code class="inline">git worktree remove ../nvcleanclone-review4 --force</code> when the verdict is posted. A leftover worktree is side-effect residue on a shared environment; the same hygiene rule the builders are held to applies to the reviewer.</p>
+</div>
+</div>
+
+<!-- ─────────────────────────────────────────────── -->
+<h2 id="s3">Stage 3 · Re-run the gates, then exercise it live</h2>
+<div class="stage">
+<p>Inside the review worktree, run the project's own gates (defined in <code class="inline">CONTRIBUTING.md</code>) rather than trusting the PR body:</p>
+<pre><code>dotnet build nvcleanstall/CleanDriver.csproj -c Release
+dotnet test  nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj
+git diff --check origin/main...HEAD</code></pre>
+
+<p>Then <strong>drive the changed path in the running application</strong>. Unit tests prove the units; only a live run proves the wiring. This app makes that cheap by design: <code class="inline">--headless</code> starts the server without the WebView2 window, so every behavior is reachable from <code class="inline">curl</code>, and the UI is reachable from Playwright.</p>
+
+<h4>What that looked like in practice</h4>
+<ul>
+  <li><strong>PR #3</strong> — ran the default path on the host's real RTX 5070: <code class="inline">/api/catalog</code> returned <code class="inline">source: live</code> with 7 genuine NVIDIA releases; then <code class="inline">--mock-catalog</code> returned exactly the 5 sample releases. Both halves of the seam, observed.</li>
+  <li><strong>PR #4</strong> — verified the post-download hand-off the review notes predicted: <code class="inline">/api/package</code> for live version <code class="inline">610.74</code> returned the relabeled sample manifest with <code class="inline">sampleComponents: true</code>.</li>
+  <li><strong>PR #5</strong> — a back-compat check: <code class="inline">/api/system</code> still returned <code class="inline">591.86 / isSimulated:false</code> with a byte-identical <code class="inline">DetectedVia</code> string after the parsing refactor.</li>
+</ul>
+</div>
+
+<!-- ─────────────────────────────────────────────── -->
+<h2 id="s4">Stage 4 · Finder pass, and the trap to hunt first</h2>
+<div class="stage">
+<p>Read the diff along several independent angles rather than in one linear pass. Scale the number of angles to the wave's shape; a backend-only wave needs fewer than a full-stack one:</p>
+<ul>
+  <li>line-by-line correctness of new code</li>
+  <li>regression hunt against the pre-image (what <em>changed</em> or disappeared)</li>
+  <li>cross-file consistency: contracts ↔ implementations ↔ consumers</li>
+  <li>reuse — does new code fork a single-owner seam instead of routing through it?</li>
+  <li>architecture and fence conformance (the register's §4 out-of-scope list)</li>
+  <li>AC and test-quality audit</li>
+</ul>
+
+<div class="callout danger">
+  <span class="lbl">The recurring trap — check this every single wave</span>
+  <p><strong>Acceptance criteria proven against test-only variants instead of production wiring.</strong> Machinery that is <em>shape without function</em>: a type, field, or handler that exists and is tested but is never reached by the default production path. The question to ask of every AC is not "is there a test?" but <em>"does that test exercise the path production actually runs?"</em></p>
+</div>
+
+<h4>What passing this check looks like</h4>
+<ul>
+  <li><strong>PR #3</strong>: the wiring test calls <code class="inline">CatalogEndpoint.Build</code> — the <em>exact</em> function <code class="inline">Api.cs</code> serves from <code class="inline">/api/catalog</code>, not a re-implementation with the same shape.</li>
+  <li><strong>PR #4</strong>: the fallback tests assert <code class="inline">handler.LastRequest == null</code> — proving <em>no HTTP was attempted</em>, rather than merely that mock data came back (which a broken implementation could also produce).</li>
+  <li><strong>PR #6</strong>: the receipt tests read the receipt JSON <em>off disk</em> after the job completes, instead of inspecting an in-memory object the writer never serialized.</li>
+</ul>
+</div>
+
+<!-- ─────────────────────────────────────────────── -->
+<h2 id="s5">Stage 5 · Adversarial verify — a finding is a claim</h2>
+<div class="stage">
+<p>Symmetry with Invariant 2: if the builder's report is a claim to verify, so is the reviewer's suspicion. Every candidate finding must reach one of three states before it may appear in a verdict:</p>
+
+<div class="tablewrap"><table>
+  <tr><th style="width:130px">Verdict</th><th>Requirement</th></tr>
+  <tr><td><span class="pill must">CONFIRMED</span></td><td>Reproduced, or proven from source with <code class="inline">file:line</code> evidence and a concrete failure scenario.</td></tr>
+  <tr><td><span class="pill full">REFUTED</span></td><td>Disproving evidence found. Goes in the verdict anyway — see Stage 7.</td></tr>
+  <tr><td><span class="pill partial">PLAUSIBLE</span></td><td>Neither. Report it as such; never dress it as confirmed.</td></tr>
+</table></div>
+
+<h3>Worked example: finding G2-F1 (PR #4)</h3>
+
+<p>Reading <code class="inline">Lib/Jobs.cs</code>, the download worker disposes its <code class="inline">CancellationTokenSource</code> in a <code class="inline">finally</code> block, while <code class="inline">Jobs.Cancel(id)</code> still calls <code class="inline">.Cancel()</code> on <code class="inline">job.Cancellation</code>. Hypothesis: a cancel arriving after the download completes hits a disposed CTS and throws.</p>
+
+<p>That reasoning is <em>not</em> a finding. It became one only after this ran in the review worktree:</p>
+
+<pre><code>[Fact]
+public async Task Cancel_AfterJobCompleted_MustNotThrow()
+{
+    var job = Jobs.StartRealDownload(release, dir, DownloadHandler.Bytes(new byte[64]));
+    await job.Completion!;
+    Assert.Equal("done", job.Status);
+    Assert.Null(Record.Exception(() =&gt; Jobs.Cancel(job.Id)));   // ← fails today
+}</code></pre>
+
+<pre><code>Actual: System.ObjectDisposedException: The CancellationTokenSource has been disposed.
+Failed! - Failed: 1, Passed: 0</code></pre>
+
+<p>The user-facing scenario: click Cancel in the same instant the download finishes → unhandled exception in the route → <strong>HTTP 500</strong>. Confirmed.</p>
+
+<div class="callout note">
+  <span class="lbl">Then delete it, and ship it</span>
+  <p>The repro test is <strong>removed from the review worktree</strong> (the reviewer commits nothing to the builder's branch) and instead <strong>quoted verbatim inside the punch list</strong>, so the builder adopts it as their own red test. The reviewer supplies the failing test; the builder makes it pass. Nobody has to trust anybody.</p>
+</div>
+</div>
+
+<!-- ─────────────────────────────────────────────── -->
+<h2 id="s6">Stage 6 · The verdict document</h2>
+<div class="stage">
+<p>One structure every time, so a reader can find any part of it without hunting. Sections in this order:</p>
+
+<div class="tablewrap"><table>
+  <tr><th style="width:200px">Section</th><th>Contents</th></tr>
+  <tr><td><strong>Header</strong></td><td>Scope reviewed (exact diff range), method, fence check (§4), pre-flight gate result.</td></tr>
+  <tr><td><strong>Findings</strong></td><td>Most severe first. Each: one-line defect · <code class="inline">file:line</code> · concrete failure scenario · AC affected · verdict.</td></tr>
+  <tr><td><strong>AC verification</strong></td><td>Per AC: <span class="pill full">PASS</span> / <span class="pill partial">PARTIAL</span> / <span class="pill must">FAIL</span>, each answering the Stage-4 production-wiring question explicitly.</td></tr>
+  <tr><td><strong>Wins</strong></td><td>Good moves named and ratified. A review that only ever lists defects trains a builder to fear the reviewer, not to learn from it.</td></tr>
+  <tr><td><strong>Verified non-issues</strong></td><td>Suspicions investigated and <em>cleared</em>, with the disproving evidence. This is a fence — see below.</td></tr>
+  <tr><td><strong>Deviation rulings</strong></td><td>Anything done differently from the register: ACCEPT (record an amendment) or REJECT (fix required). Never left unruled.</td></tr>
+  <tr><td><strong>Punch list</strong></td><td>Three tiers. Stage 7.</td></tr>
+</table></div>
+
+<p>Writing <em>wins</em> and <em>verified non-issues</em> is not politeness. Both carry information the builder needs: what to keep doing, and what has already been checked so they don't spend a fix round re-litigating it.</p>
+</div>
+
+<!-- ─────────────────────────────────────────────── -->
+<h2 id="s7">Stage 7 · Feedback to the builder session</h2>
+<div class="stage">
+<p>The builder is cold — it has no memory of the review conversation and cannot read the architect's reasoning. Everything it needs must travel through artifacts it can fetch. Four mechanisms carry it.</p>
+
+<h3>7.1 · The three-tier punch list</h3>
+<p>Posted as a <strong>PR comment</strong> (<code class="inline">gh pr comment 4 --body-file …</code>), never as an in-repo report file — findings are conversation, not source. The builder reads them back with <code class="inline">gh pr view 4 --comments</code>.</p>
+
+<div class="tablewrap"><table>
+  <tr><th style="width:220px">Tier</th><th>Meaning to the builder</th></tr>
+  <tr><td><span class="pill must">Required (block merge)</span></td><td>Fix these, on this branch, before merge. Each is CONFIRMED with a repro.</td></tr>
+  <tr><td><span class="pill partial">Optional cleanups</span></td><td>Real but not blocking. Do <em>not</em> fix now — they go to the candidates list (§7.4) and get scheduled deliberately.</td></tr>
+  <tr><td><span class="pill na">Verified non-issues</span></td><td><strong>A fence.</strong> These were checked and cleared. Do not touch them, do not re-argue them.</td></tr>
+</table></div>
+
+<p>The third tier does real work. Without it a builder receiving a punch list tends to "improve" adjacent code defensively, expanding the diff and the review surface. Naming what was cleared closes that door.</p>
+
+<h3>7.2 · The paste-able fix prompt</h3>
+<p>The architect cannot address the builder's terminal directly, so it hands the owner one line to paste. The real GAP-02 fix prompt:</p>
+
+<pre><code>Read the review comment on PR #4 (`gh pr view 4 --comments`). Implement required
+finding G2-F1 on the same branch — adopt the reviewer's repro test as your red,
+fix, one commit prefixed `F1:` — re-run the gates, push, post the
+finding→commit→test checklist comment, and STOP. Do not touch the "verified
+non-issues" items. HALT via AskUserQuestion on any ambiguity.</code></pre>
+
+<p>Its rules are load-bearing:</p>
+<ul>
+  <li><strong>Same branch</strong>, not a new one — pushes update the existing PR in place.</li>
+  <li><strong>One commit per finding</strong>, message prefixed <code class="inline">F&lt;n&gt;:</code>, so the delta re-review can isolate each fix.</li>
+  <li><strong>Adopt the reviewer's repro as the red test</strong> — the fix is TDD like everything else.</li>
+  <li><strong>Close with a checklist comment</strong> mapping each finding → its commits → its tests.</li>
+  <li><strong>STOP again.</strong> No continuing to the next gap on a merge that hasn't happened.</li>
+</ul>
+
+<h3>7.3 · The delta re-review</h3>
+<p>When the fix lands, review <em>only the fix-commit range</em> — not the whole PR again, and never the builder's own checklist as evidence:</p>
+<pre><code>git rev-parse --short origin/feat/gap-02-real-download   # → c50cd93
+gh pr checks 4                                            # green on THAT sha
+git show c50cd93 --stat                                   # 2 files: guard + adopted test
+git diff --name-only 31967aa..c50cd93                     # nothing else snuck in</code></pre>
+
+<div class="callout warn">
+  <span class="lbl">Two conditions before upgrading to "merge it"</span>
+  <p><strong>reviewed-commit == branch-head</strong>, and <strong>CI green on that exact SHA</strong>. A review of a commit that is no longer the head reviews nothing.</p>
+</div>
+
+<p>The re-review also <em>rules on the fix itself</em>. G2-F1 offered two options — swallow the <code class="inline">ObjectDisposedException</code>, or null the field before disposing. The builder chose the swallow-guard and justified it: nulling merely narrows the race window, catching closes it. The reviewer ratified that reasoning explicitly rather than silently accepting the diff.</p>
+
+<h3>7.4 · The candidates list</h3>
+<p>Optional cleanups do not evaporate. They accumulate in project memory (<code class="inline">gaps-register-candidates.md</code>), and <strong>authoring the next register starts from that list</strong>: every item must be landed, deferred with a named destination, or dropped with a written reason. Nothing silently disappears.</p>
+
+<p>The live ledger holds 9 items across the four reviews. One example of the loop closing: the <code class="inline">/api/package</code> error handler leaked absolute filesystem paths to the client (noted on PR #3, optional tier). It was <em>not</em> fixed then. It was fixed by GAP-02, because that gap touched the route anyway — and the review of PR #4 marked the candidate landed.</p>
+</div>
+
+<!-- ─────────────────────────────────────────────── -->
+<h2 id="s8">Stage 8 · Report to the owner</h2>
+<div class="stage">
+<p>Every report to the owner carries an <strong>explicit verdict line</strong>, in the owner's words, not the reviewer's hedge:</p>
+<ul>
+  <li><strong>"merge it"</strong> — everything verified; the owner can merge without reading the diff.</li>
+  <li><strong>"hold: fixes requested"</strong> — with the paste-able fix prompt attached, ready to send to the builder.</li>
+</ul>
+<p>Nothing in between. "Looks mostly good" hands the owner a decision the reviewer was supposed to make.</p>
+
+<div class="callout note">
+  <span class="lbl">An alarm is also a claim</span>
+  <p>Bad news gets the same evidence discipline as good news. Before telling the owner something is broken, verify it independently — a false alarm costs a round-trip and the owner's trust in every subsequent verdict.</p>
+</div>
+</div>
+
+<!-- ─────────────────────────────────────────────── -->
+<h2 id="ledger">Case ledger — the four reviews</h2>
+
+<div class="tablewrap"><table>
+  <tr>
+    <th>PR</th><th>Gap</th><th>Verdict</th><th>Tests</th><th>What the review caught / ratified</th>
+  </tr>
+  <tr>
+    <td>#3 <br><code class="inline">e8b5d39</code></td>
+    <td>GAP-01 — live NVIDIA catalog behind a provider seam</td>
+    <td><span class="pill full">APPROVE</span></td>
+    <td>0 → 15</td>
+    <td>No findings. Cleared a suspected byte-identity violation (the new <code class="inline">source</code> field was an explicitly permitted superset). Two deviations ruled ACCEPT; three cleanups banked.</td>
+  </tr>
+  <tr>
+    <td>#4 <br><code class="inline">4aba9d0</code></td>
+    <td>GAP-02 — real installer download, never executed</td>
+    <td><span class="pill must">REQUEST CHANGES</span> → <span class="pill full">APPROVE</span></td>
+    <td>15 → 30 → 31</td>
+    <td><strong>G2-F1</strong>: late cancel → <code class="inline">ObjectDisposedException</code> → HTTP 500. Found by repro test, not by reading. Fixed in <code class="inline">c50cd93</code>; delta re-review approved.</td>
+  </tr>
+  <tr>
+    <td>#5 <br><code class="inline">65b7fa0</code></td>
+    <td>GAP-03 — GPU detection hardening</td>
+    <td><span class="pill full">APPROVE</span></td>
+    <td>31 → 43</td>
+    <td>No findings. Ratified a genuine bug the builder caught (a letter-bearing driver string fabricated the version <code class="inline">"5ab.cd"</code>). Live-verified the real-hardware path unchanged.</td>
+  </tr>
+  <tr>
+    <td>#6 <br><code class="inline">6ec9594</code></td>
+    <td>GAP-04 — install-simulation fidelity</td>
+    <td><span class="pill full">APPROVE</span></td>
+    <td>43 → 53</td>
+    <td>No findings. Cross-checked the CHANGELOG backfill's cited merge SHAs against real history. Ratified server-side artifact correlation (a client can never inject a path into a receipt).</td>
+  </tr>
+  <tr>
+    <td>—</td>
+    <td>GAP-05 — signature &amp; telemetry honesty</td>
+    <td><span class="pill partial">HALT (pre-code)</span></td>
+    <td>—</td>
+    <td>The loop working in the other direction: the builder found a genuine ambiguity in the register (a marker mandated for an artifact the tweak never writes) and <em>stopped instead of guessing</em>. The architect ruled; the ruling rides into the PR as a register amendment.</td>
+  </tr>
+</table></div>
+
+<div class="callout note">
+  <span class="lbl">Read the ledger honestly</span>
+  <p>One finding in four reviews is not evidence the review is unnecessary. It is one HTTP 500 that would have shipped, caught by a technique — write the failing test — that costs about ten minutes. Three approvals with zero findings are also the review working: they are what licences the owner to merge without reading 600 lines of diff.</p>
+</div>
+
+<!-- ─────────────────────────────────────────────── -->
+<h2 id="checklist">Reviewer's checklist</h2>
+
+<p>Copy-paste sequence for the next review. Substitute the PR number and branch.</p>
+
+<pre><code># 1 — CI triage FIRST. Red CI ends the review here.
+gh pr checks &lt;N&gt;
+gh pr view &lt;N&gt; --json commits --jq '.commits[] | .oid[0:7] + " " + .messageHeadline'
+
+# 2 — Isolated worktree at the PR head
+git fetch origin &lt;branch&gt;
+git worktree add ../nvcleanclone-review&lt;N&gt; origin/&lt;branch&gt;
+git -C ../nvcleanclone-review&lt;N&gt; diff --stat origin/main...HEAD
+
+# 3 — Re-run the gates yourself (never trust the PR body)
+cd ../nvcleanclone-review&lt;N&gt;
+dotnet build nvcleanstall/CleanDriver.csproj -c Release
+dotnet test  nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj
+git diff --check origin/main...HEAD
+
+# 3b — Exercise the changed path live
+cd nvcleanstall/bin/Release/net10.0-windows &amp;&amp; ./CleanDriver.exe --headless &amp;
+curl -s http://localhost:4780/api/&lt;changed-route&gt;
+taskkill.exe /F /IM CleanDriver.exe
+
+# 4/5 — Finder angles, then reproduce every suspicion as a failing test
+#        (write it in the review worktree; delete it; quote it in the punch list)
+
+# 6/7 — Post the verdict + three-tier punch list as a PR COMMENT
+gh pr comment &lt;N&gt; --body-file verdict.md
+
+# 8 — Clean up. Never merge.
+git worktree remove ../nvcleanclone-review&lt;N&gt; --force</code></pre>
+
+<h3>Pre-flight questions for every verdict</h3>
+<ul>
+  <li>Is CI green <em>on the exact SHA I reviewed</em>, and is that SHA the branch head?</li>
+  <li>For each AC: does its test exercise the path <strong>production</strong> runs, or a lookalike?</li>
+  <li>Is every finding CONFIRMED with a repro or <code class="inline">file:line</code> proof — or honestly labelled PLAUSIBLE?</li>
+  <li>Did I name what was done <strong>well</strong>, and what I checked and <strong>cleared</strong>?</li>
+  <li>Is every deviation from the register explicitly ruled ACCEPT or REJECT?</li>
+  <li>Did every optional cleanup reach the candidates list, so it cannot vanish?</li>
+  <li>Does my report to the owner carry a bare verdict line — <strong>"merge it"</strong> or <strong>"hold"</strong>?</li>
+  <li>Did I remove the review worktree, and refrain from merging?</li>
+</ul>
+
+<footer>
+  <p><strong>Provenance.</strong> Written by the architect session (Claude Code) on 2026-07-08, from the record of its own reviews of PRs #3–#6. Every factual claim here — test counts, commit SHAs, exception text, verdicts — was re-verified against <code class="inline">git log</code> and <code class="inline">gh pr view</code> before publication, applying this document's own Stage&nbsp;5 rule to itself.</p>
+  <p>Governing documents: <code class="inline">CONTRIBUTING.md</code> (process, TDD, gates) · <code class="inline">docs/gaps_analysis.md</code> (the closed task register) · <code class="inline">CLAUDE.md</code> (architecture, boundaries).</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

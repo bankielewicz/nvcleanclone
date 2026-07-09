@@ -16,6 +16,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history: the whitespace check diffs against the push/PR base, which the
+          # default shallow (depth 1) clone does not fetch (HEAD~1 was "unknown revision").
+          fetch-depth: 0
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
@@ -57,7 +61,18 @@ jobs:
             Get-Process CleanDriver -ErrorAction SilentlyContinue | Stop-Process -Force
           }
 
-      - name: Whitespace check
+      - name: Whitespace check (git diff --check)
         shell: bash
-        run: git diff --check HEAD~1 HEAD || { echo '::error::git diff --check found whitespace errors'; exit 1; }
-        if: github.event_name == 'push'
+        # Runs on push (post-merge) and pull_request (pre-merge gate, per CLAUDE.md).
+        # Values are commit SHAs from the event; passed via env and quoted regardless.
+        env:
+          PUSH_BASE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ '${{ github.event_name }}' = 'pull_request' ]; then base="$PR_BASE"; else base="$PUSH_BASE"; fi
+          # Fall back to the parent commit if the base is empty / all-zeros / unfetched.
+          if [ -z "$base" ] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            base="$(git rev-parse HEAD~1)"
+          fi
+          echo "Checking whitespace in ${base}..HEAD"
+          git diff --check "$base" HEAD

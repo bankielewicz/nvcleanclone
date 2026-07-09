@@ -368,8 +368,12 @@ public static class Jobs
                     .Select(t => ShortTweakName(t, selection)).ToList();
                 if (applied.Count > 0) job.LogLine($"> Applying tweaks: {string.Join(", ", applied)}…");
             }));
+            if (selection.TweakOn("driver-telemetry"))
+                steps.Add((300, () => job.LogLine(
+                    "> Patching driver telemetry endpoints… (simulated — no real patching performed)")));
             if (modified)
-                steps.Add((450, () => job.LogLine("> Rebuilding digital signature… done")));
+                steps.Add((450, () => job.LogLine(
+                    "> Rebuilding digital signature… done (simulated — no real signing performed)")));
             steps.Add((350, () =>
             {
                 Directory.CreateDirectory(OutputDir);
@@ -384,6 +388,11 @@ public static class Jobs
                     components = selected.Select(c => c.Id),
                     tweaks = selection.Tweaks,
                     signature = modified ? "rebuilt" : "stock",
+                    // GAP-05: additive + null-omitted honesty markers; `signature` value is
+                    // unchanged (back-compat pin) — the rebuild and the driver-telemetry
+                    // patch are simulated, never real.
+                    signatureSimulated = modified ? (bool?)true : null,
+                    driverTelemetrySimulated = selection.TweakOn("driver-telemetry") ? (bool?)true : null,
                     unattended = selection.TweakOn("unattended"),
                     autoReboot = selection.TweakOn("auto-reboot"),
                     cleanInstall = selection.TweakOn("clean-install"),
@@ -429,6 +438,9 @@ public static class Jobs
                 if (written.Count > 0)
                     job.LogLine($"> Writing tweak snippets: {string.Join(", ", written)} (not applied)");
             }));
+            if (selection.TweakOn("driver-telemetry"))
+                steps.Add((250, () => job.LogLine(
+                    "> Patching driver telemetry endpoints… (simulated — no real patching performed)")));
             if (action == "package")
             {
                 steps.Add((300, () =>
@@ -440,6 +452,8 @@ public static class Jobs
                         version = manifest.Version,
                         components = selection.Components,
                         tweaks = selection.Tweaks,
+                        // GAP-05: additive + null-omitted honesty marker (build-package config).
+                        driverTelemetrySimulated = selection.TweakOn("driver-telemetry") ? (bool?)true : null,
                     }, Json.Web));
                     File.WriteAllText(Path.Combine(outDir, "install.cmd"), string.Join("\r\n", new[]
                     {
@@ -452,7 +466,8 @@ public static class Jobs
                 }));
             }
             if (modified)
-                steps.Add((400, () => job.LogLine("> Rebuilding digital signature… done")));
+                steps.Add((400, () => job.LogLine(
+                    "> Rebuilding digital signature… done (simulated — no real signing performed)")));
             steps.Add((200, () => job.LogLine(
                 $"> {(action == "package" ? "Package build" : "Extraction")} finished.", "ok")));
         }
