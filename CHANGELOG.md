@@ -6,18 +6,36 @@ merged, or is explicitly marked as an open PR.
 
 ## Unreleased (open PRs)
 
-- **GAP-04 — Install/silent simulation fidelity from the real download** (PR #6, open):
-  the (still simulated) install/silent run now reflects the **real** downloaded artifact
-  from GAP-02 — the receipt records the installer's on-disk path (`driverFile`) and exact
-  size (`driverFileBytes`) when the driver came from the live path, and the log carries a
-  real-artifact line. The **auto-reboot** flag is now honored in the log (states a reboot
-  is *allowed but not performed — simulated*; FEAT-011 "never reboots"), backed by a
-  shape-without-function guard that no reboot/OS-restart API is invoked. Correlation is
-  server-side (`Jobs.DownloadedFile`), so the real path is never trusted from the client;
-  mock-path receipts stay byte-identical. Realizes FEAT-011/FEAT-024/FEAT-025. Seam:
-  `Jobs.StartExecute` + `/api/execute`. No real execution added (§4).
+- **GAP-05 — Signature-rebuild and driver-telemetry honesty** (PR #8, open): the
+  simulated "rebuild digital signature" step and the `driver-telemetry` tweak stop
+  overclaiming. Additive, null-omitted markers ride on the artifacts that record the
+  tweak — `signatureSimulated: true` alongside the unchanged `signature: "rebuilt"`
+  (back-compat pin) on the install/silent **receipt** and the customized **manifest**;
+  `driverTelemetrySimulated: true` on the receipt, manifest, and build-package
+  **config.json** — so no output can be mistaken for a really-signed/-patched package.
+  Logs gain per-context qualifiers (`… no real signing performed` / `Patching driver
+  telemetry endpoints… (simulated — no real patching performed)`). Realizes
+  FEAT-017/FEAT-022. Seams: `Jobs.StartExecute` + `Packages.WriteCustomized`. Includes a
+  register amendment (`docs/gaps_analysis.md` GAP-05) recording the owner's ruling that
+  resolved the "any artifact they write" ambiguity (markers on existing artifacts; no
+  standalone note file).
+- **ci: whitespace-check fix** (PR #7, open): the `main` CI failed on every merge at the
+  whitespace step because `git diff --check HEAD~1 HEAD` ran against a shallow (depth-1)
+  clone (`HEAD~1` unknown), and a `|| echo` wrapper masked the git error as a whitespace
+  failure. Fetches full history, computes an honest base per event, drops the masking
+  wrapper, and also gates `pull_request` (per CLAUDE.md). No real whitespace errors existed.
 
 ## 2026-07-08
+
+- **`6ec9594` (PR #6, merged) — GAP-04: install/silent simulation fidelity from the real
+  download.** The (still simulated) install/silent run reflects the **real** downloaded
+  artifact from GAP-02: the receipt records the installer's on-disk path (`driverFile`)
+  and exact size (`driverFileBytes`) when the driver came from the live path, and the log
+  carries a real-artifact line. The **auto-reboot** flag is honored in the log (reboot
+  *allowed but not performed — simulated*; FEAT-011 "never reboots"), backed by a
+  shape-without-function guard that no reboot/OS-restart API is invoked. Correlation is
+  server-side (`Jobs.DownloadedFile`); mock-path receipts stay byte-identical. Realizes
+  FEAT-011/FEAT-024/FEAT-025. Seam: `Jobs.StartExecute` + `/api/execute`.
 
 - **`65b7fa0` (PR #5, merged) — GAP-03: real GPU detection hardening.** Extracted the
   WMI-line→`GpuInfo` parsing out of the live `powershell` call into pure, unit-testable
