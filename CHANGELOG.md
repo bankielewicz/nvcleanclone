@@ -6,6 +6,17 @@ merged, or is explicitly marked as an open PR.
 
 ## Unreleased (open PRs)
 
+- **AI fix-loop workflow** (`docs/ai-fix-loop-workflow.html`, open): a self-contained HTML
+  reference documenting the third side of the AI→AI loop — what a cold *implementer* session
+  does when a reviewer hands back a rejected PR. Covers the anatomy of a rejection (verdict +
+  implementer handoff comment), the C0–C7 checkpoint spine as the only context-clear-durable
+  state, the four-tier punch list (Required / Optional / REFUTED / ACCEPTED) and the fence
+  that operationalizes it, the three-tier consultation ladder (`advisor` primary →
+  `spec-driven-collaboration` fallback → owner ruling binding), the HALT → ruling → amendment
+  path, red-first when the red is a merge conflict, the `F<n>:` commit and force-push
+  conventions (handoff-granted, not repo law), and the closing report + delta re-review.
+  Worked from the real PR #9 / `D9-F1` round and the earlier `G2-F1` round on PR #4,
+  including its two disclosed deviations. Docs only; no production code.
 - **`docs/ai-handoff-workflow.html`** (open PR): documents the **builder** side of this
   repo's AI→AI handoff loop — how a cold session ingests a kickoff prompt, orients against
   the governing docs chain, consults before designing (the three-tier ladder: `advisor` →
