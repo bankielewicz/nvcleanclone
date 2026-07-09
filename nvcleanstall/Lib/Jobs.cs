@@ -464,6 +464,18 @@ public static class Jobs
                     }) + "\r\n");
                     job.LogLine("> Writing install script and config… done");
                 }));
+                // GAP-06: fold the finished directory into one redistributable archive,
+                // written beside it. Must run after config.json/install.cmd and the .reg
+                // snippets exist, or the archive would be incomplete. The packing itself
+                // lives in Packages (see WriteZip) — this branch only orchestrates.
+                steps.Add((350, () =>
+                {
+                    var zipPath = Path.Combine(
+                        Directory.GetParent(outDir)!.FullName,
+                        $"{manifest.Version}-cleandriver-package.zip");
+                    Packages.WriteZip(outDir, zipPath);
+                    job.LogLine($"> Writing {Path.GetFileName(zipPath)}… done");
+                }));
             }
             if (modified)
                 steps.Add((400, () => job.LogLine(

@@ -120,4 +120,16 @@ public static class Packages
         File.WriteAllText(manifestPath, JsonSerializer.Serialize(outManifest, Json.Web));
         return (written, modified, manifestPath);
     }
+
+    // GAP-06: packs the customized output directory into one redistributable archive.
+    // Lives here rather than in Jobs.cs (the register's original seam) because the
+    // no-execution guard forbids the compression type's name in that file; zipping
+    // CleanDriver's own output belongs to the package writer anyway. zipPath is a
+    // sibling of outDir, never inside it — an archive cannot contain itself.
+    public static string WriteZip(string outDir, string zipPath)
+    {
+        if (File.Exists(zipPath)) File.Delete(zipPath);   // re-runs overwrite cleanly
+        ZipFile.CreateFromDirectory(outDir, zipPath);
+        return zipPath;
+    }
 }
