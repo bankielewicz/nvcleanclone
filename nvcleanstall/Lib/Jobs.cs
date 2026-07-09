@@ -484,9 +484,10 @@ public static class Jobs
                 // lives in Packages (see WriteZip) — this branch only orchestrates.
                 steps.Add((350, () =>
                 {
-                    var zipPath = Path.Combine(
-                        Directory.GetParent(outDir)!.FullName,
-                        $"{manifest.Version}-cleandriver-package.zip");
+                    // D12-F2: outputPath arrives unnormalized; a trailing separator made
+                    // Directory.GetParent return outDir itself, writing the archive inside
+                    // the directory it archives. ZipPathFor normalizes and refuses a root.
+                    var zipPath = Packages.ZipPathFor(outDir, manifest.Version);
                     Packages.WriteZip(zipPath, archiveEntries);
                     job.LogLine($"> Writing {Path.GetFileName(zipPath)}… done");
                 }));

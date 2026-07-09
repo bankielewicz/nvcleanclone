@@ -202,6 +202,75 @@ public class PackageZipTests
             entries);
     }
 
+    // ---- D12-F2 -----------------------------------------------------------------
+    // Owner Ruling 2: the archive is a sibling of outDir, never inside it. Directory.GetParent
+    // on a path with a trailing separator returns that path itself, so an outputPath ending in
+    // a separator wrote the archive into the directory it was archiving.
+
+    // AC-5 — an outputPath with a trailing separator still succeeds, and the archive lands
+    // BESIDE outDir. Before the fix: status=failed, "used by another process".
+    [Fact]
+    public async Task PackageAction_OutputPathWithTrailingSeparator_WritesArchiveBesideOutDir()
+    {
+        var (manifest, source) = Packages.LoadCatalog("572.16");
+        var root = TempDir.Create();
+        var outDir = Path.Combine(root, "package-572.16");
+        var zipPath = Path.Combine(root, "572.16-cleandriver-package.zip");   // literal
+
+        var job = Jobs.StartExecute("package", manifest, source,
+            Sel(Selected, "msi-mode"), outDir + Path.DirectorySeparatorChar, G());
+        await job.Completion!;
+
+        Assert.Null(job.Error);
+        Assert.Equal("done", job.Status);
+        Assert.True(File.Exists(zipPath), $"expected the archive beside outDir at {zipPath}");
+    }
+
+    // AC-6 — for EITHER input shape, no *.zip is ever created inside outDir.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PackageAction_NeverWritesAnyZipInsideOutDir(bool trailingSeparator)
+    {
+        var (manifest, source) = Packages.LoadCatalog("572.16");
+        var root = TempDir.Create();
+        var outDir = Path.Combine(root, "package-572.16");
+        var passed = trailingSeparator ? outDir + Path.DirectorySeparatorChar : outDir;
+
+        var job = Jobs.StartExecute("package", manifest, source, Sel(Selected, "msi-mode"), passed, G());
+        await job.Completion!;
+
+        Assert.Equal("done", job.Status);
+        Assert.Empty(Directory.GetFiles(outDir, "*.zip", SearchOption.AllDirectories));
+        Assert.Single(Directory.GetFiles(root, "*.zip"));
+    }
+
+    // AC-7 — a drive-root outputPath fails by name, not with a NullReferenceException.
+    // Asserted at the path-computation level (AC-7 explicitly permits this) so the full
+    // package action never runs into `C:\`: WriteCustomized executes first and would write
+    // payload/, manifest.json and install.cmd straight into the drive root.
+    // The exception TYPE is the assertion — Assert.Throws<Exception> would pass on the NRE.
+    [Fact]
+    public void ZipPathFor_DriveRoot_ThrowsNamedError_NotNullReference()
+    {
+        var root = Path.GetPathRoot(Path.GetFullPath(TempDir.Create()))!;   // e.g. "C:\"
+
+        var ex = Assert.Throws<InvalidOperationException>(() => Packages.ZipPathFor(root, "572.16"));
+        Assert.Contains("no parent directory", ex.Message);
+    }
+
+    // ZipPathFor is a sibling path for both input shapes (the arithmetic, asserted literally).
+    [Fact]
+    public void ZipPathFor_TrailingSeparator_ResolvesToTheSameSiblingPath()
+    {
+        var root = TempDir.Create();
+        var outDir = Path.Combine(root, "package-572.16");
+        var expected = Path.Combine(root, "572.16-cleandriver-package.zip");
+
+        Assert.Equal(expected, Packages.ZipPathFor(outDir, "572.16"));
+        Assert.Equal(expected, Packages.ZipPathFor(outDir + Path.DirectorySeparatorChar, "572.16"));
+    }
+
     // Only `package` produces an archive; `extract` behavior is unchanged.
     [Fact]
     public async Task ExtractAction_WritesNoZip()
