@@ -111,9 +111,15 @@
 
 <p>This page documents the <b>builder side</b> of that exchange — the loop actually followed while delivering GAP-01 through GAP-05 and the CI fix. It is a playbook, not a retrospective, but every rule below is illustrated with something that really happened, because the parts most worth writing down are the parts that were nearly gotten wrong.</p>
 
-<p>The single sentence the whole workflow reduces to appears verbatim at the bottom of both the register and the kickoff prompt:</p>
+<p>The single sentence the whole workflow reduces to closes both documents. The register states it for the series it governs — verbatim, the last line of <code class="inline">docs/gaps_analysis.md</code>:</p>
 
 <blockquote><p>Return contract: one PR per gap against <code class="inline">main</code>, never merged; STOP for owner review between gaps; HALT via AskUserQuestion on any ambiguity.</p></blockquote>
+
+<p>The kickoff prompt closes with the same contract, narrowed to the one gap it carries — verbatim, the last line of <code class="inline">prompts/gap-01-implementation-prompt.md</code>:</p>
+
+<blockquote><p>Return contract: one PR against <code class="inline">main</code>, never merged; report PR URL and STOP; HALT via AskUserQuestion on any ambiguity.</p></blockquote>
+
+<p>Same contract, two scopes: the register governs the series, the prompt governs the session. Neither sentence is a paraphrase of the other, and neither is paraphrased here — a page arguing that citations should be checkable earns nothing by asking to be trusted.</p>
 
 <div class="callout note">
   <span class="lbl">Audience</span>
