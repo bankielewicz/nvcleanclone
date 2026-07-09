@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Fix-Loop Workflow — CleanDriver · v1.0 · 2026-07-09</title>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1a1a1a; --muted:#5a5f66; --line:#d9dde3;
+    --accent:#0b6b3a; --accent-bg:#eef6f1; --code-bg:#f5f6f8; --code-fg:#24292f;
+    --warn-bg:#fdf3e7; --warn-bd:#e09b3d; --danger-bg:#fbeceb; --danger-bd:#c53030;
+    --note-bg:#eef2fb; --note-bd:#3b6db5; --kw:#b3134b;
+    --toc-bg:#fafbfc; --th-bg:#f3f5f7; --tr-bg:#fbfcfd;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#16181c; --fg:#e6e8eb; --muted:#9aa2ad; --line:#2e333b;
+      --accent:#4cbf82; --accent-bg:#16301f; --code-bg:#1c1f25; --code-fg:#d5d9df;
+      --warn-bg:#33260f; --warn-bd:#c98b2f; --danger-bg:#3a1c1b; --danger-bd:#e06c6c;
+      --note-bg:#182337; --note-bd:#5b8cc7; --kw:#e0668f;
+      --toc-bg:#131519; --th-bg:#1e2127; --tr-bg:#1a1d22;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  .wrap{display:flex;min-height:100vh}
+  nav.toc{
+    width:300px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;
+    height:100vh;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);
+    background:var(--toc-bg);font-size:13.5px;
+  }
+  nav.toc h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 6px}
+  nav.toc h2:first-child{margin-top:0}
+  nav.toc a{display:block;color:var(--fg);text-decoration:none;padding:3px 8px;border-radius:4px;line-height:1.35}
+  nav.toc a:hover{background:var(--accent-bg);color:var(--accent)}
+  nav.toc .title{font-weight:700;font-size:15px;margin-bottom:4px;color:var(--accent)}
+  nav.toc .meta{font-size:11.5px;color:var(--muted);margin-bottom:14px}
+  main{flex:1;min-width:0;max-width:980px;margin:0 auto;padding:40px 48px 120px}
+  h1{font-size:30px;line-height:1.2;margin:0 0 6px}
+  h2{font-size:23px;margin:42px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--line)}
+  h3{font-size:18px;margin:30px 0 8px}
+  h4{font-size:15.5px;margin:22px 0 6px}
+  p{margin:9px 0}
+  .lead{font-size:16.5px;color:var(--muted)}
+  code,kbd{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;font-size:13px}
+  code.inline{background:var(--code-bg);color:var(--code-fg);padding:1px 5px;border-radius:3px}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:6px;padding:13px 15px;overflow-x:auto;margin:12px 0}
+  pre code{background:none;padding:0;color:var(--code-fg);font-size:13px;line-height:1.5}
+  .tablewrap{overflow-x:auto;margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--th-bg);font-weight:600}
+  tr:nth-child(even) td{background:var(--tr-bg)}
+  .callout{border-left:4px solid;padding:11px 15px;border-radius:0 6px 6px 0;margin:14px 0}
+  .callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+  .note{background:var(--note-bg);border-color:var(--note-bd)}
+  .warn{background:var(--warn-bg);border-color:var(--warn-bd)}
+  .danger{background:var(--danger-bg);border-color:var(--danger-bd)}
+  .callout .lbl{font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.06em;display:block;margin-bottom:2px}
+  .note .lbl{color:var(--note-bd)} .warn .lbl{color:var(--warn-bd)} .danger .lbl{color:var(--danger-bd)}
+  ul,ol{padding-left:24px;margin:9px 0}
+  li{margin:3px 0}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11.5px;font-weight:600;letter-spacing:.02em}
+  .pill.full{background:#e3f3e8;color:#1a7d43}
+  .pill.partial{background:#fdf0dd;color:#a36a14}
+  .pill.must{background:#fbe5e5;color:#b3134b}
+  .pill.na{background:#eeeef0;color:#666}
+  @media (prefers-color-scheme: dark){
+    .pill.full{background:#16301f;color:#5fd396}
+    .pill.partial{background:#33260f;color:#e0ab5c}
+    .pill.must{background:#3a1c1b;color:#f08d8d}
+    .pill.na{background:#25282e;color:#9aa2ad}
+  }
+  hr{border:none;border-top:1px solid var(--line);margin:30px 0}
+  .docbar{background:var(--accent);color:#fff;padding:14px 48px;font-size:13px;display:flex;gap:18px;flex-wrap:wrap}
+  .docbar b{font-weight:600}
+  .docbar .st{margin-left:auto;background:rgba(255,255,255,.18);padding:2px 10px;border-radius:10px;font-weight:600}
+  blockquote{margin:12px 0;padding:2px 0 2px 16px;border-left:3px solid var(--accent);color:var(--fg);font-style:italic}
+  blockquote p{margin:4px 0}
+  figure{margin:20px 0;text-align:center}
+  figure svg{max-width:100%;height:auto}
+  figcaption{font-size:12.5px;color:var(--muted);margin-top:8px}
+  .tier{border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin:14px 0;background:var(--tr-bg)}
+  .tier h4{margin-top:0}
+  .tier .auth{float:right;font-size:11px}
+  .cp{border:1px solid var(--line);border-radius:8px;padding:2px 18px 14px;margin:18px 0;background:var(--tr-bg)}
+  .cp h3{margin-top:18px}
+  footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+  @media(max-width:920px){.wrap{flex-direction:column}nav.toc{position:static;width:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}main{padding:24px}}
+  @media print{nav.toc{display:none}main{max-width:none}}
+</style>
+</head>
+<body>
+<div class="docbar">
+  <span><b>CleanDriver</b> — AI Fix-Loop Workflow</span>
+  <span>Doc v1.0</span>
+  <span>Role: implementer session, post-rejection</span>
+  <span>Date: 2026-07-09</span>
+  <span class="st">STATUS: DESCRIPTIVE</span>
+</div>
+<div class="wrap">
+<nav class="toc">
+  <div class="title">Fix-Loop Workflow</div>
+  <div class="meta">How a cold implementer session executes a rejection handed back by an AI reviewer</div>
+  <h2>Orientation</h2>
+  <a href="#purpose">1. The loop that starts with a rejection</a>
+  <a href="#anatomy">2. Anatomy of a rejection</a>
+  <a href="#spine">3. The C0–C7 checkpoint spine</a>
+  <a href="#punchlist">4. Reading the punch list</a>
+  <h2>Before touching the branch</h2>
+  <a href="#ladder">5. The consultation ladder</a>
+  <a href="#halt">6. HALT → ruling → amendment</a>
+  <h2>Doing the work</h2>
+  <a href="#red">7. Red-first, when the red is a conflict</a>
+  <a href="#gates">8. Gates, F&lt;n&gt; commits, force-push</a>
+  <a href="#closing">9. Closing report &amp; delta re-review</a>
+  <h2>Evidence</h2>
+  <a href="#example">10. Worked example: PR #9</a>
+  <a href="#antipatterns">11. Anti-patterns</a>
+  <a href="#appendix">12. Appendix</a>
+</nav>
+
+<main>
+
+<h1 id="purpose">The loop that starts with a rejection</h1>
+<p class="lead">A reviewer session reads a pull request written by a builder session, finds a defect, and refuses to merge. What happens next is a workflow of its own — and it is <em>not</em> performed by the reviewer.</p>
+
+<p>This repository runs three cold AI sessions that never share a context window. An <b>architect</b> writes the plan. A <b>builder</b> executes it and opens a PR. A <b>reviewer</b> validates that PR. When the reviewer says <span class="pill must">REQUEST CHANGES</span>, the work returns to a fresh <b>implementer</b> session, which knows nothing except what is written in the pull request.</p>
+
+<p>That last hop is what this document describes. It has run twice for real in this repository — <code class="inline">c50cd93</code> (finding <code class="inline">G2-F1</code>, on PR #4) and <code class="inline">7c76337</code> (finding <code class="inline">D9-F1</code>, on PR #9) — and the PR #9 round exercised every branch of it, including the interesting one where the implementer refused to proceed because the reviewer's own instructions contradicted each other.</p>
+
+<div class="callout note">
+  <span class="lbl">The separation that makes this work</span>
+  <p>The reviewer does not fix what it reviewed. A reviewer who patches the code it just reviewed leaves that patch unreviewed — the one change in the branch that no independent eye has seen is the change made by the person who already decided the branch was wrong. So the reviewer writes a <b>handoff</b> instead, and a different session executes it. When the fix lands, the reviewer re-reviews only the fix range.</p>
+</div>
+
+<h3>Descriptive, not normative</h3>
+<p>Where this page and <code class="inline">CONTRIBUTING.md</code>, <code class="inline">CLAUDE.md</code>, or <code class="inline">docs/gaps_analysis.md</code> disagree, <b>those documents win.</b> This page records how their rules were actually carried out. Two conventions described below — the <code class="inline">F&lt;n&gt;:</code> commit prefix and the force-push license — appear in <em>no</em> governing document. They are conventions of the handoff comment itself, and they bind only the round that grants them.</p>
+
+<figure>
+<svg viewBox="0 0 720 750" role="img" aria-labelledby="loop-title loop-desc" xmlns="http://www.w3.org/2000/svg">
+  <title id="loop-title">The implementer fix loop</title>
+  <desc id="loop-desc">A reviewer verdict of request-changes produces an implementer handoff comment. A cold implementer session orients, reproduces the red, and fixes. If the handoff contradicts itself or the repository, the implementer halts and asks; an owner ruling amends the handoff and the implementer resumes. Then it verifies every acceptance criterion, runs the gates, commits one fix commit per finding, posts a closing report, and stops without merging. The reviewer then re-reviews only the fix range.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5a5f66"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system,Segoe UI,Roboto,sans-serif" font-size="13">
+
+    <rect x="60" y="14" width="300" height="44" rx="6" fill="#fbeceb" stroke="#c53030"/>
+    <text x="210" y="34" text-anchor="middle" fill="#c53030" font-weight="600">Reviewer verdict</text>
+    <text x="210" y="49" text-anchor="middle" font-size="11" fill="#c53030">REQUEST CHANGES — findings CONFIRMED</text>
+
+    <rect x="60" y="86" width="300" height="48" rx="6" fill="#eef6f1" stroke="#0b6b3a"/>
+    <text x="210" y="106" text-anchor="middle" fill="#0b6b3a" font-weight="600">Implementer handoff comment</text>
+    <text x="210" y="121" text-anchor="middle" font-size="11" fill="#0b6b3a">coordinates · findings · C0–C7 · fence · rules</text>
+
+    <rect x="60" y="162" width="300" height="44" rx="6" fill="#fafbfc" stroke="#d9dde3"/>
+    <text x="210" y="182" text-anchor="middle">C0 · Orient — read the fence</text>
+    <text x="210" y="197" text-anchor="middle" font-size="11" fill="#5a5f66">branch, head, gates, governing docs</text>
+
+    <rect x="60" y="234" width="300" height="44" rx="6" fill="#fafbfc" stroke="#d9dde3"/>
+    <text x="210" y="254" text-anchor="middle">C1 · Reproduce the red</text>
+    <text x="210" y="269" text-anchor="middle" font-size="11" fill="#5a5f66">watch it fail before changing anything</text>
+
+    <rect x="60" y="320" width="300" height="44" rx="6" fill="#fafbfc" stroke="#d9dde3"/>
+    <text x="210" y="347" text-anchor="middle">C2 · Fix</text>
+
+    <rect x="60" y="392" width="300" height="44" rx="6" fill="#fafbfc" stroke="#d9dde3"/>
+    <text x="210" y="419" text-anchor="middle">C3 · Verify every acceptance criterion</text>
+
+    <rect x="60" y="464" width="300" height="44" rx="6" fill="#fafbfc" stroke="#d9dde3"/>
+    <text x="210" y="491" text-anchor="middle">C4 · The repo's gates, green</text>
+
+    <rect x="60" y="536" width="300" height="48" rx="6" fill="#fafbfc" stroke="#d9dde3"/>
+    <text x="210" y="556" text-anchor="middle">C5 · One commit per finding</text>
+    <text x="210" y="571" text-anchor="middle" font-size="11" fill="#5a5f66">push; force-with-lease only if licensed</text>
+
+    <rect x="60" y="612" width="300" height="44" rx="6" fill="#fafbfc" stroke="#d9dde3"/>
+    <text x="210" y="632" text-anchor="middle">C6 · Closing report</text>
+    <text x="210" y="647" text-anchor="middle" font-size="11" fill="#5a5f66">finding → commit → proof</text>
+
+    <rect x="60" y="684" width="300" height="44" rx="6" fill="#fbeceb" stroke="#c53030"/>
+    <text x="210" y="704" text-anchor="middle" fill="#c53030" font-weight="600">C7 · STOP</text>
+    <text x="210" y="719" text-anchor="middle" font-size="11" fill="#c53030">never merge — the owner merges</text>
+
+    <rect x="440" y="308" width="240" height="44" rx="6" fill="#fdf3e7" stroke="#e09b3d"/>
+    <text x="560" y="328" text-anchor="middle" fill="#a36a14" font-weight="600">HALT</text>
+    <text x="560" y="343" text-anchor="middle" font-size="11" fill="#a36a14">AskUserQuestion — do not guess</text>
+
+    <rect x="440" y="400" width="240" height="52" rx="6" fill="#eef2fb" stroke="#3b6db5"/>
+    <text x="560" y="420" text-anchor="middle" fill="#3b6db5" font-weight="600">Owner ruling → amendment</text>
+    <text x="560" y="435" text-anchor="middle" font-size="11" fill="#3b6db5">the handoff is corrected at its source;</text>
+    <text x="560" y="447" text-anchor="middle" font-size="11" fill="#3b6db5">the root defect is filed separately</text>
+
+    <rect x="440" y="684" width="240" height="44" rx="6" fill="#fafbfc" stroke="#d9dde3"/>
+    <text x="560" y="704" text-anchor="middle" font-size="12">Reviewer: delta re-review</text>
+    <text x="560" y="719" text-anchor="middle" font-size="11" fill="#5a5f66">of the fix range only</text>
+
+    <g stroke="#5a5f66" fill="none" marker-end="url(#ar)">
+      <path d="M 210 58 L 210 86"/>
+      <path d="M 210 134 L 210 162"/>
+      <path d="M 210 206 L 210 234"/>
+      <path d="M 160 278 L 160 320"/>
+      <path d="M 210 364 L 210 392"/>
+      <path d="M 210 436 L 210 464"/>
+      <path d="M 210 508 L 210 536"/>
+      <path d="M 210 584 L 210 612"/>
+      <path d="M 210 656 L 210 684"/>
+      <path d="M 360 330 L 440 330"/>
+      <path d="M 560 352 L 560 400"/>
+      <path d="M 440 426 L 410 426 L 410 356 L 360 356"/>
+      <path d="M 360 706 L 440 706"/>
+    </g>
+    <path d="M 680 706 L 702 706 L 702 36 L 360 36" stroke="#5a5f66" fill="none"
+          stroke-dasharray="5 4" marker-end="url(#ar)"/>
+
+    <text x="366" y="325" font-size="10" fill="#5a5f66">contradiction?</text>
+    <text x="366" y="351" font-size="10" fill="#5a5f66">resume at C2</text>
+  </g>
+</svg>
+<figcaption>The fix loop. The HALT branch is not an error path — it is the process working. The dashed return is another round, or the owner's merge.</figcaption>
+</figure>
+
+<h2 id="anatomy">2. Anatomy of a rejection</h2>
+
+<p>A rejection arrives as <b>two documents, both comments on the pull request</b>. Nothing else survives; the implementer session that reads them has no memory of the review.</p>
+
+<h3>2.1 The verdict</h3>
+<p>The verdict states an outcome, and every finding in it carries a status that distinguishes what was <em>reproduced</em> from what was merely <em>asserted</em>. In the PR #9 verdict, the single blocking finding read:</p>
+
+<blockquote><p><b>D9-F1</b> — <code class="inline">CHANGELOG.md</code> conflicts with <code class="inline">origin/main</code>; the PR is unmergeable as-is. … Verdict: <b>CONFIRMED</b> — reproduced by a test-merge in the review worktree, not taken from <code class="inline">gh</code>'s <code class="inline">mergeable</code> field</p></blockquote>
+
+<p>It also opened with a conflict-of-interest disclosure, because on that round the reviewer had authored the PR it was reviewing:</p>
+
+<blockquote><p>I authored this PR. It is reviewed here anyway because the alternative — merging unreviewed because the author is the reviewer — is exactly the failure mode this document argues against. Findings below were reproduced, not asserted.</p></blockquote>
+
+<div class="callout warn">
+  <span class="lbl">A true detail worth stating precisely</span>
+  <p>That verdict is a GitHub <b>issue comment</b>, not a review object: <code class="inline">gh pr view 9 --json reviews</code> returns an empty array. This is not sloppiness. The author and reviewer shared one GitHub identity, and the builder's <code class="inline">PreToolUse</code> guard denies <code class="inline">gh pr review</code> outright, precisely so that no session can sign off on its own work. The mechanism that made a formal approval impossible is the mechanism that was supposed to.</p>
+</div>
+
+<h3>2.2 The implementer handoff</h3>
+<p>The handoff is written for a reader who does not exist yet. It opens with a cold-start contract, quoted here verbatim:</p>
+
+<blockquote>
+<p><b>Cold-start contract.</b> You are an implementation session with no prior context. Everything you need is in this comment and the documents it names. <b>If your context is cleared mid-way, re-read this comment (<code class="inline">gh pr view 9 --comments</code>) and resume at the first unchecked checkpoint.</b> Do not reconstruct state from memory, and do not trust any summary of this PR — only this comment and the repo.</p>
+<p>The session that reviewed this PR will not fix it, by design: a reviewer who patches the code they reviewed leaves that patch unreviewed. You are the implementer. When you finish, that reviewer re-reviews only your fix commits.</p>
+</blockquote>
+
+<p>Its five sections are load-bearing in this order:</p>
+
+<div class="tablewrap">
+<table>
+  <tr><th>Section</th><th>What it must contain</th><th>Why the implementer cannot start without it</th></tr>
+  <tr>
+    <td><b>Coordinates</b></td>
+    <td>Repository path, origin URL, PR number, branch, <b>reviewed head SHA</b>, the command to re-read the handoff, links to the verdict, the governing docs, the gate commands, environment quirks.</td>
+    <td>A cold session cannot infer which branch, which head, or which build command. Getting these from chat means they die with the context.</td>
+  </tr>
+  <tr>
+    <td><b>Required findings</b></td>
+    <td>Per finding: <em>What is wrong</em> · <em>Reproduce it first</em> (a runnable block plus the reviewer's observed output) · <em>Fix shapes considered</em> · <em>Acceptance criteria</em>.</td>
+    <td>The reproduce block is the red. The acceptance criteria are what "done" means, and they must be checkable by command, not by opinion.</td>
+  </tr>
+  <tr>
+    <td><b>Checkpoints</b></td>
+    <td>An ordered, tickable C0–C7 list.</td>
+    <td>It is the only state that survives a context clear. See <a href="#spine">§3</a>.</td>
+  </tr>
+  <tr>
+    <td><b>Fence</b></td>
+    <td>Verified non-issues; optional cleanups explicitly deferred; files that must not be touched.</td>
+    <td>Without it the implementer re-argues settled findings and expands the diff. See <a href="#punchlist">§4</a>.</td>
+  </tr>
+  <tr>
+    <td><b>Rules</b></td>
+    <td>Commit shape, force-push license, the HALT instruction, the STOP instruction, cleanup.</td>
+    <td>These grant permissions the repo's standing rules withhold — and only for this round.</td>
+  </tr>
+</table>
+</div>
+
+<h2 id="spine">3. The C0–C7 checkpoint spine</h2>
+
+<p>The checkpoint list is not a courtesy. It is the implementer's <b>only durable memory</b>. A session's context can be cleared at any point; when it comes back, <code class="inline">gh pr view 9 --comments</code> must be sufficient to tell it exactly where the work stood. Chat is not a store. A summary is not a store. The PR is the store.</p>
+
+<div class="cp">
+<h3>The spine, as issued on PR #9</h3>
+<div class="tablewrap">
+<table>
+  <tr><th>#</th><th>Checkpoint</th><th>What proves it</th></tr>
+  <tr><td><b>C0</b></td><td>Read <code class="inline">CONTRIBUTING.md</code>; confirm branch and head SHA.</td><td>The branch name and <code class="inline">git log -1 --format=%h</code>.</td></tr>
+  <tr><td><b>C1</b></td><td>Run the reproduce block and <b>observe the failure</b>. Paste it in a PR comment.</td><td>The runner's own output, verbatim.</td></tr>
+  <tr><td><b>C2</b></td><td>Apply a fix shape; resolve per the handoff's rules.</td><td>A tree, not a claim.</td></tr>
+  <tr><td><b>C3</b></td><td>Verify <em>every</em> acceptance criterion, one by one, pasting each command's output.</td><td>One command per criterion.</td></tr>
+  <tr><td><b>C4</b></td><td>The repo's gates, green.</td><td>Build, test, whitespace output.</td></tr>
+  <tr><td><b>C5</b></td><td>Commit with the prescribed message; push; confirm CI green on the new head.</td><td>A SHA and a check run.</td></tr>
+  <tr><td><b>C6</b></td><td>Post the closing comment: finding → commit SHA → the AC output that proves it.</td><td>The comment URL.</td></tr>
+  <tr><td><b>C7</b></td><td><b>STOP.</b> Do not merge. Do not start any other work.</td><td>Nothing. That is the point.</td></tr>
+</table>
+</div>
+</div>
+
+<p>Two properties make the spine work. It is <b>ordered</b> — C1 before C2 means the red is captured before the tree changes, and no amount of confidence licenses skipping it. And it is <b>resumable</b> — the implementer ticks boxes in a PR comment as it goes, so a cleared context resumes at the first unchecked box rather than starting over or, worse, guessing that earlier steps were done.</p>
+
+<h2 id="punchlist">4. Reading the punch list</h2>
+
+<p>A reviewer's findings are not a flat list. They arrive in four tiers, and the tier decides what the implementer is <em>allowed</em> to do about each one.</p>
+
+<div class="tablewrap">
+<table>
+  <tr><th>Tier</th><th>Meaning</th><th>Implementer's obligation</th></tr>
+  <tr>
+    <td><span class="pill must">Required</span></td>
+    <td>Blocks merge. Reproduced by the reviewer.</td>
+    <td>Fix it, one commit per finding, prove it with the acceptance criteria.</td>
+  </tr>
+  <tr>
+    <td><span class="pill partial">Optional</span></td>
+    <td>Real but not blocking. Goes to the candidates list.</td>
+    <td><b>Do not do it now</b>, however tempting while you are already in the file. It will be scheduled deliberately, with its own PR and its own review.</td>
+  </tr>
+  <tr>
+    <td><span class="pill na">REFUTED</span></td>
+    <td>The reviewer investigated a suspicion and cleared it.</td>
+    <td>Do not re-argue it. Re-litigating a verified non-issue costs a whole round and produces nothing.</td>
+  </tr>
+  <tr>
+    <td><span class="pill full">ACCEPTED</span></td>
+    <td>A deviation the builder disclosed, which the reviewer ruled acceptable.</td>
+    <td>Leave it. It is now a decision, not a defect.</td>
+  </tr>
+</table>
+</div>
+
+<p>The <b>fence</b> is that tiering made operational — the same information, restated as prohibitions, because a list of things you may do is easier to over-read than a list of things you may not. From PR #9:</p>
+
+<blockquote>
+<p><b>Optional cleanups — explicitly NOT in scope for this round.</b> … Do not do these now, however tempting while you're in the file.</p>
+<p>Do not modify <code class="inline">docs/ai-review-workflow.html</code>. Do not touch any file outside <code class="inline">CHANGELOG.md</code>.</p>
+</blockquote>
+
+<div class="callout note">
+  <span class="lbl">Why the fence is generous rather than grudging</span>
+  <p>A fix round is re-reviewed as a <em>delta</em>. Every file the implementer touches beyond the finding widens that delta, and a widened delta is reviewed less carefully per line than a narrow one. The cleanup you slipped in "while you were there" is the change most likely to ship unexamined. Scope discipline is not bureaucracy here; it is what keeps the second look meaningful.</p>
+</div>
+
+<h2 id="ladder">5. The consultation ladder</h2>
+
+<p>Before designing a fix — and before declaring one done — the implementer consults. Three sources exist, and <b>they do not carry equal weight</b>. Authority is a property of the source, not of how persuasive the answer sounds.</p>
+
+<div class="tier">
+  <span class="auth pill full">Primary</span>
+  <h4>Tier 1 — the <code class="inline">advisor</code> tool</h4>
+  <p>A stronger reviewer model that is handed the implementer's <em>entire transcript</em>: the task, every tool call, every result. It is called before committing to an approach and again before declaring the work complete. Because it sees the actual evidence rather than a summary of it, it is the default.</p>
+</div>
+
+<div class="tier">
+  <span class="auth pill partial">Advisory</span>
+  <h4>Tier 2 — a peer LLM, via the <code class="inline">spec-driven-collaboration</code> skill</h4>
+  <p>The <b>fallback when <code class="inline">advisor</code> is unavailable.</b> It is not a peer of tier 1 and must not be treated as one. The skill packages the problem into a self-contained document — verbatim constitution files, real code excerpts, ranked hypotheses, targeted questions — and writes it to <code class="inline">tmp/collaborate-{target}-{slug}-{date}.md</code> for pasting into an external model. It carries its own halt rule: <em>if ambiguous or conflicts detected, HALT and use AskUserQuestion.</em> Its answer is an opinion from a model that has read a package, not a transcript.</p>
+</div>
+
+<div class="tier">
+  <span class="auth pill must">Binding</span>
+  <h4>Tier 3 — a ruling from the plan's author or the human owner</h4>
+  <p>This is the only tier that <em>decides</em>. An architect session's rulings on register conformance and scope, or the owner's answer to an <code class="inline">AskUserQuestion</code>, settle the matter.</p>
+</div>
+
+<div class="callout danger">
+  <span class="lbl">Never silently switch</span>
+  <p>When a tier-2 opinion contradicts a tier-3 ruling, <b>surface the conflict</b>. Do not quietly adopt the more convincing argument. The architect's standing note on the GAP-02 round said it plainly: <em>"If you also collect Gemini's reply, treat it as advisory: where it conflicts with a ruling here, surface the conflict — do not silently switch."</em> Being closer to the code is not authority either.</p>
+</div>
+
+<h3>What the ladder is for — and what it cannot do</h3>
+<p>On PR #9 the implementer reached C5 and found that the handoff's <code class="inline">F&lt;n&gt;:</code> commit rule could not be satisfied literally: the recommended fix shape was a rebase, which folds the resolution into the branch's single existing commit, leaving no separate commit to prefix. It looked like an ambiguity. The advisor read the whole transcript and answered that it was not:</p>
+
+<blockquote><p>The reviewer dictated the exact commit message … in the same breath as "Push (<code class="inline">--force-with-lease</code> if you rebased)." … There's no reading to pick: the message is given. … Reject the two-commit split outright. Splitting … fabricates a history that never happened.</p></blockquote>
+
+<p>That consult <b>prevented a HALT</b>, which is as valuable as one that causes it. Every candidate reading produced a byte-identical tree; only the commit's label was in question, and the label had been supplied. Halting there would have spent the owner's attention on something the implementer could have read more carefully.</p>
+
+<p>But a consult cannot substitute for a ruling. An advisor can bless a reading; it cannot know which reading the plan's author meant. When the candidate readings produce <em>different artifacts</em>, no amount of advice resolves it — only the author can.</p>
+
+<h2 id="halt">6. HALT → ruling → amendment</h2>
+
+<p>A HALT is not a failure. It is what the process does when the instructions are wrong.</p>
+
+<h3>6.1 When to halt</h3>
+<div class="tablewrap">
+<table>
+  <tr><th>Situation</th><th>Action</th></tr>
+  <tr><td>The answer is in a file you have not opened</td><td>Open it. Research, not a HALT.</td></tr>
+  <tr><td>Two readings, same resulting artifact</td><td>Decide, say which, proceed. It does not matter.</td></tr>
+  <tr><td><b>Two readings, different artifacts</b></td><td><b>HALT</b></td></tr>
+  <tr><td><b>The handoff names a file, field, or output that does not exist</b></td><td><b>HALT</b></td></tr>
+  <tr><td><b>Two clauses of the handoff cannot both be satisfied</b></td><td><b>HALT</b></td></tr>
+  <tr><td>An acceptance criterion needs a tool, endpoint, or path that is unavailable</td><td><b>HALT.</b> Never weaken the criterion to route around it.</td></tr>
+</table>
+</div>
+
+<p>The cost of halting badly runs in one direction: halting on something you could have looked up teaches the human that your questions are not load-bearing, and the next real halt gets waved through.</p>
+
+<h3>6.2 The halt that happened</h3>
+<p>At C2 on PR #9 the implementer found the handoff self-contradictory:</p>
+
+<ul>
+  <li><b>AC-3</b> required: <em>"no entry claims GAP-04 or GAP-05 is open."</em></li>
+  <li><b>Resolution rule 2</b> required: <em>"do not delete <code class="inline">main</code>'s entries."</em></li>
+</ul>
+
+<p>Both were satisfiable only if <code class="inline">main</code>'s changelog were clean. It was not: <code class="inline">main</code> listed PRs #7 and #8 as open, and <code class="inline">gh pr view</code> reported both <code class="inline">MERGED</code>. The implementer could not obey rule 2 and reach AC-3. It stopped and asked, via <code class="inline">AskUserQuestion</code>, rather than picking whichever clause it liked better.</p>
+
+<p>The payload of a good HALT is short and mechanical: the two clauses, with the evidence that puts them in conflict, the candidate readings, and each reading's consequence on disk.</p>
+
+<h3>6.3 The ruling, and where it goes</h3>
+<p>The owner ruled that the acceptance criterion — not the implementer — was the defect, and posted an <b>amendment</b> to the handoff with an explicit precedence rule:</p>
+
+<blockquote><p>Read this together with the handoff comment above. Where they disagree, <b>this comment wins.</b> If your context is cleared, <code class="inline">gh pr view 9 --comments</code> and read both, newest last.</p></blockquote>
+
+<p>AC-3 was replaced by <b>AC-3′</b>, which turned a judgement call into a command:</p>
+
+<blockquote><p><b>AC-3′</b> — This branch adds exactly one entry under <code class="inline">## Unreleased (open PRs)</code>: its own … <code class="inline">main</code>'s pre-existing entries under that heading are carried through <b>verbatim and untouched</b>, including the stale <code class="inline">(PR #7, open)</code> and <code class="inline">(PR #8, open)</code> lines.</p>
+<p>Check: <code class="inline">git diff origin/main -- CHANGELOG.md</code> shows <b>only</b> the addition of this branch's entry — no deletions, no rewordings of anyone else's lines.</p></blockquote>
+
+<div class="callout note">
+  <span class="lbl">Two properties of a good ruling</span>
+  <p><b>It is written back to the source.</b> The correction lives in the PR next to the instruction it corrects, not in a chat log. A future cold session reading the thread newest-last gets the amended rule for free.</p>
+  <p><b>It refuses to expand the diff.</b> The underlying defect — that <code class="inline">Unreleased (open PRs)</code> goes stale on every merge, because nothing in the merge flow updates it — was filed as its own item (<code class="inline">CL-1</code>) with its own future PR. The fix round shipped a changelog that still contains two factually wrong lines, <em>on purpose</em>. Laundering an unrelated correction through a docs PR is how stale-by-construction records get made, and it fuses two changes into one indivisible diff so that neither gets reviewed properly.</p>
+</div>
+
+<h2 id="red">7. Red-first, when the red is a merge conflict</h2>
+
+<p>The repository's TDD rule binds behavior changes: write the failing test, run it, capture the output. A fix round inherits the spirit even when there is no unit test to write. The handoff's reproduce block <em>is</em> the red, and it runs <b>before</b> the tree changes:</p>
+
+<pre><code>$ git merge --no-commit --no-ff origin/main
+Auto-merging CHANGELOG.md
+CONFLICT (content): Merge conflict in CHANGELOG.md
+Automatic merge failed; fix conflicts and then commit the result.   # exit 1
+
+$ git diff --name-only --diff-filter=U
+CHANGELOG.md
+
+$ grep -c '^&lt;&lt;&lt;&lt;&lt;&lt;&lt;' CHANGELOG.md
+2
+
+$ git merge --abort          # tree restored before doing anything else</code></pre>
+
+<div class="callout warn">
+  <span class="lbl">A red gate is a claim, not a fact</span>
+  <p>GitHub's <code class="inline">mergeable: CONFLICTING</code> is a <em>claim</em>. The test-merge is the <em>evidence</em>. The distinction is not pedantry: this repository's CI once reported <code class="inline">whitespace errors</code> on every merge for about five hours. There were none. <code class="inline">git diff --check HEAD~1 HEAD</code> was running against a depth-1 shallow clone, where <code class="inline">HEAD~1</code> does not resolve, and a <code class="inline">|| echo '::error::whitespace errors'</code> wrapper relabelled <code class="inline">fatal: ambiguous argument</code> as a whitespace failure. Root-cause a red before you believe what it says about itself.</p>
+</div>
+
+<p>The symmetric error is trusting a green. <b>A green signal proves nothing about a thing whose job is to say no.</b> When the change is a check, guard, validator, or fallback, feed it bad input and watch it refuse — passing on good input is exactly what the broken version did too.</p>
+
+<h2 id="gates">8. Gates, <code class="inline">F&lt;n&gt;</code> commits, and the force-push license</h2>
+
+<h3>8.1 The gates are the repo's own</h3>
+<p>Not a command the implementer prefers. For CleanDriver, <code class="inline">CONTRIBUTING.md</code> names three, and every PR must be green on all of them:</p>
+
+<pre><code>dotnet build nvcleanstall/CleanDriver.csproj
+dotnet test  nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj
+git diff --check</code></pre>
+
+<p>An unknown gate is not a passed gate. If the implementer cannot name the repo's build command, it stops and finds it rather than inventing one that happens to exit 0.</p>
+
+<h3>8.2 One commit per finding</h3>
+<p>The handoff prescribes <code class="inline">F1:</code>, <code class="inline">F2:</code>, … one per finding, so the delta re-review can isolate each fix. It also prescribes the exact message text. When the fix shape makes a literal separate commit impossible — as a rebase does — the implementer carries the prescribed message onto the resulting commit rather than <b>fabricating a commit boundary that never existed</b>, and discloses the deviation.</p>
+
+<h3>8.3 The force-push license</h3>
+<p>Force-pushing is normally forbidden. A handoff may lift that, narrowly, and must say why. PR #9's did:</p>
+
+<blockquote><p>This branch is a single commit and nobody else is building on it, so a force-push is safe here — this is the one case where the "do not force-push" rule below is explicitly lifted.</p></blockquote>
+
+<p>Even then: <code class="inline">--force-with-lease</code>, never bare <code class="inline">--force</code>. The lease is what turns "I believe nothing changed underneath me" into a fact the remote checks.</p>
+
+<div class="callout note">
+  <span class="lbl">Provenance of these two rules</span>
+  <p>Neither the <code class="inline">F&lt;n&gt;:</code> prefix nor the force-push license appears in <code class="inline">CONTRIBUTING.md</code>. They are conventions of the handoff comment, granted per round. Cite the handoff for them — never the governing docs.</p>
+</div>
+
+<h3>8.4 When the change has no test surface</h3>
+<p>A docs-only fix adds no production code, so no unit test is required — the TDD rule binds behavior changes and this adds none. Say that <b>explicitly</b> in the PR body. Silence there is indistinguishable from having skipped the rule, and the reviewer cannot tell the difference. Then let the verification battery (well-formedness, anchor resolution, a live render, the gates) carry the evidentiary weight a test would have carried.</p>
+
+<h2 id="closing">9. The closing report and the delta re-review</h2>
+
+<p>The closing comment is the implementer's return contract. It maps each finding to the commit that fixed it and to the acceptance-criterion output that proves the fix — three columns, no prose in place of evidence:</p>
+
+<div class="tablewrap">
+<table>
+  <tr><th>Finding</th><th>Commit</th><th>Acceptance criterion</th><th>Output</th></tr>
+  <tr>
+    <td><b>D9-F1</b> — <code class="inline">CHANGELOG.md</code> conflicts with <code class="inline">origin/main</code></td>
+    <td><code class="inline">7c76337</code></td>
+    <td><code class="inline">gh pr view 9 --json mergeable --jq .mergeable</code></td>
+    <td><code class="inline">MERGEABLE</code> (was <code class="inline">CONFLICTING</code>)</td>
+  </tr>
+  <tr><td></td><td></td><td><b>AC-3′</b>: addition-only changelog diff</td><td>7 added lines, <b>0 deletions</b></td></tr>
+  <tr><td></td><td></td><td><code class="inline">git diff --check</code></td><td>clean</td></tr>
+  <tr><td></td><td></td><td>CI green on the new head</td><td><code class="inline">build-test-smoke  pass  1m19s</code></td></tr>
+</table>
+</div>
+
+<p>Alongside it: the gates' raw output, and a <b>Deviations</b> section that states every departure from the handoff prominently. A deviation hidden behind a green suite is a returnable offense. Writing "<b>None.</b>" when there are none is required, because a reviewer cannot distinguish <em>no deviations</em> from <em>forgot to mention deviations</em>.</p>
+
+<p>Then the implementer <b>stops</b>. It does not merge; the owner merges. It does not review its own fix; the reviewer re-reviews, and only the fix range — <code class="inline">origin/main..&lt;fixhead&gt;</code>. That range is exactly why the fence and the one-commit-per-finding rule exist: they are what make the range small enough to read closely.</p>
+
+<h2 id="example">10. Worked example: PR #9 / D9-F1, end to end</h2>
+
+<p>The document this page's sibling describes (<code class="inline">docs/ai-review-workflow.html</code>) was submitted as PR #9 at head <code class="inline">2191361</code>, reviewed, and held on one finding.</p>
+
+<div class="tablewrap">
+<table>
+  <tr><th>Step</th><th>What happened</th></tr>
+  <tr><td>Verdict</td><td><span class="pill must">REQUEST CHANGES</span> · one finding, <code class="inline">D9-F1</code>, <b>CONFIRMED</b> by test-merge, not by <code class="inline">gh</code>'s <code class="inline">mergeable</code> field. Two optional cleanups deferred to candidates. Conflict of interest disclosed.</td></tr>
+  <tr><td>C0–C1</td><td>Implementer confirmed branch and head, then reproduced the conflict: 2 hunks, <code class="inline">CHANGELOG.md</code> only. <code class="inline">git merge --abort</code>. Red pasted to the PR.</td></tr>
+  <tr><td>C2 — <b>HALT</b></td><td>AC-3 and resolution rule 2 were unsatisfiable together, because <code class="inline">main</code> itself listed merged PRs #7 and #8 as open. Asked rather than guessed.</td></tr>
+  <tr><td>Ruling</td><td>Owner amended the handoff: <b>AC-3 → AC-3′</b> (addition-only diff). Root cause filed separately as <code class="inline">CL-1</code>. Implementer resumed at C2.</td></tr>
+  <tr><td>C2–C3</td><td>Rebased onto <code class="inline">origin/main</code> (<code class="inline">5e47617</code>). <code class="inline">git diff origin/main -- CHANGELOG.md | grep -c '^-[^-]'</code> → <code class="inline">0</code>. <code class="inline">grep -c '^## 2026-07-08'</code> → <code class="inline">1</code>. The reviewed HTML file byte-identical to <code class="inline">2191361</code>.</td></tr>
+  <tr><td>C4</td><td>Build 0 errors · <b>62/62</b> tests · <code class="inline">git diff --check</code> clean.</td></tr>
+  <tr><td>C5</td><td><code class="inline">2191361</code> → <code class="inline">7c76337</code>, pushed <code class="inline">--force-with-lease</code>. CI green. <code class="inline">mergeable: MERGEABLE</code>, <code class="inline">mergeStateStatus: CLEAN</code>.</td></tr>
+  <tr><td>C6–C7</td><td>Closing report posted. <b>Stopped.</b> Worktree removed. Not merged.</td></tr>
+</table>
+</div>
+
+<h3>The two disclosed deviations</h3>
+<p>They are recorded here because a playbook that shows only the clean path teaches nothing.</p>
+
+<ol>
+  <li><b>The C5 commit shape.</b> The rebase folded the fix into the branch's only commit, so no separate <code class="inline">F1:</code> commit existed to create. The tip commit was amended to carry the dictated message, with the original subject preserved in the body. Disclosed as a deviation, not presented as compliance.</li>
+  <li><b>C1 ran before the merge guard was armed.</b> The implementer's own <code class="inline">PreToolUse</code> guard denies <code class="inline">git merge</code> — which is the handoff's reproduce command. Running the red first meant arming the guard afterwards. Stated in the PR rather than quietly reordered.</li>
+</ol>
+
+<div class="callout warn">
+  <span class="lbl">A tool defect found by using it</span>
+  <p>Posting the C1 red required <code class="inline">gh pr comment</code> with a body quoting <code class="inline">git merge</code>. The guard scans the whole command string and cannot distinguish an executed command from quoted evidence, so it denied the call. Worked around with <code class="inline">--body-file</code>; recorded as a real defect rather than as a quirk. A guard that fires on the word rather than on the act will eventually be disabled by someone in a hurry — which is the failure mode guards exist to prevent.</p>
+</div>
+
+<h3>The earlier round</h3>
+<p>The same loop ran on PR #4 (GAP-02, the real-download slice): the reviewer found that <code class="inline">Jobs.Cancel</code> threw <code class="inline">ObjectDisposedException</code> on a late or duplicate cancel, and the implementer landed <code class="inline">c50cd93</code> — <code class="inline">F1: guard Jobs.Cancel against a disposed CTS on late/duplicate cancel (G2-F1)</code> — reproduced by a failing test first, in the shape the handoff prescribed.</p>
+
+<h2 id="antipatterns">11. Anti-patterns</h2>
+
+<div class="tablewrap">
+<table>
+  <tr><th>Anti-pattern</th><th>Why it is worse than it looks</th></tr>
+  <tr><td>Guessing past a contradictory acceptance criterion</td><td>You ship whichever reading you happened to prefer, behind evidence you generated yourself. The author never learns their instruction was broken, and the next implementer hits it again.</td></tr>
+  <tr><td>Re-arguing a REFUTED finding</td><td>The reviewer already reproduced the negative. A round spent re-litigating it produces no commit.</td></tr>
+  <tr><td>Doing the optional cleanups "while you're in the file"</td><td>It widens the delta the reviewer must read, and buries the fix inside unrelated churn.</td></tr>
+  <tr><td>Smuggling an unrelated correction into the fix range</td><td>The fix and the housekeeping become one indivisible diff. Neither is reviewed properly, and you author bookkeeping for merges you did not perform.</td></tr>
+  <tr><td>Fabricating a commit boundary to make a fix look isolated</td><td>The history claims a sequence of work that did not happen. Isolation is already automatic: the fix range <em>is</em> the diff against the base.</td></tr>
+  <tr><td>Bare <code class="inline">--force</code></td><td>Silently discards whatever landed on the remote since you last looked. <code class="inline">--force-with-lease</code> makes the remote check the assumption you are betting on.</td></tr>
+  <tr><td>A reviewer patching its own review</td><td>The one change nobody independent has read is the change made by the party who already formed a view.</td></tr>
+  <tr><td>Weakening a test or an acceptance criterion to route around a blocker</td><td>The criterion existed because something needed proving. Removing it removes the proof, not the problem.</td></tr>
+  <tr><td>Merging</td><td>Not the implementer's call. Not the reviewer's either. The owner merges.</td></tr>
+</table>
+</div>
+
+<h2 id="appendix">12. Appendix</h2>
+
+<h3>12.1 File map</h3>
+<div class="tablewrap">
+<table>
+  <tr><th>Path</th><th>Role</th></tr>
+  <tr><td><code class="inline">CONTRIBUTING.md</code></td><td>Binds process: TDD and red evidence, the three gates, one slice = one worktree = one branch = one PR, <b>never merge</b>.</td></tr>
+  <tr><td><code class="inline">CLAUDE.md</code></td><td>Architecture, the ordered governing chain, and the hard safety and IP boundaries.</td></tr>
+  <tr><td><code class="inline">docs/gaps_analysis.md</code></td><td>The closed task register. Its <b>§4 out-of-scope fence is absolute</b>; no fix round lifts it.</td></tr>
+  <tr><td><code class="inline">.claude/skills/spec-driven-collaboration/</code></td><td>The tier-2 fallback: packages an issue into a self-contained document for an external model.</td></tr>
+  <tr><td><code class="inline">docs/ai-handoff-workflow.html</code></td><td>Sibling: how a cold builder executes a plan from scratch.</td></tr>
+  <tr><td><code class="inline">docs/ai-review-workflow.html</code></td><td>Sibling: how a reviewer validates the resulting PR — the step that produces the rejection this page begins with.</td></tr>
+</table>
+</div>
+
+<h3>12.2 The Rules block, verbatim</h3>
+<blockquote>
+<p>One commit per finding, message prefixed <code class="inline">F1:</code>. This lets the delta re-review isolate each fix.</p>
+<p>Test-first: the observed red (the conflict output) is required evidence and must be pasted in a PR comment before the fix.</p>
+<p>Do not squash other commits. Force-push only as licensed by fix shape A above, and only with <code class="inline">--force-with-lease</code>.</p>
+<p><b>HALT and ask</b> (<code class="inline">AskUserQuestion</code>, or ask the human directly in your reply) on any ambiguity, any contradiction between this comment and the repo, or any missing prerequisite. Do not guess. A halt is the process working, not a failure.</p>
+<p><b>STOP</b> after C7. The human merges. The reviewer re-reviews only your fix range.</p>
+</blockquote>
+
+<h3>12.3 The PR #9 record</h3>
+<p>Five comments, read newest last. Each is a permalink that survives the force-push that rewrote the branch.</p>
+<ul>
+  <li><a href="https://github.com/bankielewicz/nvcleanclone/pull/9#issuecomment-4924021054">Review verdict — REQUEST CHANGES</a></li>
+  <li><a href="https://github.com/bankielewicz/nvcleanclone/pull/9#issuecomment-4924072753">Implementer handoff</a></li>
+  <li><a href="https://github.com/bankielewicz/nvcleanclone/pull/9#issuecomment-4924848268">C1 — the red, reproduced</a></li>
+  <li><a href="https://github.com/bankielewicz/nvcleanclone/pull/9#issuecomment-4924908157">Amendment — AC-3 → AC-3′</a></li>
+  <li><a href="https://github.com/bankielewicz/nvcleanclone/pull/9#issuecomment-4925051405">Implementer closing report</a></li>
+</ul>
+
+<footer>
+<p><b>Provenance.</b> Written on 2026-07-09 by the implementer session that executed the PR #9 fix round, from the record of that round and of the earlier <code class="inline">G2-F1</code> round on PR #4. Every SHA, command output, and <em>PR-sourced</em> quotation above was re-verified against <code class="inline">git log</code> and <code class="inline">gh pr view 9 --comments</code> before publication. The two quotations in §5 are <b>transcript-local</b>: the <code class="inline">advisor</code>'s reply, and the architect's standing note from the GAP-02 round. Tool output and a session's standing notes never reach a PR or a commit, so neither appears in either source named above; both are reproduced from the session record and <b>cannot be verified against the PR</b>. They are marked here rather than presented as though they could be — a page arguing that a finding is a claim until you reproduce it owes its own provenance note the same standard.</p>
+<p><b>Descriptive, not normative.</b> Where this page and <code class="inline">CONTRIBUTING.md</code>, <code class="inline">CLAUDE.md</code>, or <code class="inline">docs/gaps_analysis.md</code> disagree, those documents win. The <code class="inline">F&lt;n&gt;:</code> commit prefix and the force-push license are conventions of the handoff comment, not repository law.</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>
