@@ -16,6 +16,13 @@ merged, or is explicitly marked as an open PR.
   server-side (`Jobs.DownloadedFile`), so the real path is never trusted from the client;
   mock-path receipts stay byte-identical. Realizes FEAT-011/FEAT-024/FEAT-025. Seam:
   `Jobs.StartExecute` + `/api/execute`. No real execution added (§4).
+- **`docs/ai-handoff-workflow.html`** (open PR): documents the **builder** side of this
+  repo's AI→AI handoff loop — how a cold session ingests a kickoff prompt, orients against
+  the governing docs chain, consults before designing (the three-tier ladder: `advisor` →
+  `spec-driven-collaboration` when advisor is unavailable → **binding** architect rulings),
+  HALTs via AskUserQuestion rather than guessing, then runs strict TDD, the three gates, one
+  PR, and STOPs. Illustrated with real evidence from GAP-01…GAP-05 and the CI whitespace
+  fix. Descriptive only — `CONTRIBUTING.md` and `docs/gaps_analysis.md` remain normative.
 
 ## 2026-07-08
 
