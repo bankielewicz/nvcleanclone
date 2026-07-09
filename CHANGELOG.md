@@ -6,6 +6,13 @@ merged, or is explicitly marked as an open PR.
 
 ## Unreleased (open PRs)
 
+- **Architect PR-validation workflow** (`docs/ai-review-workflow.html`, open): a
+  self-contained HTML reference documenting how a PR written by a cold AI builder session
+  is validated before merge — the eight review stages (CI triage → isolated worktree →
+  gate re-run + live exercise → finder pass → adversarial verify → verdict → feedback loop
+  → owner report), the feedback mechanisms back to the builder (three-tier punch list,
+  paste-able fix prompt, delta re-review, candidates list), a case ledger of the reviews of
+  PRs #3–#6, and a copy-paste reviewer's checklist. Docs only; no production code.
 - **GAP-05 — Signature-rebuild and driver-telemetry honesty** (PR #8, open): the
   simulated "rebuild digital signature" step and the `driver-telemetry` tweak stop
   overclaiming. Additive, null-omitted markers ride on the artifacts that record the
