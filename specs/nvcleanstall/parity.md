@@ -94,6 +94,6 @@ decision required on whether a user-supplied `outputPath` may ever be cleaned at
 
 - **2026-07-09 — §2 re-graded and §3 revised after the gap register closed** (GAP-01…06
   all merged; see `docs/gaps_analysis.md` and `CHANGELOG.md`). §1's AC results are the
-  original baseline verification and still hold (the suite grew 30 → 75 tests across the
+  original baseline verification and still hold (the suite grew 0 → 75 tests across the
   gap PRs, all green at each merge). Baseline text of the changed rows is preserved in
   git history at `c704800`.
