@@ -6,6 +6,23 @@ merged, or is explicitly marked as an open PR.
 
 ## Unreleased (open PRs)
 
+- **GAP-06 — true single-file package output** (open PR): the **Build package** action now
+  additionally writes one redistributable archive,
+  `output/<version>-cleandriver-package.zip`, containing the customized package tree
+  (`manifest.json`, `payload/<selected>.bin`, `install.cmd`, `config.json`, and any
+  `.reg` snippets) — containing **exactly the outputs of that build** and nothing else.
+  The archive is packed from an explicit file list, never from a walk of the output
+  directory: nothing cleans that directory, so a walk archived a previous build's
+  leftover payloads while the job reported `done` (D12-F1). The path to the archive is
+  normalized before its parent is taken, so an `outputPath` with a trailing separator no
+  longer writes the archive inside the directory it archives, and a drive root fails by
+  name rather than with a `NullReferenceException` (D12-F2). The directory output stays
+  for inspection and `extract` is unchanged. Packing lives in `Packages.WriteZip`, called
+  from the package branch of `Jobs.StartExecute`; the archive is written **beside** the
+  output directory, never inside it. Two owner rulings and the D12 review resolution are
+  recorded in the GAP-06 register entry. The bundled `install.cmd` remains the simulated,
+  non-executing installer: nothing is executed, extracted, or installed, nothing on disk
+  is ever deleted, and the `NoExecutionGuardTests` safety pin is unedited and green.
 - **AI fix-loop workflow** (`docs/ai-fix-loop-workflow.html`, open): a self-contained HTML
   reference documenting the third side of the AI→AI loop — what a cold *implementer* session
   does when a reviewer hands back a rejected PR. Covers the anatomy of a rejection (verdict +

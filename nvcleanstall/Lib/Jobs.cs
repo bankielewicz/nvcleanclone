@@ -414,6 +414,11 @@ public static class Jobs
         else // extract | package
         {
             job.OutDir = outDir;
+            // D12-F1: the archive is built from this build's explicit output list, never a
+            // walk of outDir (which nothing cleans, so it may hold a previous build's
+            // leftovers). Each step records the entries it writes; the zip step packs
+            // exactly those. Entry names are archive-relative and use '/'.
+            var archiveEntries = new List<(string abs, string entry)>();
             steps.Add((300, () => job.LogLine($"> Extracting package {manifest.Version}…")));
             if (deselected.Count > 0)
                 steps.Add((250, () => job.LogLine(
@@ -422,6 +427,10 @@ public static class Jobs
             {
                 var res = Packages.WriteCustomized(source, manifest, selection.Components, outDir, selection.Tweaks);
                 job.Modified = res.modified;
+                archiveEntries.Add((res.manifestPath, "manifest.json"));
+                // res.written holds component ids; the archive entry is the payload filename.
+                foreach (var c in selected)
+                    archiveEntries.Add((Path.Combine(outDir, "payload", c.Payload), $"payload/{c.Payload}"));
                 job.LogLine($"> Writing {res.written.Count} component payload(s) to {outDir}");
             }));
             steps.Add((250, () =>
@@ -434,6 +443,7 @@ public static class Jobs
                     var f = Path.Combine(outDir, $"tweak-{t.Id}.reg");
                     File.WriteAllText(f, snip);
                     written.Add(Path.GetFileName(f));
+                    archiveEntries.Add((f, Path.GetFileName(f)));
                 }
                 if (written.Count > 0)
                     job.LogLine($"> Writing tweak snippets: {string.Join(", ", written)} (not applied)");
@@ -445,7 +455,9 @@ public static class Jobs
             {
                 steps.Add((300, () =>
                 {
-                    File.WriteAllText(Path.Combine(outDir, "config.json"), JsonSerializer.Serialize(new
+                    var configPath = Path.Combine(outDir, "config.json");
+                    var installPath = Path.Combine(outDir, "install.cmd");
+                    File.WriteAllText(configPath, JsonSerializer.Serialize(new
                     {
                         builtBy = "CleanDriver",
                         builtAt = DateTime.UtcNow.ToString("o"),
@@ -455,14 +467,29 @@ public static class Jobs
                         // GAP-05: additive + null-omitted honesty marker (build-package config).
                         driverTelemetrySimulated = selection.TweakOn("driver-telemetry") ? (bool?)true : null,
                     }, Json.Web));
-                    File.WriteAllText(Path.Combine(outDir, "install.cmd"), string.Join("\r\n", new[]
+                    File.WriteAllText(installPath, string.Join("\r\n", new[]
                     {
                         "@echo off",
                         "rem CleanDriver self-contained package installer (simulated)",
                         "echo Installing customized driver package %~dp0 ...",
                         "echo (simulation only — no drivers are installed)",
                     }) + "\r\n");
+                    archiveEntries.Add((installPath, "install.cmd"));
+                    archiveEntries.Add((configPath, "config.json"));
                     job.LogLine("> Writing install script and config… done");
+                }));
+                // GAP-06: fold this build's outputs into one redistributable archive,
+                // written beside the directory. Must run after config.json/install.cmd and
+                // the .reg snippets exist, or the archive would be incomplete. The packing
+                // lives in Packages (see WriteZip) — this branch only orchestrates.
+                steps.Add((350, () =>
+                {
+                    // D12-F2: outputPath arrives unnormalized; a trailing separator made
+                    // Directory.GetParent return outDir itself, writing the archive inside
+                    // the directory it archives. ZipPathFor normalizes and refuses a root.
+                    var zipPath = Packages.ZipPathFor(outDir, manifest.Version);
+                    Packages.WriteZip(zipPath, archiveEntries);
+                    job.LogLine($"> Writing {Path.GetFileName(zipPath)}… done");
                 }));
             }
             if (modified)

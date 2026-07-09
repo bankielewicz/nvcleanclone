@@ -120,4 +120,43 @@ public static class Packages
         File.WriteAllText(manifestPath, JsonSerializer.Serialize(outManifest, Json.Web));
         return (written, modified, manifestPath);
     }
+
+    // GAP-06 / D12-F2: where the archive goes — a SIBLING of outDir (owner Ruling 2).
+    //
+    // Directory.GetParent on a path with a trailing separator returns that path itself, and
+    // outputPath arrives unnormalized from the request body. The archive was therefore
+    // written *inside* the directory it archives, failing mid-walk and leaving a 22-byte
+    // orphan behind. Trim the separator before taking the parent, and refuse a drive root
+    // by name rather than dereferencing null (which threw NullReferenceException).
+    //
+    // A pure function, so the drive-root case is assertable without ever running a build
+    // into `C:\` — AC-7 offers "the path-computation level" precisely for that reason.
+    public static string ZipPathFor(string outDir, string version)
+    {
+        var baseDir = Path.TrimEndingDirectorySeparator(Path.GetFullPath(outDir));
+        var parent = Directory.GetParent(baseDir)
+            ?? throw new InvalidOperationException($"outputPath has no parent directory: {outDir}");
+        return Path.Combine(parent.FullName, $"{version}-cleandriver-package.zip");
+    }
+
+    // GAP-06: packs one redistributable archive from THIS build's explicit output list.
+    //
+    // D12-F1: it used to walk outDir with CreateFromDirectory. Nothing ever cleans that
+    // directory, so rebuilding a version with a smaller selection archived the previous
+    // build's leftovers — payloads the archive's own manifest disowned — and reported
+    // `done`. The caller now names every entry, so the archive can only contain what this
+    // run produced. Nothing on disk is deleted: outDir is user-supplied, and a recursive
+    // clean there could destroy a user's files.
+    //
+    // Lives here rather than in Jobs.cs (the register's original seam) because the
+    // no-execution guard forbids the compression type's name in that file; zipping
+    // CleanDriver's own output belongs to the package writer anyway.
+    public static string WriteZip(string zipPath, IEnumerable<(string abs, string entry)> files)
+    {
+        if (File.Exists(zipPath)) File.Delete(zipPath);   // re-runs overwrite cleanly
+        using var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        foreach (var (abs, entry) in files)
+            zip.CreateEntryFromFile(abs, entry);
+        return zipPath;
+    }
 }
