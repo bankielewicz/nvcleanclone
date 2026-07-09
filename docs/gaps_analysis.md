@@ -2,13 +2,14 @@
 
 | | |
 |---|---|
+| **STATUS** | **CLOSED — fully executed 2026-07-09.** All six gaps merged: GAP-01 (PR #3), GAP-02 (PR #4), GAP-03 (PR #5), GAP-04 (PR #6), GAP-05 (PR #8), GAP-06 (PR #12). `specs/nvcleanstall/parity.md` §2 re-graded 2026-07-09 to reflect the outcomes. New work does NOT reopen this register — it goes in a successor register seeded from the review candidates list (first known candidates: the never-cleaned build output directory surfaced by the D12 review; `outputPath` validation). §4's out-of-scope fence outlives the closure. |
 | **Date** | 2026-07-08 |
 | **Baseline** | `main` @ `c94de87` (initial CleanDriver clone + CONTRIBUTING.md; all 5 acceptance criteria pass per `specs/nvcleanstall/parity.md`; **no test project exists yet**; no CI). |
-| **Authority** | Authoritative, closed task list for closing the 9 `simplified` features in `specs/nvcleanstall/parity.md` §2 toward real-driver parity. Items not in §3 are out of scope (§4), without exception. |
+| **Authority** | Authoritative, closed task list for closing the `simplified` features in `specs/nvcleanstall/parity.md` §2 toward real-driver parity — 9 of the 10 (count corrected 2026-07-09: baseline parity.md graded **10** rows `simplified`; this register originally said 9 and never named the tenth, **FEAT-004** (use driver file on disk), whose closure requires real package parsing and therefore belongs to **GAP-OUT-1**, not to any gap here). Items not in §3 are out of scope (§4), without exception. |
 | **Gate** | **Every feature this register closes is proven against the real thing** — real NVIDIA driver metadata and a real downloaded installer file on disk — while the safety boundary (never execute an installer, never install a driver, never write the live registry) stays intact except where a gap here explicitly lifts a named part of it with the AC that proves the lift is opt-in and reversible. |
 
 > **Naming caution:**
-> - **"Simplified" (parity.md status) vs. "GAP" (this register):** each of the 9 `simplified` rows in `specs/nvcleanstall/parity.md` §2 maps to exactly one GAP below; a `parity` row is already done and is never a GAP.
+> - **"Simplified" (parity.md status) vs. "GAP" (this register):** each `simplified` row in `specs/nvcleanstall/parity.md` §2 maps to exactly one GAP below, **except FEAT-004**, which maps to GAP-OUT-1 (deferred, correction dated 2026-07-09 — the original text said "9 rows" and left FEAT-004 unmapped); a `parity` row is already done and is never a GAP.
 > - **"Catalog" is overloaded:** the *mock catalog* is `nvcleanstall/data/catalog.json` (5 hard-coded releases). The *live catalog* is NVIDIA's lookup service. GAP-01 makes the catalog **provider-backed** so both are the same code path with different providers — do not conflate "the JSON file" with "the catalog concept."
 > - **"Download" is overloaded:** the current `StartDownload` (`nvcleanstall/Lib/Jobs.cs:68`) is a *simulated progress animation* that copies nothing. GAP-02's *real download* fetches actual bytes to disk. They are different jobs; GAP-02 replaces the simulation on the live path only.
 > - **"Install" vs. "download":** downloading a real installer (GAP-02, permitted) is NOT installing it (executing it — forbidden, §4). The distinction is load-bearing for the safety boundary.
@@ -86,7 +87,7 @@ Replace the simulated download on the **live** path with a real byte-for-byte fe
 
 Honored without exception, however natural it feels while in the code. Each names its real destination.
 
-- **GAP-OUT-1 — Real NVIDIA package parsing (7z/`setup.cfg`).** Extracting a downloaded installer to derive the *real* component list. Deferred: this is `specs/nvcleanstall/parity.md` §3 next-step 1; it requires an extractor and lifts a boundary (extraction) — a future register only. Until then the component screen uses the mock manifest with the "sample component list" label (GAP-02).
+- **GAP-OUT-1 — Real NVIDIA package parsing (7z/`setup.cfg`).** Extracting a downloaded installer to derive the *real* component list. **Owns FEAT-004** (use driver file on disk) — the one `simplified` row no gap in §3 closes (mapping made explicit 2026-07-09). Deferred: this is `specs/nvcleanstall/parity.md` §3 next-step 1; it requires an extractor and lifts a boundary (extraction) — a future register only. Until then the component screen uses the mock manifest with the "sample component list" label (GAP-02).
 - **GAP-OUT-2 — Executing or installing any driver.** Forbidden permanently by the safety boundary (`CONTRIBUTING.md`, `specs/nvcleanstall/spec.md` §1). No gap here lifts it.
 - **GAP-OUT-3 — Applying tweaks to the live registry.** `specs/nvcleanstall/parity.md` §3 next-step 4. The app emits `.reg` files it never imports; making them apply for real is a future register with its own opt-in/elevation ADR.
 - **GAP-OUT-4 — Native OS file/folder pickers in the WebView2 shell.** `specs/nvcleanstall/parity.md` §3 next-step 5. Useful but independent of real-driver parity; deferred to a follow-up UI register. Browse… keeps the bundled-sample shortcut.

@@ -1,12 +1,16 @@
 # Changelog
 
 All notable changes to this repository. Entries are dated (no semantic versions yet — the
-project has no releases). Nothing aspirational: an entry exists only for work that is
-merged, or is explicitly marked as an open PR.
+project has no releases). Nothing aspirational: **an entry exists only for merged work**,
+added when its PR merges. Open work is not recorded here — `gh pr list` is the source of
+truth for in-flight PRs, and is accurate for free. (This file previously kept an
+"Unreleased (open PRs)" section; it went stale on every merge because nothing in the merge
+flow updated it, and it caused a merge conflict on three consecutive PRs — CL-1. Removed
+2026-07-09.)
 
-## Unreleased (open PRs)
+## 2026-07-09
 
-- **GAP-06 — true single-file package output** (open PR): the **Build package** action now
+- **GAP-06 — true single-file package output** (`99f53a1`, PR #12, merged): the **Build package** action now
   additionally writes one redistributable archive,
   `output/<version>-cleandriver-package.zip`, containing the customized package tree
   (`manifest.json`, `payload/<selected>.bin`, `install.cmd`, `config.json`, and any
@@ -23,7 +27,7 @@ merged, or is explicitly marked as an open PR.
   recorded in the GAP-06 register entry. The bundled `install.cmd` remains the simulated,
   non-executing installer: nothing is executed, extracted, or installed, nothing on disk
   is ever deleted, and the `NoExecutionGuardTests` safety pin is unedited and green.
-- **AI fix-loop workflow** (`docs/ai-fix-loop-workflow.html`, open): a self-contained HTML
+- **AI fix-loop workflow** (`docs/ai-fix-loop-workflow.html`; `310c83b`, PR #11, merged): a self-contained HTML
   reference documenting the third side of the AI→AI loop — what a cold *implementer* session
   does when a reviewer hands back a rejected PR. Covers the anatomy of a rejection (verdict +
   implementer handoff comment), the C0–C7 checkpoint spine as the only context-clear-durable
@@ -34,21 +38,21 @@ merged, or is explicitly marked as an open PR.
   conventions (handoff-granted, not repo law), and the closing report + delta re-review.
   Worked from the real PR #9 / `D9-F1` round and the earlier `G2-F1` round on PR #4,
   including its two disclosed deviations. Docs only; no production code.
-- **`docs/ai-handoff-workflow.html`** (open PR): documents the **builder** side of this
+- **`docs/ai-handoff-workflow.html`** (`e0f160f`, PR #10, merged): documents the **builder** side of this
   repo's AI→AI handoff loop — how a cold session ingests a kickoff prompt, orients against
   the governing docs chain, consults before designing (the three-tier ladder: `advisor` →
   `spec-driven-collaboration` when advisor is unavailable → **binding** architect rulings),
   HALTs via AskUserQuestion rather than guessing, then runs strict TDD, the three gates, one
   PR, and STOPs. Illustrated with real evidence from GAP-01…GAP-05 and the CI whitespace
   fix. Descriptive only — `CONTRIBUTING.md` and `docs/gaps_analysis.md` remain normative.
-- **Architect PR-validation workflow** (`docs/ai-review-workflow.html`, open): a
+- **Architect PR-validation workflow** (`docs/ai-review-workflow.html`; `e102a7c`, PR #9, merged): a
   self-contained HTML reference documenting how a PR written by a cold AI builder session
   is validated before merge — the eight review stages (CI triage → isolated worktree →
   gate re-run + live exercise → finder pass → adversarial verify → verdict → feedback loop
   → owner report), the feedback mechanisms back to the builder (three-tier punch list,
   paste-able fix prompt, delta re-review, candidates list), a case ledger of the reviews of
   PRs #3–#6, and a copy-paste reviewer's checklist. Docs only; no production code.
-- **GAP-05 — Signature-rebuild and driver-telemetry honesty** (PR #8, open): the
+- **GAP-05 — Signature-rebuild and driver-telemetry honesty** (`5e47617`, PR #8, merged): the
   simulated "rebuild digital signature" step and the `driver-telemetry` tweak stop
   overclaiming. Additive, null-omitted markers ride on the artifacts that record the
   tweak — `signatureSimulated: true` alongside the unchanged `signature: "rebuilt"`
@@ -61,7 +65,7 @@ merged, or is explicitly marked as an open PR.
   register amendment (`docs/gaps_analysis.md` GAP-05) recording the owner's ruling that
   resolved the "any artifact they write" ambiguity (markers on existing artifacts; no
   standalone note file).
-- **ci: whitespace-check fix** (PR #7, open): the `main` CI failed on every merge at the
+- **ci: whitespace-check fix** (`c9b3ade`, PR #7, merged): the `main` CI failed on every merge at the
   whitespace step because `git diff --check HEAD~1 HEAD` ran against a shallow (depth-1)
   clone (`HEAD~1` unknown), and a `|| echo` wrapper masked the git error as a whitespace
   failure. Fetches full history, computes an honest base per event, drops the masking
