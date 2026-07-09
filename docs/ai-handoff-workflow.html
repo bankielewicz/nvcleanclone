@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Handoff Execution Workflow — CleanDriver · v1.0 · 2026-07-08</title>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1a1a1a; --muted:#5a5f66; --line:#d9dde3;
+    --accent:#0b6b3a; --accent-bg:#eef6f1; --code-bg:#f5f6f8; --code-fg:#24292f;
+    --warn-bg:#fdf3e7; --warn-bd:#e09b3d; --danger-bg:#fbeceb; --danger-bd:#c53030;
+    --note-bg:#eef2fb; --note-bd:#3b6db5; --kw:#b3134b;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  .wrap{display:flex;min-height:100vh}
+  nav.toc{
+    width:300px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;
+    height:100vh;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);
+    background:#fafbfc;font-size:13.5px;
+  }
+  nav.toc h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 6px}
+  nav.toc h2:first-child{margin-top:0}
+  nav.toc a{display:block;color:var(--fg);text-decoration:none;padding:3px 8px;border-radius:4px;line-height:1.35}
+  nav.toc a:hover{background:var(--accent-bg);color:var(--accent)}
+  nav.toc .title{font-weight:700;font-size:15px;margin-bottom:4px;color:var(--accent)}
+  nav.toc .meta{font-size:11.5px;color:var(--muted);margin-bottom:14px}
+  main{flex:1;min-width:0;max-width:980px;margin:0 auto;padding:40px 48px 120px}
+  h1{font-size:30px;line-height:1.2;margin:0 0 6px}
+  h2{font-size:23px;margin:42px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--line)}
+  h3{font-size:18px;margin:30px 0 8px}
+  h4{font-size:15.5px;margin:22px 0 6px;color:#222}
+  p{margin:9px 0}
+  .lead{font-size:16.5px;color:#333}
+  code,kbd{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;font-size:13px}
+  code.inline{background:var(--code-bg);color:var(--code-fg);padding:1px 5px;border-radius:3px}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:6px;padding:13px 15px;overflow-x:auto;margin:12px 0}
+  pre code{background:none;padding:0;color:var(--code-fg);font-size:13px;line-height:1.5}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:#f3f5f7;font-weight:600}
+  tr:nth-child(even) td{background:#fbfcfd}
+  .callout{border-left:4px solid;padding:11px 15px;border-radius:0 6px 6px 0;margin:14px 0}
+  .callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+  .note{background:var(--note-bg);border-color:var(--note-bd)}
+  .warn{background:var(--warn-bg);border-color:var(--warn-bd)}
+  .danger{background:var(--danger-bg);border-color:var(--danger-bd)}
+  .callout .lbl{font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.06em;display:block;margin-bottom:2px}
+  .note .lbl{color:var(--note-bd)} .warn .lbl{color:#a36a14} .danger .lbl{color:var(--danger-bd)}
+  ul,ol{padding-left:24px;margin:9px 0}
+  li{margin:3px 0}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11.5px;font-weight:600;letter-spacing:.02em}
+  .pill.full{background:#e3f3e8;color:#1a7d43}
+  .pill.partial{background:#fdf0dd;color:#a36a14}
+  .pill.na{background:#eeeef0;color:#666}
+  .pill.must{background:#fbe5e5;color:#b3134b}
+  hr{border:none;border-top:1px solid var(--line);margin:30px 0}
+  .docbar{background:var(--accent);color:#fff;padding:14px 48px;font-size:13px;display:flex;gap:18px;flex-wrap:wrap}
+  .docbar b{font-weight:600}
+  .docbar .st{margin-left:auto;background:rgba(255,255,255,.18);padding:2px 10px;border-radius:10px;font-weight:600}
+  blockquote{margin:12px 0;padding:2px 0 2px 16px;border-left:3px solid var(--accent);color:#333;font-style:italic}
+  blockquote p{margin:4px 0}
+  figure{margin:20px 0;text-align:center}
+  figure svg{max-width:100%;height:auto}
+  figcaption{font-size:12.5px;color:var(--muted);margin-top:8px}
+  .tier{border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin:14px 0}
+  .tier h4{margin-top:0}
+  .tier .auth{float:right;font-size:11px}
+  @media(max-width:920px){.wrap{flex-direction:column}nav.toc{position:static;width:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}main{padding:24px}}
+  @media print{nav.toc{display:none}main{max-width:none}}
+</style>
+</head>
+<body>
+<div class="docbar">
+  <span><b>CleanDriver</b> — AI Handoff Execution Workflow</span>
+  <span>Doc v1.0</span>
+  <span>Role: builder session</span>
+  <span>Date: 2026-07-08</span>
+  <span class="st">STATUS: DESCRIPTIVE</span>
+</div>
+<div class="wrap">
+<nav class="toc">
+  <div class="title">Handoff Workflow</div>
+  <div class="meta">How a cold builder session executes a plan authored by another AI session</div>
+  <h2>Orientation</h2>
+  <a href="#purpose">1. Purpose &amp; audience</a>
+  <a href="#inbound">2. Anatomy of an inbound handoff</a>
+  <a href="#chain">3. The governing chain</a>
+  <a href="#loop">4. The execution loop</a>
+  <h2>Before writing code</h2>
+  <a href="#ladder">5. The consultation ladder</a>
+  <a href="#halt">6. The HALT protocol</a>
+  <h2>While writing code</h2>
+  <a href="#tdd">7. TDD contract &amp; evidence</a>
+  <a href="#gates">8. Gates &amp; the PR contract</a>
+  <a href="#return">9. Return contract &amp; punch list</a>
+  <h2>Evidence</h2>
+  <a href="#examples">10. Worked examples</a>
+  <a href="#antipatterns">11. Anti-patterns</a>
+  <a href="#appendix">12. Appendix</a>
+</nav>
+
+<main>
+
+<h1 id="purpose">Executing a plan written by another AI</h1>
+<p class="lead">In this repository an <b>architect session</b> writes the plan and a <b>cold builder session</b> executes it. The two never share a context window. Everything that survives the gap between them is a document: a register (<code class="inline">docs/gaps_analysis.md</code>), a kickoff prompt (<code class="inline">prompts/gap-0N-implementation-prompt.md</code>), and a review comment on a pull request.</p>
+
+<p>This page documents the <b>builder side</b> of that exchange — the loop actually followed while delivering GAP-01 through GAP-05 and the CI fix. It is a playbook, not a retrospective, but every rule below is illustrated with something that really happened, because the parts most worth writing down are the parts that were nearly gotten wrong.</p>
+
+<p>The single sentence the whole workflow reduces to closes both documents. The register states it for the series it governs — verbatim, the last line of <code class="inline">docs/gaps_analysis.md</code>:</p>
+
+<blockquote><p>Return contract: one PR per gap against <code class="inline">main</code>, never merged; STOP for owner review between gaps; HALT via AskUserQuestion on any ambiguity.</p></blockquote>
+
+<p>The kickoff prompt closes with the same contract, narrowed to the one gap it carries — verbatim, the last line of <code class="inline">prompts/gap-01-implementation-prompt.md</code>:</p>
+
+<blockquote><p>Return contract: one PR against <code class="inline">main</code>, never merged; report PR URL and STOP; HALT via AskUserQuestion on any ambiguity.</p></blockquote>
+
+<p>Same contract, two scopes: the register governs the series, the prompt governs the session. Neither sentence is a paraphrase of the other, and neither is paraphrased here — a page arguing that citations should be checkable earns nothing by asking to be trusted.</p>
+
+<div class="callout note">
+  <span class="lbl">Audience</span>
+  <p>A builder session (human or AI) picking up a handoff document cold. If you are <em>authoring</em> the handoff instead, you want the register's §2 delivery structure and the kickoff-prompt template — not this page.</p>
+</div>
+
+<h2 id="inbound">2. Anatomy of an inbound handoff</h2>
+
+<p>A handoff prompt is not prose to be skimmed. It has a fixed six-part shape, and each part is load-bearing. Using <code class="inline">prompts/gap-01-implementation-prompt.md</code> as the reference specimen:</p>
+
+<table>
+  <tr><th>Part</th><th>What it does</th><th>Why the builder cannot skip it</th></tr>
+  <tr><td><b>Cold-start framing</b></td><td>Declares the authoritative register and the mandated <em>read order</em>.</td><td>It names which document wins when two disagree. Without it, "the code says X, the spec says Y" has no resolution rule.</td></tr>
+  <tr><td><b>Scope discipline</b></td><td>What this slice IS; an explicit "Do NOT implement GAP-02 through GAP-06"; the §4 out-of-scope fence.</td><td>Adjacent work always looks natural from inside the code. The fence is what stops a one-gap PR from becoming three.</td></tr>
+  <tr><td><b>Mandatory workflow</b></td><td>Numbered 1–9: preconditions, worktree, TDD, gates, self-review, one PR, stop.</td><td>It is the acceptance criteria for <em>process</em>, and process failures get a PR returned unreviewed.</td></tr>
+  <tr><td><b>Halt rules</b></td><td>When to stop and ask instead of deciding.</td><td>See <a href="#halt">§6</a>. This is the highest-leverage section in the document.</td></tr>
+  <tr><td><b>Technical anchors</b></td><td>Watchpoints: stack, run modes, single-owner seams to reuse, model shapes.</td><td>Each is prefixed <em>"verify in-repo before relying on them"</em> — the architect is explicitly telling you it may be stale.</td></tr>
+  <tr><td><b>Provenance + return contract</b></td><td>Who wrote it, from which commit, for whom, and how to hand it back.</td><td>It tells you what "done" means. Usually: open a PR, report the URL, stop.</td></tr>
+</table>
+
+<div class="callout warn">
+  <span class="lbl">Anchors are hints, not facts</span>
+  <p>The register itself says of the live NVIDIA endpoint: <em>"Verify the exact response shape live … before parsing; the parser is written against the recorded fixture, not memory."</em> Treat every technical anchor the same way. Open the file before citing it.</p>
+</div>
+
+<h2 id="chain">3. The governing chain</h2>
+
+<p>Before any code is written, the documents are read <b>in order</b>, because they are ordered by authority. From <code class="inline">CLAUDE.md</code>, verbatim:</p>
+
+<blockquote><p>The docs chain is authoritative and ordered: <code class="inline">specs/nvcleanstall/spec.md</code> (scope cut, FRs, ACs, stack pin) → <code class="inline">specs/nvcleanstall/progress.md</code> (milestone status) → <code class="inline">specs/nvcleanstall/parity.md</code> (verified feature-parity table) → <code class="inline">docs/gaps_analysis.md</code> (<b>the closed task register for current work</b> — its §4 out-of-scope fence is absolute) → <code class="inline">prompts/</code> (cold-session kickoff prompts). <code class="inline">CONTRIBUTING.md</code> binds process: one slice = one worktree (<code class="inline">../nvcleanclone-&lt;name&gt;</code>) = one branch (<code class="inline">feat/&lt;slug&gt;</code> / <code class="inline">docs/&lt;slug&gt;</code>) = one PR; <b>never merge — the owner merges</b>.</p></blockquote>
+
+<p>Two properties of this chain matter more than its contents:</p>
+<ol>
+  <li><b>The register is closed.</b> "Items not in §3 are out of scope (§4), without exception." A good idea discovered mid-implementation is not a licence to implement it — it goes in the PR body as a note for the owner.</li>
+  <li><b>The fence is absolute.</b> §4 is honored <em>"without exception, however natural it feels while in the code."</em> Some fences are permanent safety boundaries (never execute an installer, never write the live registry); a gap may lift only a <em>named</em> part of one, and only with the acceptance criterion that proves the lift is narrow.</li>
+</ol>
+
+<h2 id="loop">4. The execution loop</h2>
+
+<p>The loop is deliberately front-loaded: almost all of the judgement happens before the first line of production code, because that is where a wrong turn is cheapest to undo.</p>
+
+<figure>
+<svg viewBox="0 0 720 600" role="img" aria-labelledby="flow-title flow-desc" xmlns="http://www.w3.org/2000/svg">
+  <title id="flow-title">The builder execution loop</title>
+  <desc id="flow-desc">Ingest the handoff, orient read-only, consult before designing, HALT on ambiguity, then test-driven development, gates, pull request, and stop for owner review. A punch-list review loops back to the TDD stage.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5a5f66"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system,Segoe UI,Roboto,sans-serif" font-size="13">
+
+    <rect x="40" y="16" width="240" height="42" rx="6" fill="#eef6f1" stroke="#0b6b3a"/>
+    <text x="160" y="42" text-anchor="middle" fill="#0b6b3a" font-weight="600">1 · Ingest the handoff</text>
+
+    <rect x="40" y="90" width="240" height="42" rx="6" fill="#fafbfc" stroke="#d9dde3"/>
+    <text x="160" y="110" text-anchor="middle">2 · Orient — read-only</text>
+    <text x="160" y="125" text-anchor="middle" font-size="11" fill="#5a5f66">read the chain, open every seam</text>
+
+    <rect x="40" y="164" width="240" height="46" rx="6" fill="#eef2fb" stroke="#3b6db5"/>
+    <text x="160" y="184" text-anchor="middle" fill="#3b6db5" font-weight="600">3 · Consult before designing</text>
+    <text x="160" y="199" text-anchor="middle" font-size="11" fill="#5a5f66">advisor → collaborate → rulings</text>
+
+    <path d="M 160 240 L 250 272 L 160 304 L 70 272 z" fill="#fdf3e7" stroke="#e09b3d"/>
+    <text x="160" y="277" text-anchor="middle" font-weight="600" fill="#a36a14">Ambiguity?</text>
+
+    <rect x="400" y="250" width="270" height="46" rx="6" fill="#fbeceb" stroke="#c53030"/>
+    <text x="535" y="270" text-anchor="middle" fill="#c53030" font-weight="600">HALT · AskUserQuestion</text>
+    <text x="535" y="285" text-anchor="middle" font-size="11" fill="#5a5f66">never guess · wait for the ruling</text>
+
+    <rect x="40" y="336" width="240" height="46" rx="6" fill="#fafbfc" stroke="#d9dde3"/>
+    <text x="160" y="356" text-anchor="middle">4 · TDD</text>
+    <text x="160" y="371" text-anchor="middle" font-size="11" fill="#5a5f66">red (captured) → green → refactor</text>
+
+    <rect x="40" y="410" width="240" height="46" rx="6" fill="#fafbfc" stroke="#d9dde3"/>
+    <text x="160" y="430" text-anchor="middle">5 · Gates</text>
+    <text x="160" y="445" text-anchor="middle" font-size="11" fill="#5a5f66">build · test · diff --check</text>
+
+    <rect x="40" y="484" width="240" height="42" rx="6" fill="#fafbfc" stroke="#d9dde3"/>
+    <text x="160" y="510" text-anchor="middle">6 · Open exactly one PR</text>
+
+    <rect x="40" y="554" width="240" height="42" rx="6" fill="#eef6f1" stroke="#0b6b3a"/>
+    <text x="160" y="580" text-anchor="middle" fill="#0b6b3a" font-weight="600">7 · STOP — owner reviews</text>
+
+    <path d="M 160 58 L 160 86" stroke="#5a5f66" fill="none" marker-end="url(#ar)"/>
+    <path d="M 160 132 L 160 160" stroke="#5a5f66" fill="none" marker-end="url(#ar)"/>
+    <path d="M 160 210 L 160 238" stroke="#5a5f66" fill="none" marker-end="url(#ar)"/>
+    <path d="M 250 272 L 396 272" stroke="#c53030" fill="none" marker-end="url(#ar)"/>
+    <text x="320" y="265" text-anchor="middle" font-size="11" fill="#c53030">yes</text>
+    <path d="M 160 304 L 160 332" stroke="#5a5f66" fill="none" marker-end="url(#ar)"/>
+    <text x="175" y="322" font-size="11" fill="#5a5f66">no</text>
+    <path d="M 535 250 L 535 187 L 284 187" stroke="#3b6db5" fill="none" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+    <text x="420" y="181" text-anchor="middle" font-size="11" fill="#3b6db5">ruling resumes the loop</text>
+    <path d="M 160 382 L 160 406" stroke="#5a5f66" fill="none" marker-end="url(#ar)"/>
+    <path d="M 160 456 L 160 480" stroke="#5a5f66" fill="none" marker-end="url(#ar)"/>
+    <path d="M 160 526 L 160 550" stroke="#5a5f66" fill="none" marker-end="url(#ar)"/>
+
+    <path d="M 280 575 L 480 575 L 480 359 L 284 359" stroke="#0b6b3a" fill="none" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+    <text x="492" y="470" font-size="11" fill="#0b6b3a">punch list:</text>
+    <text x="492" y="485" font-size="11" fill="#0b6b3a">one F&lt;n&gt;: commit</text>
+    <text x="492" y="500" font-size="11" fill="#0b6b3a">per finding → STOP again</text>
+  </g>
+</svg>
+<figcaption>The loop. Steps 1–3 consume most of the judgement; step 7 is not optional.</figcaption>
+</figure>
+
+<h2 id="ladder">5. The consultation ladder</h2>
+
+<p>"Consult before designing" is not one action. There are three distinct escalation paths with <b>three different authority levels</b>, and collapsing them is the most consequential mistake available in this workflow.</p>
+
+<div class="tier">
+  <h4><span class="pill full auth">PRIMARY</span> Tier 1 — <code class="inline">advisor()</code></h4>
+  <p>A stronger reviewer model that automatically receives the <em>entire</em> conversation transcript: the task, every tool call, every result. It takes no parameters because there is nothing to summarize for it.</p>
+  <p><b>When:</b> after orientation but <em>before</em> substantive work (writing, editing, committing to an interpretation), when stuck, when considering a change of approach, and again when the work is believed complete — with the deliverable made durable first.</p>
+  <p><b>Weight:</b> serious. Deviate only on empirical failure or primary-source contradiction. A passing self-test is <em>not</em> evidence the advice was wrong — it is evidence the test does not check what the advice checks. If retrieved data and the advisor disagree, do not silently pick: surface the conflict in one more call.</p>
+</div>
+
+<div class="tier">
+  <h4><span class="pill partial auth">FALLBACK</span> Tier 2 — <code class="inline">/collaborate</code> → <code class="inline">spec-driven-collaboration</code></h4>
+  <p>Used <b>when <code class="inline">advisor</code> is unavailable</b>. It packages the design question for an external peer LLM that has <em>no access to the filesystem</em>, so the document must be self-contained. Six phases: context gathering → constitution loading → code collection → analysis &amp; template population → document generation → completion report.</p>
+  <p>Its two governing rules, verbatim from the skill:</p>
+  <blockquote>
+    <p><b>Constitution files are THE LAW</b></p>
+    <p><b>If ambiguous or conflicts detected: HALT and use AskUserQuestion</b></p>
+  </blockquote>
+  <p>Output lands at <code class="inline">tmp/collaborate-{target}-{slug}-{date}.md</code> as a ten-section package: executive summary, project context, the specific problem, <b>real code artifacts</b> (pasted, not paraphrased), what was tried, ranked hypotheses with confidence levels, specific questions, the proposed plan, a files reference, and a compliance checklist.</p>
+</div>
+
+<div class="tier">
+  <h4><span class="pill must auth">BINDING</span> Tier 3 — architect rulings</h4>
+  <p>A ruling from the architect session that authored the register. It outranks both tiers above and the builder's own judgement.</p>
+  <p>The relationship between Tier 2 and Tier 3 is stated explicitly in <code class="inline">tmp/architect-response-gap02-design-2026-07-08.md</code>:</p>
+  <blockquote><p>These are <b>binding rulings</b> on register conformance and scope… If you also collect Gemini's reply, treat it as advisory: where it conflicts with a ruling here, surface the conflict — do not silently switch.</p></blockquote>
+</div>
+
+<div class="callout danger">
+  <span class="lbl">Do not flatten the ladder</span>
+  <p>A peer LLM's opinion is <b>advisory</b>. An architect ruling is <b>binding</b>. When they disagree the builder does not arbitrate — it surfaces the conflict and waits. The same rule applies to the builder's own analysis: being close to the code is not authority.</p>
+</div>
+
+<h2 id="halt">6. The HALT protocol</h2>
+
+<p>The kickoff prompt's halt rules, verbatim:</p>
+
+<blockquote>
+  <p><b>HALT if you need clarification on any requirement or detect any ambiguity</b> — including any contradiction between <code class="inline">docs/gaps_analysis.md</code>, the specs, and the code… Do not guess, do not pick an interpretation silently, do not fill gaps with plausible content.</p>
+  <p>To HALT: stop working and <b>use AskUserQuestion</b>. State the ambiguity precisely (file:line for each side), your candidate interpretations, and which you would pick and why. Wait for the answer before proceeding.</p>
+  <p>Environment blockers (SDK missing, push rejected, endpoint unreachable when an AC needs it, worktree path unwritable) are HALT conditions too — report exactly what failed; never work around them by weakening or skipping tests.</p>
+</blockquote>
+
+<h3>What a HALT must carry</h3>
+<ol>
+  <li><b>The ambiguity, precisely.</b> Quote both sides with file:line. "The register says X; the code does Y."</li>
+  <li><b>Candidate interpretations.</b> Concrete and mutually exclusive — ideally with a preview of the artifact each would produce.</li>
+  <li><b>Your pick, and why.</b> HALT is not abdication. The owner should be able to answer with one click.</li>
+  <li><b>Nothing else in flight.</b> Stop working. Do not implement "the likely one" while waiting.</li>
+</ol>
+
+<div class="callout note">
+  <span class="lbl">The bar for HALTing</span>
+  <p>Not every unknown is an ambiguity. A choice with a conventional default, or a fact verifiable by opening a file, is <em>research</em> — do it. A HALT is for a fork where the register genuinely underdetermines the deliverable, where both readings produce different artifacts, and where guessing wrong means shipping the wrong thing behind green tests.</p>
+</div>
+
+<h2 id="tdd">7. TDD contract &amp; evidence</h2>
+
+<p>TDD here is a <em>reviewable</em> property of the commit history, not a private practice. From <code class="inline">CONTRIBUTING.md</code>:</p>
+
+<blockquote>
+  <p><b>No production code without a failing test that requires it.</b> If you cannot name the test that forced a line of code, the line is out of scope.</p>
+  <p><b>Commit ordering proves the discipline:</b> the test lands in the same commit as (or a commit before) the implementation it specifies — never after. A PR whose history shows implementation-then-tests gets returned without further review.</p>
+</blockquote>
+
+<h3>Two textures of "red"</h3>
+<table>
+  <tr><th>Texture</th><th>Looks like</th><th>Typical cause</th></tr>
+  <tr><td><b>Compile-level</b></td><td><code class="inline">error CS0246: type 'DownloadArtifact' could not be found</code></td><td>The test names a type or method that does not exist yet — extraction of a new seam.</td></tr>
+  <tr><td><b>Assertion-level</b></td><td><code class="inline">Assert.Null() Failure … Actual: "5ab.cd"</code></td><td>The seam exists; its behavior is wrong. The stronger of the two — it pins semantics, not shape.</td></tr>
+</table>
+
+<h3>Tests that are green from the start</h3>
+<p>Some tests never fail, and that is correct: <b>back-compat pins</b> (an existing value must not change), <b>safety pins</b> (a forbidden API must remain absent), and <b>characterization pins</b> (locking behavior that already happens to be right). They do not drive new code, so they are exempt from red-first — but the exemption must be <em>disclosed in the PR body</em>, by name. Silence here looks like a fabricated red.</p>
+
+<div class="callout warn">
+  <span class="lbl">Existing tests are pins</span>
+  <p>"Editing one to make it pass is a design smell — each such edit must be individually disclosed and justified in the PR body." A test edited to accommodate new code is the single loudest signal that the new code broke a contract.</p>
+</div>
+
+<h2 id="gates">8. Gates &amp; the PR contract</h2>
+
+<p>Three gates, run from inside the worktree, every PR, independently green:</p>
+<pre><code>dotnet build nvcleanstall/CleanDriver.csproj
+dotnet test  nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj
+git diff --check</code></pre>
+
+<p>The PR body is the deliverable's other half. It carries a red-then-green evidence table (one row per behavior, the captured failing output beside the passing one), the gate checklist, a <b>live exercise</b> proving the changed path ran against the real app rather than only unit tests, and — prominently — every deviation:</p>
+
+<blockquote><p>Scope deviations from the governing register/spec are disclosed prominently in the PR body, never hidden behind green tests.</p></blockquote>
+
+<p>Then, without exception: <b>never merge.</b> The owner merges every PR.</p>
+
+<h2 id="return">9. Return contract &amp; punch list</h2>
+
+<blockquote><p><b>Do NOT merge. Do NOT start GAP-02.</b> Report the PR URL and STOP. Expect a punch-list review comment (read via <code class="inline">gh pr view &lt;n&gt; --comments</code>); implement required findings on the same branch, one commit per finding, <code class="inline">F&lt;n&gt;:</code>-prefixed, re-run gates, post a checklist comment mapping finding → commit → test, and STOP again.</p></blockquote>
+
+<p>The loop terminates on the owner, twice: once after the PR is opened, and once after the punch list is addressed. "The next gap looks easy and I have context loaded" is precisely the reasoning the stop rule exists to defeat.</p>
+
+<h2 id="examples">10. Worked examples</h2>
+
+<h3 id="ex-gap02">GAP-02 — advisor unavailable, so the question was packaged for a peer</h3>
+<p>The GAP-02 builder session needed a design review before writing a real-download implementation, and <code class="inline">advisor</code> was not available. It invoked <code class="inline">/collaborate</code>, which produced <code class="inline">tmp/collaborate-gemini-gap02-design-2026-07-08.md</code>: ten sections, the repo's constitution quoted verbatim as law, the actual <code class="inline">Jobs.cs</code> / <code class="inline">Api.cs</code> / <code class="inline">app.js</code> source pasted in, six design decisions ranked by confidence, and pointed questions. One, verbatim:</p>
+
+<blockquote><p><b>Streaming correctness:</b> With <code class="inline">HttpCompletionOption.ResponseHeadersRead</code>, is there a hidden <code class="inline">HttpClient.Timeout</code> interaction on the <em>body</em> stream I should guard against …? Recommend a robust stall-detection pattern for a long download.</p></blockquote>
+
+<p>In parallel, the <b>architect</b> session returned binding rulings that ratified the plan and tightened it. Those rulings — not the peer's advice — became the implementation:</p>
+<ul>
+  <li>A separate download <code class="inline">HttpClient</code> with <code class="inline">Timeout = InfiniteTimeSpan</code>, liveness enforced by a per-read stall timeout.</li>
+  <li><code class="inline">File.Move(part, final, overwrite: true)</code> with the write stream disposed <em>before</em> the move, retried for antivirus-lock races.</li>
+  <li>A 2 GiB default cap; a <code class="inline">.nvidia.com</code> host guard; idempotent duplicate-version downloads.</li>
+  <li>Two <em>required</em> edge cases the builder had not raised: path-injection from untrusted live version strings (validate <code class="inline">^\d{3}\.\d{2}$</code> before any filesystem call), and returning the in-flight job on a duplicate request.</li>
+</ul>
+<p>All of them shipped. The peer reply stayed advisory.</p>
+
+<h3 id="ex-gap03">GAP-03 — the advisor caught a bug before it existed in a PR</h3>
+<p>GAP-03 looked like a pure refactor: extract the WMI-line parsing into a testable function. The advisor, called before implementation, pointed at <code class="inline">MarketingVersion</code>, which stripped dots and took the last five characters. Fed a malformed driver string it produced a <em>plausible-looking fabrication</em>:</p>
+<pre><code>"31.0.15.abcd"    → "5ab.cd"
+"garbage-version" → "rsi.on"</code></pre>
+<p>The register's own acceptance criterion demanded a "malformed driver string" case; without the advisor's prompt it would have been written to assert the garbage. The fix (require all-ASCII-digits, else surface the raw string) became the behavior the AC actually wanted, and shipped with an assertion-level red.</p>
+
+<div class="callout note">
+  <span class="lbl">Why "before" matters</span>
+  <p>Had the advisor been consulted after the tests were written, the tests would have encoded the bug and passed. Consulting <em>before</em> committing to an interpretation is what makes the advice actionable rather than merely correct.</p>
+</div>
+
+<h3 id="ex-gap05">GAP-05 — a real HALT, and a register amended in the same PR</h3>
+<p>The GAP-05 register entry required the driver-telemetry tweak to emit <em>"a <code class="inline">simulated: true</code> field in any artifact they write."</em> But the tweak writes <b>no artifact of its own</b> — it is not a <code class="inline">.reg</code>-emitting tweak — and the install receipt already carried a top-level <code class="inline">simulated: true</code> that predated the gap. The clause underdetermined the deliverable: a new note file, a field on existing artifacts, or nothing at all.</p>
+
+<p>That is a HALT. Work stopped; <code class="inline">AskUserQuestion</code> presented the candidate artifact shapes as previews. The owner ruled: put a named <code class="inline">driverTelemetrySimulated</code> marker on the artifacts that already record the tweak (receipt, customized manifest, <code class="inline">config.json</code>) — <b>no standalone note file</b>, because "a standalone note file whose entire content is 'nothing really happened' is output clutter."</p>
+
+<p>The ruling then did one more thing, and it is the part worth copying: it was written back into <code class="inline">docs/gaps_analysis.md</code> as a <b>Resolution</b> bullet in the same PR. The ambiguity closed in the register, not merely in a chat log — so the next session to read that entry cannot re-derive the same fork.</p>
+
+<h3 id="ex-ci">The CI fix — trust the gate, then verify the gate</h3>
+<p>A CI run reported <code class="inline">git diff --check found whitespace errors</code> on <code class="inline">main</code>. There were none. The step ran <code class="inline">git diff --check HEAD~1 HEAD</code> against a shallow (depth-1) checkout, so:</p>
+<pre><code>fatal: ambiguous argument 'HEAD~1': unknown revision or path not in the working tree.</code></pre>
+<p>Git exited non-zero, and a <code class="inline">|| { echo '::error::…whitespace errors'; exit 1; }</code> wrapper <b>relabelled a git error as a whitespace failure</b>. It had false-failed on every merge since CI was introduced. The gate had never once actually run.</p>
+
+<div class="callout danger">
+  <span class="lbl">Lesson</span>
+  <p>A red gate is a claim, not a fact. Reproduce it locally before believing its message — and never let an error handler assert a cause it has not established. The fix made the check honest (fetch enough history, compute a real base, let <code class="inline">git</code> print its own <code class="inline">file:line</code>) and moved it earlier, onto pull requests, where it can prevent rather than annotate.</p>
+</div>
+
+<h2 id="antipatterns">11. Anti-patterns</h2>
+
+<table>
+  <tr><th>Anti-pattern</th><th>Why it is tempting</th><th>What to do instead</th></tr>
+  <tr><td>Silently picking an interpretation</td><td>One reading seems obviously intended, and asking feels slow.</td><td>HALT. "Do not fill gaps with plausible content." A plausible wrong artifact behind green tests is the worst outcome available.</td></tr>
+  <tr><td>Letting an advisory opinion override a binding ruling</td><td>The peer LLM's answer is more detailed and arrived later.</td><td>Surface the conflict; do not silently switch. Authority is a property of the source, not the argument's polish.</td></tr>
+  <tr><td>Batching the next gap</td><td>Context is warm; the next slice is small.</td><td>One gap per session, one PR, then STOP. The register says so twice.</td></tr>
+  <tr><td>Weakening or skipping a test to route around a blocker</td><td>The gate is failing and the blocker is "environmental."</td><td>Environment blockers are HALT conditions. Report exactly what failed.</td></tr>
+  <tr><td>Implementing a good idea found in the code</td><td>It is obviously an improvement and you are right there.</td><td>"New ideas go in the PR body as notes for the owner, never into code."</td></tr>
+  <tr><td>Merging your own PR</td><td>It is green and the owner is asleep.</td><td>Never merge. Report the URL and stop.</td></tr>
+  <tr><td>Hiding a deviation behind a passing suite</td><td>The tests are green, so the change must be fine.</td><td>Disclose it prominently. Green tests are not a scope argument.</td></tr>
+</table>
+
+<h2 id="appendix">12. Appendix</h2>
+
+<h3 id="file-map">File map</h3>
+<table>
+  <tr><th>Path</th><th>Role</th></tr>
+  <tr><td><code class="inline">docs/gaps_analysis.md</code></td><td>The authoritative, closed task register. §3 is the work; §4 is the absolute fence.</td></tr>
+  <tr><td><code class="inline">prompts/gap-0N-implementation-prompt.md</code></td><td>The inbound handoff: one gap, one cold session.</td></tr>
+  <tr><td><code class="inline">CONTRIBUTING.md</code></td><td>Binds process: TDD, gates, one-slice rule, never-merge, safety invariants.</td></tr>
+  <tr><td><code class="inline">CLAUDE.md</code></td><td>The ordered docs chain and the hard safety/IP boundaries.</td></tr>
+  <tr><td><code class="inline">.github/pull_request_template.md</code></td><td>Demands the red-then-green evidence table on every PR.</td></tr>
+  <tr><td><code class="inline">.claude/skills/spec-driven-collaboration/</code></td><td>Tier-2 escalation: the six-phase peer-LLM packaging skill.</td></tr>
+  <tr><td><code class="inline">tmp/collaborate-{target}-{slug}-{date}.md</code></td><td>Its output — a self-contained ten-section package.</td></tr>
+  <tr><td><code class="inline">tmp/architect-response-*.md</code></td><td>Tier-3 binding rulings from the architect session.</td></tr>
+</table>
+
+<h3 id="quotes">The contract, in the words that bind it</h3>
+<blockquote>
+  <p>Return contract: one PR per gap against <code class="inline">main</code>, never merged; STOP for owner review between gaps; HALT via AskUserQuestion on any ambiguity.<br>
+  <span style="font-style:normal;font-size:12.5px;color:#5a5f66">— <code class="inline">docs/gaps_analysis.md</code>, Provenance</span></p>
+</blockquote>
+<blockquote>
+  <p>Honored without exception, however natural it feels while in the code.<br>
+  <span style="font-style:normal;font-size:12.5px;color:#5a5f66">— <code class="inline">docs/gaps_analysis.md</code> §4, on the out-of-scope fence</span></p>
+</blockquote>
+<blockquote>
+  <p>"Tests exist" is not evidence; "tests failed, then passed" is.<br>
+  <span style="font-style:normal;font-size:12.5px;color:#5a5f66">— <code class="inline">CONTRIBUTING.md</code>, on red evidence</span></p>
+</blockquote>
+
+<hr>
+<p style="font-size:12.5px;color:var(--muted)">Descriptive, not normative: where this page and <code class="inline">CONTRIBUTING.md</code> or <code class="inline">docs/gaps_analysis.md</code> disagree, those documents win. This page records how their rules were carried out by a builder session across GAP-01 … GAP-05 and the CI whitespace fix, 2026-07-08.</p>
+
+</main>
+</div>
+</body>
+</html>

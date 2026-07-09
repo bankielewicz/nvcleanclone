@@ -6,6 +6,13 @@ merged, or is explicitly marked as an open PR.
 
 ## Unreleased (open PRs)
 
+- **`docs/ai-handoff-workflow.html`** (open PR): documents the **builder** side of this
+  repo's AI→AI handoff loop — how a cold session ingests a kickoff prompt, orients against
+  the governing docs chain, consults before designing (the three-tier ladder: `advisor` →
+  `spec-driven-collaboration` when advisor is unavailable → **binding** architect rulings),
+  HALTs via AskUserQuestion rather than guessing, then runs strict TDD, the three gates, one
+  PR, and STOPs. Illustrated with real evidence from GAP-01…GAP-05 and the CI whitespace
+  fix. Descriptive only — `CONTRIBUTING.md` and `docs/gaps_analysis.md` remain normative.
 - **Architect PR-validation workflow** (`docs/ai-review-workflow.html`, open): a
   self-contained HTML reference documenting how a PR written by a cold AI builder session
   is validated before merge — the eight review stages (CI triage → isolated worktree →
