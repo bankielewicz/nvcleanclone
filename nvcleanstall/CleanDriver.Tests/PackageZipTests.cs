@@ -112,6 +112,28 @@ public class PackageZipTests
         Assert.Equal(onDisk, zip.Entries.Select(e => e.FullName).ToHashSet());
     }
 
+    // Building the same package twice must overwrite the archive cleanly rather than fail:
+    // the underlying directory-to-archive call refuses to write over an existing file, so
+    // WriteZip deletes first. Without that delete the second run ends in status "error".
+    [Fact]
+    public async Task PackageAction_RunTwiceIntoSameOutDir_OverwritesTheArchive()
+    {
+        var (manifest, source) = Packages.LoadCatalog("572.16");
+        var (outDir, zipPath) = Paths("572.16");
+
+        var first = Jobs.StartExecute("package", manifest, source, Sel(Selected, "msi-mode"), outDir, G());
+        await first.Completion!;
+        Assert.Equal("done", first.Status);
+
+        var second = Jobs.StartExecute("package", manifest, source, Sel(Selected, "msi-mode"), outDir, G());
+        await second.Completion!;
+
+        Assert.Null(second.Error);
+        Assert.Equal("done", second.Status);
+        using var zip = ZipFile.OpenRead(zipPath);   // a readable archive, not a corrupt/half-written one
+        Assert.Contains("manifest.json", zip.Entries.Select(e => e.FullName));
+    }
+
     // Only `package` produces an archive; `extract` behavior is unchanged.
     [Fact]
     public async Task ExtractAction_WritesNoZip()
