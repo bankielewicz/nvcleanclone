@@ -121,15 +121,24 @@ public static class Packages
         return (written, modified, manifestPath);
     }
 
-    // GAP-06: packs the customized output directory into one redistributable archive.
+    // GAP-06: packs one redistributable archive from THIS build's explicit output list.
+    //
+    // D12-F1: it used to walk outDir with CreateFromDirectory. Nothing ever cleans that
+    // directory, so rebuilding a version with a smaller selection archived the previous
+    // build's leftovers — payloads the archive's own manifest disowned — and reported
+    // `done`. The caller now names every entry, so the archive can only contain what this
+    // run produced. Nothing on disk is deleted: outDir is user-supplied, and a recursive
+    // clean there could destroy a user's files.
+    //
     // Lives here rather than in Jobs.cs (the register's original seam) because the
     // no-execution guard forbids the compression type's name in that file; zipping
-    // CleanDriver's own output belongs to the package writer anyway. zipPath is a
-    // sibling of outDir, never inside it — an archive cannot contain itself.
-    public static string WriteZip(string outDir, string zipPath)
+    // CleanDriver's own output belongs to the package writer anyway.
+    public static string WriteZip(string zipPath, IEnumerable<(string abs, string entry)> files)
     {
         if (File.Exists(zipPath)) File.Delete(zipPath);   // re-runs overwrite cleanly
-        ZipFile.CreateFromDirectory(outDir, zipPath);
+        using var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        foreach (var (abs, entry) in files)
+            zip.CreateEntryFromFile(abs, entry);
         return zipPath;
     }
 }

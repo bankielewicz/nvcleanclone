@@ -134,6 +134,74 @@ public class PackageZipTests
         Assert.Contains("manifest.json", zip.Entries.Select(e => e.FullName));
     }
 
+    // ---- D12-F1 -----------------------------------------------------------------
+    // The archive is built from THIS build's output list, not from a walk of outDir.
+    // These tests assert against LITERAL expected paths: the original suite recomputed
+    // production's own `Directory.GetParent(outDir)!` expression, so it could never
+    // falsify it, and it built into a fresh temp dir, so outDir was never dirty. Both
+    // bugs lived exactly in that gap.
+
+    // AC-1 — rebuilding into a NON-EMPTY outDir with a strictly smaller selection must not
+    // archive the previous build's payloads, nor a .reg for a tweak now switched off.
+    [Fact]
+    public async Task PackageZip_RebuildWithSmallerSelection_ExcludesPreviousBuildsLeftovers()
+    {
+        var (manifest, source) = Packages.LoadCatalog("572.16");
+        var root = TempDir.Create();
+        var outDir = Path.Combine(root, "package-572.16");
+        var zipPath = Path.Combine(root, "572.16-cleandriver-package.zip");   // literal, not re-derived
+
+        var first = Jobs.StartExecute("package", manifest, source,
+            Sel(new[] { "display-driver", "physx", "hd-audio" }, "msi-mode"), outDir, G());
+        await first.Completion!;
+        Assert.Equal("done", first.Status);
+
+        // Same outDir, smaller selection, msi-mode OFF. The leftovers are still on disk.
+        var second = Jobs.StartExecute("package", manifest, source,
+            Sel(new[] { "display-driver" }), outDir, G());
+        await second.Completion!;
+        Assert.Equal("done", second.Status);
+
+        using var zip = ZipFile.OpenRead(zipPath);
+        var entries = zip.Entries.Select(e => e.FullName).ToHashSet();
+        Assert.Contains("payload/display-driver.bin", entries);
+        Assert.DoesNotContain("payload/physx.bin", entries);      // deselected in run 2
+        Assert.DoesNotContain("payload/hd-audio.bin", entries);   // deselected in run 2
+        Assert.DoesNotContain("tweak-msi-mode.reg", entries);     // tweak switched off in run 2
+
+        // The archive agrees with its own manifest.
+        Assert.True(File.Exists(Path.Combine(outDir, "payload", "physx.bin")),
+            "the directory output is never cleaned — the leftover must remain on disk");
+    }
+
+    // AC-2 — unrelated files sitting in outDir (including a stale archive from an earlier
+    // failed run) are never swallowed into the redistributable.
+    [Fact]
+    public async Task PackageZip_StrayFilesInOutDir_AreNotArchived()
+    {
+        var (manifest, source) = Packages.LoadCatalog("572.16");
+        var root = TempDir.Create();
+        var outDir = Path.Combine(root, "package-572.16");
+        var zipPath = Path.Combine(root, "572.16-cleandriver-package.zip");
+
+        Directory.CreateDirectory(outDir);
+        File.WriteAllText(Path.Combine(outDir, "leftover.txt"), "not mine");
+        File.WriteAllText(Path.Combine(outDir, "572.16-cleandriver-package.zip"), "stale orphan");
+
+        var job = Jobs.StartExecute("package", manifest, source, Sel(Selected, "msi-mode"), outDir, G());
+        await job.Completion!;
+        Assert.Equal("done", job.Status);
+
+        using var zip = ZipFile.OpenRead(zipPath);
+        var entries = zip.Entries.Select(e => e.FullName).ToHashSet();
+        Assert.DoesNotContain("leftover.txt", entries);
+        Assert.DoesNotContain("572.16-cleandriver-package.zip", entries);   // F1b: no nested corpse
+        Assert.Equal(
+            new HashSet<string> { "manifest.json", "install.cmd", "config.json", "tweak-msi-mode.reg",
+                                  "payload/display-driver.bin", "payload/physx.bin", "payload/hd-audio.bin" },
+            entries);
+    }
+
     // Only `package` produces an archive; `extract` behavior is unchanged.
     [Fact]
     public async Task ExtractAction_WritesNoZip()
