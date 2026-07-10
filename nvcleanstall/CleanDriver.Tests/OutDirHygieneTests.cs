@@ -195,4 +195,39 @@ public class OutDirHygieneTests
         var cfg = JsonDocument.Parse(cfs.ReadToEnd()).RootElement;
         Assert.True(cfg.GetProperty("driverTelemetrySimulated").GetBoolean());
     }
+
+    // ---- HARD-02 AC-1 -------------------------------------------------------------
+    // A filesystem-root outputPath fails the job by name, before any write. Asserted through
+    // StartExecute and at the path-computation level — never by building into `C:\` (the D12
+    // AC-7 precedent: WriteCustomized would write payload/ and manifest.json into the root).
+    [Theory]
+    [InlineData("extract")]
+    [InlineData("package")]
+    public async Task RootOutputPath_FailsTheJobByName_AndWritesNothing(string action)
+    {
+        var driveRoot = Path.GetPathRoot(Path.GetFullPath(TempDir.Create()))!;   // e.g. "C:\"
+        var before = Directory.GetFileSystemEntries(driveRoot).Length;
+
+        var job = await Run(action, driveRoot, Sel(new[] { "display-driver" }, "msi-mode"));
+
+        Assert.Equal("failed", job.Status);
+        Assert.Equal("outputPath is a filesystem root; choose a folder", job.Error);
+        Assert.Equal(before, Directory.GetFileSystemEntries(driveRoot).Length);
+        Assert.False(Directory.Exists(Path.Combine(driveRoot, "payload")));
+        Assert.False(File.Exists(Path.Combine(driveRoot, "manifest.json")));
+        Assert.False(File.Exists(Path.Combine(driveRoot, "install.cmd")));
+    }
+
+    // The root check is a pure predicate, so the drive-root case is assertable without any I/O.
+    [Fact]
+    public void IsFilesystemRoot_TrueForRoots_FalseForFolders()
+    {
+        var root = Path.GetPathRoot(Path.GetFullPath(TempDir.Create()))!;
+        Assert.True(Packages.IsFilesystemRoot(root));
+        Assert.True(Packages.IsFilesystemRoot(Path.TrimEndingDirectorySeparator(root)));
+
+        var dir = TempDir.Create();
+        Assert.False(Packages.IsFilesystemRoot(dir));
+        Assert.False(Packages.IsFilesystemRoot(dir + Path.DirectorySeparatorChar));
+    }
 }

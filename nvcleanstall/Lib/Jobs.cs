@@ -341,6 +341,21 @@ public static class Jobs
             ? Path.Combine(OutputDir, $"{action}-{manifest.Version}")
             : Path.GetFullPath(outputPath);
 
+        // HARD-02: refuse a filesystem-root outputPath before ANY filesystem write. Otherwise
+        // WriteCustomized sprays payload/, manifest.json and install.cmd into the drive root,
+        // long before Packages.ZipPathFor's refusal (which stays, as defense in depth) is reached.
+        // Fails the job by name rather than throwing: the caller polls a job, and Api.cs would
+        // turn an exception into a 400 with no job to poll. All other paths remain allowed — it
+        // is the user's disk. The default outDir is never a root.
+        if (Packages.IsFilesystemRoot(outDir))
+        {
+            job.Status = "failed";
+            job.Error = Packages.RootOutputPathError;
+            job.LogLine($"> ERROR: {Packages.RootOutputPathError}", "err");
+            job.Completion = Task.CompletedTask;   // nothing runs; nothing is written
+            return job;
+        }
+
         var steps = new List<(int delayMs, Action fn)>();
         var display = selected.FirstOrDefault(c => c.Required);
         var extras = selected.Where(c => !c.Required).Select(c => c.Name).ToList();

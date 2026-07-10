@@ -121,6 +121,19 @@ public static class Packages
         return (written, modified, manifestPath);
     }
 
+    // HARD-02: the error a root outputPath fails with. Named, so tests and the UI can match it.
+    public const string RootOutputPathError = "outputPath is a filesystem root; choose a folder";
+
+    // HARD-02: is this path a filesystem root (its parent is null)? `outputPath` is user-supplied
+    // and reaches WriteCustomized before PR #12's zip-step guard ever runs, so `C:/` would spray
+    // payload/, manifest.json and install.cmd straight into the drive root.
+    //
+    // A pure predicate: the drive-root case is assertable without running a build against `C:\`
+    // (the D12 AC-7 precedent). Trims a trailing separator first — Directory.GetParent returns
+    // the path itself for "C:\dir\", and null for a root either way.
+    public static bool IsFilesystemRoot(string path) =>
+        Directory.GetParent(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path))) is null;
+
     // HARD-01: remove exactly the artifacts a PRIOR CleanDriver build declared it wrote, then
     // let the caller write fresh. "Undo what that manifest says was written", never "empty the
     // directory": outDir is user-supplied, so foreign files must always survive.
