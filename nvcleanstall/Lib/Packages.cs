@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Text;
 using System.Text.Json;
 
 namespace CleanDriver.Lib;
@@ -21,6 +22,11 @@ public static class Packages
     // data/packages/ so extract/build read sample payloads — never the downloaded .exe.
     public static (Manifest manifest, PackageSource source) LoadSampleTemplate(string version)
     {
+        // GAP-S01 Sink 6: this client-supplied version becomes manifest.Version and is later
+        // interpolated into path names (Jobs.cs default outDir, ZipPathFor). Validate it here,
+        // at the relabel, before any path is derived — ReadManifest below only sees the (safe)
+        // template version, so the relabel is the sole place this untrusted value enters.
+        PackageValidation.ValidateVersion(version);
         var templateVersion = Catalog.Releases().First().Version; // newest mock package
         var dir = Catalog.PackageDir(templateVersion);
         var manifest = ReadManifest(File.ReadAllText(Path.Combine(dir, "manifest.json")))
@@ -42,8 +48,13 @@ public static class Packages
         if (File.Exists(localPath) && localPath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
         {
             using var zip = ZipFile.OpenRead(localPath);
+            // SEC-04: bound the archive (entry count, per-entry + total uncompressed size) before
+            // reading anything out of it.
+            PackageValidation.ValidateArchiveBounds(zip);
             var entry = zip.GetEntry("manifest.json")
                 ?? throw new InvalidDataException("manifest.json not found in zip root");
+            // Reject an oversized manifest by its declared length before reading it into memory.
+            PackageValidation.ValidateManifestBytes(entry.Length);
             using var reader = new StreamReader(entry.Open());
             var manifest = ReadManifest(reader.ReadToEnd());
             return (manifest, new PackageSource { Kind = "local-zip", ZipPath = localPath });
@@ -58,28 +69,42 @@ public static class Packages
 
     private static Manifest ReadManifest(string json)
     {
+        // SEC-04: bound the manifest text; SEC-01: the content validator neutralizes every
+        // untrusted Version/Id/Payload before any path is derived from them.
+        PackageValidation.ValidateManifestBytes(Encoding.UTF8.GetByteCount(json));
         var m = JsonSerializer.Deserialize<Manifest>(json, Json.Web)
             ?? throw new InvalidDataException("invalid manifest");
         if (string.IsNullOrEmpty(m.Version) || m.Components.Count == 0)
             throw new InvalidDataException("invalid manifest: version and non-empty components[] required");
         if (!m.Components.Any(c => c.Required))
             throw new InvalidDataException("invalid manifest: no required component present");
+        PackageValidation.ValidateManifest(m);
         return m;
     }
 
-    public static byte[]? ReadPayload(PackageSource source, string payloadFile)
+    // GAP-S01 (SEC-04 + SEC-01): copy one selected payload from `source` into
+    // `outDir/payload/<payloadFile>` with bounded, O(buffer) streaming — no whole-payload
+    // byte[] — and confine both the destination and (folder source) the read under their
+    // intended roots, rejecting reparse-point escapes. `payloadFile` is already a validated
+    // leaf (ReadManifest); the confinement is defense in depth. Returns bytes copied.
+    private static long CopyPayload(PackageSource source, string payloadFile, string outDir)
     {
+        var destPath = PackageValidation.EnsureConfinedRealPath(outDir, Path.Combine("payload", payloadFile));
+        Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+        using var dest = File.Create(destPath);
+
         if (source.Kind == "local-zip")
         {
             using var zip = ZipFile.OpenRead(source.ZipPath!);
-            var entry = zip.GetEntry($"payload/{payloadFile}");
-            if (entry == null) return null;
-            using var ms = new MemoryStream();
-            entry.Open().CopyTo(ms);
-            return ms.ToArray();
+            var entry = zip.GetEntry($"payload/{payloadFile}")
+                ?? throw new InvalidDataException(PackageValidation.PayloadMissing);
+            using var src = entry.Open();
+            return PackageValidation.BoundedCopy(src, dest, PackageValidation.MaxEntryBytes);
         }
-        var p = Path.Combine(source.Dir!, "payload", payloadFile);
-        return File.Exists(p) ? File.ReadAllBytes(p) : null;
+        var srcPath = PackageValidation.EnsureConfinedRealPath(source.Dir!, Path.Combine("payload", payloadFile));
+        if (!File.Exists(srcPath)) throw new InvalidDataException(PackageValidation.PayloadMissing);
+        using var fsrc = File.OpenRead(srcPath);
+        return PackageValidation.BoundedCopy(fsrc, dest, PackageValidation.MaxEntryBytes);
     }
 
     // Writes the customized package: only selected components' payloads plus a
@@ -95,9 +120,9 @@ public static class Packages
         var written = new List<string>();
         foreach (var c in selected)
         {
-            var data = ReadPayload(source, c.Payload)
-                ?? throw new InvalidDataException($"payload missing for component {c.Id}");
-            File.WriteAllBytes(Path.Combine(outDir, "payload", c.Payload), data);
+            // GAP-S01: bounded streaming copy + path confinement, replacing the unbounded
+            // ReadPayload byte[] + WriteAllBytes (SEC-04 memory, SEC-01 write sink).
+            CopyPayload(source, c.Payload, outDir);
             written.Add(c.Id);
         }
 
@@ -165,13 +190,18 @@ public static class Packages
                 || by.ValueKind != JsonValueKind.String
                 || by.GetString() != "CleanDriver") return removed;
 
-            // Its own component payloads, by the payload filename the manifest records.
+            // Its own component payloads, by the payload filename the manifest records. GAP-S01
+            // Sink 4: this prior on-disk manifest is untrusted (read raw, not through the
+            // validator), so a payload name that is not a safe leaf — `..\..\x`, a rooted path —
+            // is SKIPPED, never deleted. Skip, not throw: a malformed/hostile prior manifest must
+            // still leave the directory untouched (the ForeignOrMalformed pin).
             if (root.TryGetProperty("components", out var comps) && comps.ValueKind == JsonValueKind.Array)
                 foreach (var c in comps.EnumerateArray())
                     if (c.ValueKind == JsonValueKind.Object
                         && c.TryGetProperty("payload", out var pay)
                         && pay.ValueKind == JsonValueKind.String
-                        && !string.IsNullOrWhiteSpace(pay.GetString()))
+                        && !string.IsNullOrWhiteSpace(pay.GetString())
+                        && PackageValidation.IsSafeLeafPayload(pay.GetString()!))
                         Remove(Path.Combine(outDir, "payload", pay.GetString()!), $"payload/{pay.GetString()}");
 
             // The .reg set is exactly recoverable: the manifest records the same tweak dict the
