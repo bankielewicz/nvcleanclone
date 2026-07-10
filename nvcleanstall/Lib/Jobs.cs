@@ -227,7 +227,9 @@ public static class Jobs
         }
 
         bool ownsHandler = handler == null;
-        var http = new HttpClient(handler ?? new SocketsHttpHandler(), disposeHandler: ownsHandler)
+        // HARD-05: turn OFF automatic redirect following — the worker follows 3xx itself
+        // (GetFollowingRedirectsAsync) so each hop's host is validated before it is contacted.
+        var http = new HttpClient(handler ?? new SocketsHttpHandler { AllowAutoRedirect = false }, disposeHandler: ownsHandler)
         {
             Timeout = System.Threading.Timeout.InfiniteTimeSpan,
         };
@@ -236,6 +238,45 @@ public static class Jobs
         ActiveDownloads[version] = job.Id;
         job.Completion = Task.Run(() => RunRealDownloadAsync(job, release, destDir, http, cts));
         return job;
+    }
+
+    // HARD-05: the .nvidia.com allowlist as one predicate, shared by the initial-URL check
+    // and every redirect hop below — so the two can never drift apart.
+    private static bool IsNvidiaHost(string host) =>
+        host.Equals("nvidia.com", StringComparison.OrdinalIgnoreCase) ||
+        host.EndsWith(".nvidia.com", StringComparison.OrdinalIgnoreCase);
+
+    // HARD-05: fetch `url`, following 3xx redirects manually, bounded by MaxRedirectHops.
+    // The default SocketsHttpHandler used to follow redirects invisibly (AllowAutoRedirect),
+    // so an initial-host-only check let a real 302 pull bytes from anywhere. Now each
+    // redirect target's host is validated with IsNvidiaHost BEFORE any request reaches it;
+    // relative Location headers resolve against the hop that issued them; and the loop is
+    // bounded so it can never spin forever. Returns the final (non-redirect) response with
+    // headers read — the caller owns EnsureSuccessStatusCode and streaming, unchanged.
+    private static async Task<HttpResponseMessage> GetFollowingRedirectsAsync(
+        HttpClient http, Uri url, CancellationToken ct)
+    {
+        // `url`'s host is validated by the caller before the first request; every redirect
+        // target is validated here before it is contacted.
+        for (int redirects = 0; ; redirects++)
+        {
+            var resp = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+            int code = (int)resp.StatusCode;
+            if (code is < 300 or >= 400 || resp.Headers.Location is null)
+                return resp; // not a redirect we follow — hand it to the streaming half
+
+            if (redirects >= MaxRedirectHops)
+            {
+                resp.Dispose();
+                throw new IOException($"too many redirects (exceeded {MaxRedirectHops} hops)");
+            }
+
+            var next = new Uri(url, resp.Headers.Location); // resolves relative Location
+            resp.Dispose();
+            if (!IsNvidiaHost(next.Host))
+                throw new IOException($"refusing download from non-NVIDIA host: {next.Host}");
+            url = next;
+        }
     }
 
     private static async Task RunRealDownloadAsync(Job job, Release release, string destDir,
@@ -248,16 +289,15 @@ public static class Jobs
         try
         {
             // Defense-in-depth: only ever fetch from NVIDIA (on top of server-side
-            // provider re-resolution). Removable for mirrors — see PR body.
-            var host = new Uri(release.DownloadUrl ?? throw new IOException("release has no download URL")).Host;
-            if (!(host.Equals("nvidia.com", StringComparison.OrdinalIgnoreCase) ||
-                  host.EndsWith(".nvidia.com", StringComparison.OrdinalIgnoreCase)))
-                throw new IOException($"refusing download from non-NVIDIA host: {host}");
+            // provider re-resolution). Removable for mirrors — see PR body. The same
+            // IsNvidiaHost predicate guards every redirect hop inside the follow loop.
+            var initialUrl = new Uri(release.DownloadUrl ?? throw new IOException("release has no download URL"));
+            if (!IsNvidiaHost(initialUrl.Host))
+                throw new IOException($"refusing download from non-NVIDIA host: {initialUrl.Host}");
 
             Directory.CreateDirectory(destDir);
             long maxBytes = MaxDownloadBytes();
-            using var resp = await http.GetAsync(release.DownloadUrl,
-                HttpCompletionOption.ResponseHeadersRead, cancelToken);
+            using var resp = await GetFollowingRedirectsAsync(http, initialUrl, cancelToken);
             resp.EnsureSuccessStatusCode();
             long? total = resp.Content.Headers.ContentLength;
             if (total is 0) throw new IOException("download is empty (Content-Length 0)");
