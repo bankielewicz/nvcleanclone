@@ -2,11 +2,16 @@
 
 | Field | Value |
 |---|---|
-| **Status** | **OPEN — audited successor register, 2026-07-10.** An item is not complete until its acceptance criteria pass on merged code. |
+| **Status** | **ACTIVE — adopted as the successor register (owner-pinned 2026-07-10, D-ADOPT).** An item is not complete until its acceptance criteria pass on merged code. Wave S begins with SEC-01. |
 | **Baseline** | `main` at `b1e58a8913a2aec8824f4fbf09a3391d2da86557` (PR #21). The predecessor GAP-01…06 and `docs/hardening_register.md` HARD-01…06 remain closed; this document does not reopen them. |
 | **Scope** | Current NVCleanstall feature research, comparison with public alternatives, full production-source review, security/correctness findings, and an ordered implementation register. |
-| **Safety fence** | CleanDriver may download and inspect a driver package, but it must never execute a downloaded installer, install a driver, reboot Windows, or write the live registry. Extraction is lifted only by GAP-F03 under its exact controls. |
+| **Safety fence** | CleanDriver may download and inspect a driver package, but it must never execute a downloaded installer, install a driver, reboot Windows, or write the live registry. Extraction is lifted only by GAP-F03 under its exact controls — **owner sign-off for that lift recorded 2026-07-10 (D-WAVEF).** |
 | **Delivery law** | Strict red-first TDD; one fresh worktree, branch, and PR per item; owner merges. Security Wave S completes before real-package work. |
+
+**Owner adoption — 2026-07-10 (delegation-loop pins).**
+
+- **D-ADOPT** — this document is the active successor register; it supersedes the architect's candidates ledger (already absorbing deferred items #9 → BUG-02 and #39 → SEC-03). Wave S begins immediately with **SEC-01** (manifest path traversal), whose failing test is already reproduced and in hand.
+- **D-WAVEF** — Wave F (real NVIDIA package ingest/rebuild, GAP-F03/F04) is **in scope**. This lifts the extraction safety boundary under GAP-F03's exact controls, with owner sign-off recorded above per the standing safety rule. GAP-F01 still needs its own recorded UI ruling before build; the 7-Zip CLI interface is verified against primary sources at GAP-F03 prompt time.
 
 ## 1. Method and verified baseline
 
