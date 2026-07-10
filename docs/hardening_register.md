@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **STATUS** | **OPEN** — wave A unbuilt. Successor to `docs/gaps_analysis.md` (CLOSED 2026-07-09), seeded from the review candidates ledger per that register's closure rule: every candidate below either lands here, is deferred with a destination, or is dropped with a reason. |
-| **Date** | 2026-07-09 |
+| **STATUS** | **CLOSED 2026-07-10** — every §2 item merged: wave A (PR #15, `94aac92`), wave B (PRs #16–#19: `69a782f`, `3188547`, `a466dc2`, `9516d85`), DOCS-01 (the PR that lands this banner). Zero required review findings across the five reviews. Successor to `docs/gaps_analysis.md` (CLOSED 2026-07-09), seeded from the review candidates ledger per that register's closure rule: every candidate below either lands here, is deferred with a destination, or is dropped with a reason. |
+| **Date** | 2026-07-09 (opened) · 2026-07-10 (closed) |
 | **Baseline** | `main` @ `b94e3fe` (GAP-01…06 merged; 75/75 tests green; CI honest since PR #7; CHANGELOG records merged work only — CL-1 rule). |
 | **Authority** | Authoritative, closed task list for the defect/hardening items below. Items not in §2 are out of scope (§4), without exception. The predecessor's §4 fence (GAP-OUT-1…4) is carried forward verbatim and remains absolute. |
 | **Pins** | Maintainer-pinned 2026-07-09: **D1** outDir staleness → manifest-scoped clean (rejected: unique-default-dir — leaves user paths defective; refuse-non-empty — no deletion but every rebuild needs manual cleanup; document-only). **D2** `outputPath` → reject filesystem roots up front (rejected: system-dir denylist — maintenance burden/false positives; leave-as-is). **Wave scope**: candidates #8, #5, #4, #1 all join wave B. |
@@ -14,7 +14,7 @@ None. The test harness exists and is green at baseline (PF-1 of the predecessor 
 
 ## 2. Register
 
-### Wave A — one slice, one PR: `feat/hard-01-outdir-hygiene`
+### Wave A — one slice, one PR: `feat/hard-01-outdir-hygiene` — ✅ MERGED (PR #15, `94aac92`, 2026-07-10; 87/87 tests)
 
 **HARD-01 — Manifest-scoped clean of a previous CleanDriver build in `outDir` (pin D1; candidate #28).**
 `extract`/`package` write into `output/{action}-{version}` (no timestamp) or any user-supplied path, and nothing ever cleans it — a rebuild with a smaller selection leaves the previous run's payloads and `.reg` snippets on disk while `manifest.json` disowns them (verified pre-existing at `310c83b`; the archive is already immune since PR #12).
@@ -37,7 +37,9 @@ None. The test harness exists and is green at baseline (PF-1 of the predecessor 
 
 Wave A is **one PR** (owner: "the D1+D2 slice stays tight"); HARD-01 and HARD-02 share the `StartExecute` seam region and their tests share fixtures.
 
-### Wave B — after wave A merges; each item its own branch/PR, sequential
+### Wave B — after wave A merges; each item its own branch/PR, sequential — ✅ ALL MERGED 2026-07-10
+
+HARD-03 → PR #16 (`69a782f`, 92/92) · HARD-04 → PR #17 (`3188547`, first slice under the declared no-test-surface gate) · HARD-05 → PR #18 (`a466dc2`, 95/95, amendment A5) · HARD-06 → PR #19 (`9516d85`, 102/102).
 
 **HARD-03 — `Gpu.QueryWmi` hang guard (candidate #8).** `StandardOutput.ReadToEnd()` runs before the 5s `WaitForExit`; a wedged powershell holding stdout open hangs the first `/api/system` call indefinitely. Move to an async/timed read so the existing 5s budget bounds the whole call; on timeout, fall back to simulated exactly as the documented `WMI → simulated` order already promises. `GpuInfo` shape unchanged (back-compat pin). AC: a fake long-running process (or injected stream that never closes) yields the simulated fallback within the budget; the single-NVIDIA happy path is byte-identical.
 
@@ -47,14 +49,18 @@ Wave A is **one PR** (owner: "the D1+D2 slice stays tight"); HARD-01 and HARD-02
 
 **HARD-06 — Catalog-source marker wording (candidate #1).** The mock-catalog marker always says "(GPU not matched)" even when mock mode was chosen deliberately (`--mock-catalog` / `CLEANDRIVER_MOCK_CATALOG=1`). Carry the fallback *reason* through the provider seam and render it: deliberate mock → "sample catalog (mock mode)"; GPU unmatched → today's text; live failure → "sample catalog (live lookup failed)". Text-only change inside the existing marker element — no new screens/dialogs/controls, so no new design ruling required (rulings R1–R10 untouched). AC: `/api/catalog` carries the reason; three provider states render the three texts (curl assertions); `"source":"mock"` consumers unchanged (back-compat pin).
 
-### DOCS-01 — workflow-docs polish (architect-authored; one docs PR, no builder)
+### DOCS-01 — workflow-docs polish (architect-authored; one docs PR, no builder) — ✅ delivered by the PR carrying this banner
 
-Closes candidates **#13, #14, #18, #19, #20, #23, #24, #25** across the three `docs/ai-*-workflow.html` pages: extend the case ledger past PR #6 (+#7–#13 and the HALTs); add the enforcement-layer-vs-judgement section; mark the two gitignored paths session-local (×2 pages); source-or-soften the §7 disclosure claim; fix the §1 numbering, the TOC/heading mismatch, and the `<code>` paraphrase-as-quotation. Docs-only; TDD exemption stated per the recorded amendment (see §3).
+Closes candidates **#13, #14, #18, #19, #20, #23, #24, #25** across the three `docs/ai-*-workflow.html` pages: extend the case ledger past PR #6 (through the full merged history incl. the HALTs); add the enforcement-layer-vs-judgement section; mark the two gitignored paths session-local (×2 pages); source-or-soften the §7 disclosure claim; fix the §1 numbering, the TOC/heading mismatch, and the `<code>` paraphrase-as-quotation. Plus the CL-1 catch-up: CHANGELOG entries for merged PRs #13–#19 (candidate #38). Docs-only; TDD exemption stated per the recorded amendment (see §3).
 
 ## 3. Recorded amendments (inherited rulings, restated once)
 
 - **A1 (from GAP-01 review, D1):** `/api/sample-package` legitimately keeps a direct `Catalog.Releases()` read (`Api.cs:35`) — sample packages are mock-only; the predecessor's "no second path to catalog.json" wording carries this carve-out.
 - **A2 (from PR #10 review, D1):** docs-only PRs (`docs/<slug>` touching only `.md`/`.html`) satisfy the strict-TDD gate **vacuously** — TDD binds behavior changes and a docs page has no unit-test surface. The exemption must be *stated* in the PR body; build/test/`diff --check` still run.
+- **A3 (from PR #15 review, deviation ruled ACCEPT):** HARD-02's root check is **action-uniform** — an `install`/`silent` job with a root `outputPath` fails by name where it previously ignored the path (the register's literal "at the top of `StartExecute`" text).
+- **A4 (from PR #16 review, deviation ruled ACCEPT):** HARD-03 changes one non-hanging path — a valid-but-slow (>5 s total) WMI query is now killed and falls back to `Simulated`, where it previously eventually succeeded ("the existing 5 s budget bounds the whole call", taken literally; local cold query ~0.47 s, ~10× margin).
+- **A5 (from PR #18 review, deviation ratified):** the download redirect chain is bounded at **`MaxRedirectHops = 5`**; exceeding it fails with the named error `too many redirects (exceeded 5 hops)` (the register mandated a bound without pinning the number).
+- **A6 (process, owner-approved 2026-07-10):** frontend `wwwroot/` files have **no unit-test surface** in this repo (no JS runner; adding one is out of scope) — slices touching them declare `--no-surface '^nvcleanstall/wwwroot/'` at `slice_start`, sanctioned by the pattern appearing verbatim in the build prompt, with red/green captured as live browser/curl transcripts (established by HARD-04, reused by HARD-06).
 
 ## 4. Explicitly OUT OF SCOPE
 
@@ -73,6 +79,13 @@ Everything in the predecessor's §4, verbatim and still absolute: **GAP-OUT-1** 
 | #27 verbatim-quote verification method | **Dropped — process lesson**, codified in reviewer practice; not repo work. |
 | #30 same-version concurrent zip race | **Deferred** — PLAUSIBLE, unreproduced, single-user app; trigger: any multi-session deployment. |
 | #32 prompt-prescribed unforced production line | **Dropped — process lesson**, codified in the prompt-author's template (build prompts may sketch shapes, never prescribe production lines no AC forces). |
+| #33 root-`outputPath` e2e test writes into `C:\` if HARD-02 ever regresses | **Deferred** — PLAUSIBLE, bounded and visible; the alternative (no e2e coverage of the named error) is worse. Trigger: it ever bites; remedy sketched in the PR #15 verdict (pure-predicate fail-fast before `Run`). |
+| #34 HARD-02 action-uniform behavior | **Landed as amendment A3.** |
+| #35 `ReadBounded_SlowRead…` timing-sensitive test | **Deferred** — named flake candidate (600 ms read vs 2000 ms budget); first suspect if CI ever goes red there. |
+| #36 abandoned read thread if `proc.Kill()` itself fails | **Dropped — note only**: dedicated `LongRunning` thread (no pool starvation); an unobserved fault does not terminate the process on .NET Core. |
+| #37 HARD-03 slow-WMI-path behavior change | **Landed as amendment A4.** |
+| #38 CHANGELOG entries missing for PRs #13–#18 | **Landed in DOCS-01** (entries for #13–#19, this PR). |
+| #39 on-allowlist redirect hop may downgrade `https → http` | **Deferred** — HARD-05's register text scoped validation to host only and the fix follows it exactly; a scheme check on followed hops closes it. Trigger: next slice touching the download client. |
 
 Candidates #1, #4, #5, #8, #12, #28, #29, #31 land above (§2). #2, #7, #16, #17, #22, #26 were closed by earlier PRs. #13, #14, #18–#21, #23–#25 land in DOCS-01 (#21 as amendment A2).
 

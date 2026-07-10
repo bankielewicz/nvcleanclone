@@ -107,7 +107,8 @@
   <a href="#s7">7 · Feedback to the builder</a>
   <a href="#s8">8 · Report to the owner</a>
   <h2>Evidence</h2>
-  <a href="#ledger">Case ledger — PRs #3–#6</a>
+  <a href="#enforcement">Enforcement layer vs judgement</a>
+  <a href="#ledger">Case ledger — PRs #3–#19</a>
   <h2>Reference</h2>
   <a href="#checklist">Reviewer's checklist</a>
 </nav>
@@ -358,7 +359,24 @@ git diff --name-only 31967aa..c50cd93                     # nothing else snuck i
 </div>
 
 <!-- ─────────────────────────────────────────────── -->
-<h2 id="ledger">Case ledger — the four reviews</h2>
+<h2 id="enforcement">The enforcement layer — what is mechanical, what stays judgement</h2>
+
+<p>The stages above began as discipline in prose. Prose gets skimmed — by humans and by models — so over the project's life the invariants most likely to be skipped were converted into <strong>mechanical gates</strong> that fail closed. The division of labor as it stands:</p>
+
+<div class="tablewrap"><table>
+  <tr><th>Invariant</th><th>Enforced by</th></tr>
+  <tr><td>The reviewer never merges</td><td>A <code class="inline">PreToolUse</code> hook denies <code class="inline">gh pr merge</code> / <code class="inline">git merge</code> unconditionally — token-position matching, so a merge transcript <em>quoted in a comment</em> doesn't false-positive, and a real merge hidden in a URL form doesn't slip through. Branch protection backs it server-side.</td></tr>
+  <tr><td>No verdict without evidence</td><td>Each stage writes to a per-PR state file; a <code class="inline">check</code> command refuses until CI-is-green-on-the-exact-head-SHA, worktree, classification, gate exit codes, and (when armed) negative-path evidence all exist. The same hook blocks posting any <code class="inline">VERDICT:</code> comment while <code class="inline">check</code> fails.</td></tr>
+  <tr><td>A reviewed SHA is the head SHA</td><td>Triage records both and fails on mismatch — including the fail-closed case where CI is "pass" but the SHA it ran on is unrecorded.</td></tr>
+  <tr><td>Guards get negative-path proof</td><td>Classification arms a mandatory negative-evidence gate whenever the diff touches anything whose job is to say no. A green signal proves nothing about a guard; the reviewer must feed it bad input and record it firing. (This was the check most skipped when it was prose.)</td></tr>
+  <tr><td>A muted TDD gate is sanctioned or it is a finding</td><td>A slice may declare frontend paths test-surface-free only if the pattern appears <em>verbatim</em> in the build prompt it was armed with — the arming script refuses otherwise, and the commit-order gate re-verifies on every run.</td></tr>
+  <tr><td>A hold ships an executable fix prompt</td><td><code class="inline">check</code> rejects a hold with no handoff, and rejects a handoff that lacks the checkpoint spine, never names its executor skill, or has no STOP condition.</td></tr>
+</table></div>
+
+<p>What deliberately <strong>stays judgement</strong>: whether a finding is real (CONFIRMED needs a repro or <code class="inline">file:line</code> plus a concrete failure scenario — a gate can check that evidence <em>exists</em>, not that it's honest); ruling each deviation ACCEPT or REJECT; whether a declared no-test-surface path <em>truly</em> has no runner and whether the armed plan is the genuine prompt; and the wins/non-issues sections that fence the next diff. The pattern behind every conversion: <em>rationale lives in the gate's deny message, at the moment of violation — not in standing prose someone has to remember.</em></p>
+
+<!-- ─────────────────────────────────────────────── -->
+<h2 id="ledger">Case ledger — the reviews to date</h2>
 
 <div class="tablewrap"><table>
   <tr>
@@ -399,11 +417,95 @@ git diff --name-only 31967aa..c50cd93                     # nothing else snuck i
     <td>—</td>
     <td>The loop working in the other direction: the builder found a genuine ambiguity in the register (a marker mandated for an artifact the tweak never writes) and <em>stopped instead of guessing</em>. The architect ruled; the ruling rides into the PR as a register amendment.</td>
   </tr>
+  <tr>
+    <td>#7</td>
+    <td>CI whitespace-check fix</td>
+    <td><span class="pill full">APPROVE</span></td>
+    <td>—</td>
+    <td>A <code class="inline">ci</code>-class diff: the guard gate armed automatically, and the review proved the negative case — dirty input planted, the fixed check observed <em>rejecting</em> it. A CI guard that only ever shows green has proven nothing.</td>
+  </tr>
+  <tr>
+    <td>#8</td>
+    <td>GAP-05 — signature &amp; telemetry honesty</td>
+    <td><span class="pill full">APPROVE</span></td>
+    <td>53 → 62</td>
+    <td>The post-HALT build: the architect's ruling rode in as a register amendment; honesty markers (<code class="inline">signatureSimulated</code>, <code class="inline">driverTelemetrySimulated</code>) verified in the written artifacts, not just the log lines.</td>
+  </tr>
+  <tr>
+    <td>#9–#11</td>
+    <td>The three workflow docs (this page and its two siblings)</td>
+    <td><span class="pill must">HOLD</span> → <span class="pill full">APPROVE</span> ×3</td>
+    <td>docs-only</td>
+    <td>Docs get the same discipline: each held on confirmed findings (a gitignored path presented as clonable; a paraphrase rendered as a quotation; a stale CHANGELOG section causing its third consecutive merge conflict — CL-1). Each fixed by a cold <code class="inline">fix-workflow</code> session and delta re-reviewed.</td>
+  </tr>
+  <tr>
+    <td>—</td>
+    <td>GAP-06 — seam collision</td>
+    <td><span class="pill partial">HALT (pre-code)</span></td>
+    <td>—</td>
+    <td>The second pre-code HALT: the register named a seam (<code class="inline">ZipFile</code> in <code class="inline">Jobs.cs</code>) that a safety guard test forbade by token. Reproduced, owner-ruled to <code class="inline">Packages.cs</code>, register amended — no guess shipped.</td>
+  </tr>
+  <tr>
+    <td>#12</td>
+    <td>GAP-06 — true single-file package</td>
+    <td><span class="pill must">HOLD (F1–F2)</span> → <span class="pill full">APPROVE</span></td>
+    <td>68 → 75</td>
+    <td><strong>D12-F1</strong>: the archive walked a never-cleaned directory, shipping a previous build's payloads while reporting <code class="inline">done</code> — pre-existing on <code class="inline">main</code>, verified fairly before blaming the PR. <strong>D12-F2</strong>: a trailing-separator <code class="inline">outputPath</code> nested the archive inside the folder it archived. Both reproduced live over HTTP.</td>
+  </tr>
+  <tr>
+    <td>#13</td>
+    <td>Post-GAP docs refresh (CL-1 fix, parity re-grade)</td>
+    <td><span class="pill must">HOLD (F1–F2)</span> → <span class="pill full">APPROVE</span></td>
+    <td>docs-only</td>
+    <td>The architect's own PR, held by the same standard: two factual errors in the provenance narrative ("30 → 75 tests" — the truth was 0 → 75; "all green at each merge" — four post-merge reds predated PR #7). Caught by evidence, fixed by a cold session.</td>
+  </tr>
+  <tr>
+    <td>#14</td>
+    <td>Hardening register (successor task list)</td>
+    <td><span class="pill partial">no cold review</span></td>
+    <td>docs-only</td>
+    <td>Architect-authored register, merged on the owner's own read — recorded here so the ledger stays honest about which merges carried a cold verdict and which did not.</td>
+  </tr>
+  <tr>
+    <td>#15</td>
+    <td>HARD-01+02 — outDir hygiene, root rejection</td>
+    <td><span class="pill full">APPROVE</span></td>
+    <td>75 → 87</td>
+    <td>First review against <strong>pre-declared watchpoints</strong> (published with the build prompt, verified against the diff). The no-recursive-delete guard falsified by planting <code class="inline">Directory.Delete(…, true)</code>; root rejection proven live against <code class="inline">C:\</code> (entry count unchanged). Ratified the builder's refusal to run a red that would have written into the drive root.</td>
+  </tr>
+  <tr>
+    <td>#16</td>
+    <td>HARD-03 — WMI read hang guard</td>
+    <td><span class="pill full">APPROVE</span></td>
+    <td>87 → 92</td>
+    <td>Guard falsified three ways, including restoring the original defect — the test <em>hangs</em> rather than fails, which is exactly why its assertion is a wall-clock bound. A behavioral red that cannot terminate is captured as a bounded-cap transcript.</td>
+  </tr>
+  <tr>
+    <td>#17</td>
+    <td>HARD-04 — server-initiated cancel terminates polling</td>
+    <td><span class="pill full">APPROVE</span></td>
+    <td>92 (suite untouched)</td>
+    <td>A four-line JS fix under the <strong>declared no-test-surface gate</strong> (no JS runner in the repo): red and green are browser transcripts. Reviewer reproduced both directions with an independent instrument — same +20-polls-per-3s defect, same one-poll fix.</td>
+  </tr>
+  <tr>
+    <td>#18</td>
+    <td>HARD-05 — per-hop redirect validation</td>
+    <td><span class="pill full">APPROVE</span></td>
+    <td>92 → 95</td>
+    <td>The builder pre-empted a born-green red (unfixed 302s already produced <code class="inline">failed</code>+empty) by pinning reds to the named signals. Reviewer falsified the hop check, the cap's off-by-one, and relative-<code class="inline">Location</code> resolution; live download at 99 MB/s confirmed <code class="inline">AllowAutoRedirect=false</code> broke nothing.</td>
+  </tr>
+  <tr>
+    <td>#19</td>
+    <td>HARD-06 — catalog-marker reason (<code class="inline">sourceDetail</code>)</td>
+    <td><span class="pill full">APPROVE</span></td>
+    <td>95 → 102</td>
+    <td>Wave B's close. The subtlest pin — a directly-constructed mock provider must never claim deliberateness — encoded as a negative test the reviewer's falsification confirmed fires. Both server modes probed live; DOM census against <code class="inline">main</code> proved zero new elements.</td>
+  </tr>
 </table></div>
 
 <div class="callout note">
   <span class="lbl">Read the ledger honestly</span>
-  <p>One finding in four reviews is not evidence the review is unnecessary. It is one HTTP 500 that would have shipped, caught by a technique — write the failing test — that costs about ten minutes. Three approvals with zero findings are also the review working: they are what licences the owner to merge without reading 600 lines of diff.</p>
+  <p>Findings are rare and that is the point. Across sixteen reviews: one HTTP 500 that would have shipped (G2-F1), two data-honesty defects in GAP-06, two factual errors in the architect's own docs, three docs holds — each caught by the same technique, <em>produce the evidence</em>, at a cost of minutes. The long run of zero-finding approvals is also the review working: pre-declared watchpoints verified against the diff are what licence the owner to merge without reading 600 lines. And the two pre-code HALTs cost nothing at all — they were the loop refusing to let a builder guess.</p>
 </div>
 
 <!-- ─────────────────────────────────────────────── -->
