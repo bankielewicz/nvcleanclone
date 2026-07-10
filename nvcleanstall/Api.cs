@@ -44,6 +44,11 @@ public static class Api
                 if (req.Kind == "catalog")
                 {
                     var version = req.Version ?? throw new InvalidDataException("version required");
+                    // GAP-S01 F1: validate before the HasCatalogPackage fork, so the untrusted
+                    // version never reaches Catalog.PackageDir (via HasCatalogPackage's
+                    // Directory.Exists probe) unvalidated. LoadCatalog validates too — this is
+                    // the earliest point, closing the filesystem-probe side channel.
+                    PackageValidation.ValidateVersion(version);
                     // A live-downloaded version has no real package: serve a labeled sample.
                     loaded = Packages.HasCatalogPackage(version)
                         ? Packages.LoadCatalog(version)

@@ -207,6 +207,40 @@ public class PackageValidationTests
         Assert.Throws<InvalidDataException>(() => Packages.LoadSampleTemplate(version));
     }
 
+    // ==== F1 (PR #23 review): the LoadCatalog fork must validate the version, so a rooted or
+    // traversal catalog version cannot escape data/packages. Inverts the reviewer's repro —
+    // which passed (escape succeeded) on the unfixed code — to assert rejection. ============
+    [Fact]
+    public void LoadCatalog_RootedVersion_Rejected()
+    {
+        // An absolute directory holding a valid manifest — the reviewer's live escape target.
+        var attacker = Path.Combine(TempDir.Create(), "attacker-pkg");
+        Directory.CreateDirectory(Path.Combine(attacker, "payload"));
+        File.WriteAllText(Path.Combine(attacker, "manifest.json"), ValidManifestJson());
+        File.WriteAllBytes(Path.Combine(attacker, "payload", "display-driver.bin"), new byte[] { 9 });
+
+        var ex = Assert.Throws<InvalidDataException>(() => Packages.LoadCatalog(attacker));
+        Assert.Equal(PackageValidation.BadVersion, ex.Message);   // path-free, stable
+    }
+
+    [Theory]
+    [InlineData(@"..\..\evil")]
+    [InlineData("../../evil")]
+    public void LoadCatalog_TraversalVersion_Rejected(string version)
+    {
+        Assert.Throws<InvalidDataException>(() => Packages.LoadCatalog(version));
+    }
+
+    // Happy-path pin: a legitimate bundled version still loads from data/packages.
+    [Fact]
+    public void LoadCatalog_ValidBundledVersion_StillLoads()
+    {
+        var (manifest, source) = Packages.LoadCatalog("572.16");
+        Assert.Equal("572.16", manifest.Version);
+        Assert.Equal("catalog", source.Kind);
+        Assert.EndsWith(Path.Combine("packages", "572.16"), source.Dir!);   // inside data/packages
+    }
+
     // ==== AC-1 / SEC-04: archive entry-count bound ================================
     [Fact]
     public void LoadLocal_ZipWithTooManyEntries_Rejected()

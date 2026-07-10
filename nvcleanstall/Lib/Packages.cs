@@ -8,6 +8,12 @@ public static class Packages
 {
     public static (Manifest manifest, PackageSource source) LoadCatalog(string version)
     {
+        // GAP-S01 F1: the catalog fork is a seventh sink — Catalog.PackageDir(version) is
+        // Path.Combine(DataDir, "packages", version), and Path.Combine returns a ROOTED final
+        // argument verbatim, so an unvalidated version escapes data/packages and this method
+        // would load an arbitrary directory's manifest and set PackageSource.Dir to it. Validate
+        // before deriving any path, so the Packages API is safe for every caller.
+        PackageValidation.ValidateVersion(version);
         var dir = Catalog.PackageDir(version);
         var manifest = ReadManifest(File.ReadAllText(Path.Combine(dir, "manifest.json")));
         return (manifest, new PackageSource { Kind = "catalog", Dir = dir });
