@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**CleanDriver** — a functional clone of TechPowerUp's NVCleanstall (NVIDIA driver customizer), built as a Windows 11 app: a five-screen wizard served by an in-process ASP.NET Core (Kestrel) server, rendered in a WebView2 window, shipped as one self-contained exe. It operates on a **mock** driver catalog/package format by design — see the safety boundary below before changing anything driver-related.
+**CleanDriver** — a functional clone of TechPowerUp's NVCleanstall (NVIDIA driver customizer), built as a Windows 11 app: a five-screen wizard served by an in-process ASP.NET Core (Kestrel) server, rendered in a WebView2 window, shipped as one self-contained exe. Since the GAP series it queries the **live NVIDIA catalog** (mock fallback) and downloads **real driver bytes** to disk — but everything past download is simulated against a mock package format by design: nothing is ever executed, installed, or written to the live registry. See the safety boundary below before changing anything driver-related.
 
 ## Commands
 
@@ -24,7 +24,10 @@ dotnet run --project nvcleanstall
 # run: server only (verification mode) → http://localhost:4780
 dotnet run --project nvcleanstall -- --headless
 
-# tests (xunit; scaffolded as CleanDriver.Tests per docs/gaps_analysis.md PF-1)
+# deterministic/offline runs: force the bundled mock catalog (or CLEANDRIVER_MOCK_CATALOG=1)
+dotnet run --project nvcleanstall -- --headless --mock-catalog
+
+# tests (xunit; the suite IS the quality gate — 102 tests at `0f51fe9`)
 dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj
 dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj --filter "FullyQualifiedName~<TestName>"   # single test
 
@@ -45,6 +48,15 @@ per behavior (the PR template asks for it). Bug fixes start with a reproducing t
 Existing tests are back-compat pins: never edit one to make it pass without disclosing and
 justifying that edit in the PR body.
 
+Two recorded exemptions (`docs/hardening_register.md` §3): **A2** — docs-only PRs satisfy
+the gate vacuously (state the exemption in the PR body by name); **A6** — `wwwroot/` has
+no JS test runner, so frontend-only changes capture red/green as live browser/curl
+transcripts instead (declared via `slice_start --no-surface '^nvcleanstall/wwwroot/'`,
+sanctioned by the pattern appearing verbatim in the build plan). Do not add a JS toolchain.
+
+**CHANGELOG rule (CL-1):** entries land at merge time only, for merged work only —
+never add an entry for an open PR (`gh pr list` owns open work).
+
 ### Environment quirks (WSL ↔ Windows)
 
 - Inline env vars do **not** cross into launched Windows `.exe` processes (`FOO=1 ./CleanDriver.exe` silently drops `FOO`). Pass CLI flags instead, or set the variable in the Windows environment.
@@ -57,11 +69,11 @@ justifying that edit in the PR body.
 
 **Request flow:** `wwwroot/app.js` (wizard state machine, 5 screens + run view) → JSON API in `Api.cs` (all routes; camelCase via `Json.Web` in `Lib/Models.cs`) → static classes in `Lib/`:
 
-- `Catalog.cs` reads `data/catalog.json` (5 mock releases); each release has a package at `data/packages/<version>/` (manifest.json + payload files). `566.36` intentionally lacks the USB-C component so version switching visibly changes the component list.
-- `Packages.cs` loads catalog/local packages (folder or zip) and writes customized output (selected payloads + rewritten manifest, `signature: rebuilt` when the set differs from stock).
-- `Jobs.cs` is the async engine: simulated download + install/silent/extract/package actions run as background step lists appending timestamped log lines the frontend polls via `/api/jobs/{id}`. Receipts/artifacts land in `output/` beside the exe.
+- **Catalog is a provider seam** (`ICatalogProvider` via `CatalogProviderFactory`): live by default — `NvidiaCatalogProvider` resolves the detected GPU through `GpuPfidMap` and queries NVIDIA's lookup, falling back to `MockCatalogProvider` (which reads `data/catalog.json`, 5 sample releases) on any failure. `/api/catalog` carries `source` (`live`/`mock`) and, when mock, a `sourceDetail` reason bucket (`mock mode` / `GPU not matched` / `live lookup failed`). `--mock-catalog` forces mock deliberately. Mock release `566.36` intentionally lacks the USB-C component so version switching visibly changes the component list.
+- `Jobs.cs` is the async engine: background step lists appending timestamped log lines the frontend polls via `/api/jobs/{id}`; receipts/artifacts land in `output/` beside the exe. **Live releases download real bytes** (`.part` → rename; deleted on cancel/failure; per-read stall timeout; size caps) with the `.nvidia.com` host allowlist enforced **per redirect hop** (`AllowAutoRedirect` off, manual follow, `MaxRedirectHops = 5`). Mock releases simulate. Install/silent/extract/package are always simulated, and the written `manifest.json`/`config.json` carry honesty markers (`signatureSimulated`, `driverTelemetrySimulated`) — keep those honest.
+- `Packages.cs` loads catalog/local packages (folder or zip) and writes customized output (selected payloads + rewritten manifest; `package` also zips an explicit file list to an archive **beside** `outDir`). Before writing it runs `CleanPreviousBuild`: deletes **only** artifacts named by a prior `customizedBy == "CleanDriver"` manifest, `File.Delete` by name — a shape-guard test forbids any recursive delete. `IsFilesystemRoot` rejects a drive-root `outputPath` at the top of `StartExecute`, before any write.
 - `Tweaks.cs` is the single source of tweak definitions (descriptions, warnings, dependency conflicts, `.reg` snippet emitters — written to output, **never applied**).
-- `Gpu.cs` detects the real GPU via PowerShell/WMI (marketing version derived from the WMI string's last 5 digits), simulated fallback.
+- `Gpu.cs` detects the real GPU via PowerShell/WMI (marketing version from the WMI string's last 5 digits), `Simulated` fallback. The WMI read is bounded by one 5s budget (`ReadBounded` — the read and the exit-wait share it; a wedged powershell is killed). `ParseVideoControllers`/`DetectFrom`/`MarketingVersion` are pure, pinned seams; `Detect()` caches, so the first `/api/system` or `/api/catalog` call pays the query.
 
 **Package-session tokens:** `/api/package` loads a manifest and returns a token; `/api/execute` requires it. Tokens live in server memory — a server restart invalidates the wizard's in-flight state.
 
@@ -69,9 +81,10 @@ justifying that edit in the PR body.
 
 ## Governing documents (read before non-trivial work)
 
-The docs chain is authoritative and ordered: `specs/nvcleanstall/spec.md` (scope cut, FRs, ACs, stack pin) → `specs/nvcleanstall/progress.md` (milestone status) → `specs/nvcleanstall/parity.md` (verified feature-parity table) → `docs/gaps_analysis.md` (**the closed task register for current work** — its §4 out-of-scope fence is absolute) → `prompts/` (cold-session kickoff prompts). `CONTRIBUTING.md` binds process: one slice = one worktree (`../nvcleanclone-<name>`) = one branch (`feat/<slug>` / `docs/<slug>`) = one PR; **never merge — the owner merges**.
+The docs chain is authoritative and ordered: `specs/nvcleanstall/spec.md` (scope cut, FRs, ACs, stack pin) → `specs/nvcleanstall/progress.md` (milestone status) → `specs/nvcleanstall/parity.md` (verified feature-parity table) → the task registers `docs/gaps_analysis.md` (GAP-01…06) and `docs/hardening_register.md` (HARD-01…06; recorded amendments A1–A6 live in its §3) — **both CLOSED 2026-07-10; there is currently no open register**, so new work needs an owner-pinned register entry first, and each register's §4 out-of-scope fence stays absolute. `CONTRIBUTING.md` binds process: one slice = one worktree (`../nvcleanclone-<name>`) = one branch (`feat/<slug>` / `docs/<slug>`) = one PR; **never merge — the owner merges**. The three `docs/ai-*-workflow.html` pages document the AI→AI build/review/fix loop this repo is built with.
 
 ## Hard boundaries
 
-- **Safety:** never execute downloaded installers, never install drivers, never write the live registry. Individual gaps in `docs/gaps_analysis.md` may lift a *named* part of this (e.g. GAP-02 permits downloading bytes to disk, still never executing); nothing else does.
+- **Safety:** never execute downloaded installers, never install drivers, never write the live registry. Named register entries may lift a *specific* part with owner sign-off (GAP-02 permits downloading bytes to disk, still never executing); nothing else does.
+- **Deletion (owner ruling, D12/D1):** never delete recursively — `Directory.Delete(x, true)` is forbidden and guard-tested absent; deletion is enumerable-by-name only, and only of artifacts a CleanDriver manifest declares. `outputPath` is user-supplied: a filesystem root is rejected by name before any write, and tests must never run a real build against a drive root (compile-level or predicate-level reds instead).
 - **IP:** original branding only ("CleanDriver"). No NVIDIA/TechPowerUp logos, trademarks, or copied assets; NVIDIA product names appear only as nominative labels in mock data (ruling R10).
