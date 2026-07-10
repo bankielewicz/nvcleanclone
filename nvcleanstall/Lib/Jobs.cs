@@ -341,6 +341,21 @@ public static class Jobs
             ? Path.Combine(OutputDir, $"{action}-{manifest.Version}")
             : Path.GetFullPath(outputPath);
 
+        // HARD-02: refuse a filesystem-root outputPath before ANY filesystem write. Otherwise
+        // WriteCustomized sprays payload/, manifest.json and install.cmd into the drive root,
+        // long before Packages.ZipPathFor's refusal (which stays, as defense in depth) is reached.
+        // Fails the job by name rather than throwing: the caller polls a job, and Api.cs would
+        // turn an exception into a 400 with no job to poll. All other paths remain allowed — it
+        // is the user's disk. The default outDir is never a root.
+        if (Packages.IsFilesystemRoot(outDir))
+        {
+            job.Status = "failed";
+            job.Error = Packages.RootOutputPathError;
+            job.LogLine($"> ERROR: {Packages.RootOutputPathError}", "err");
+            job.Completion = Task.CompletedTask;   // nothing runs; nothing is written
+            return job;
+        }
+
         var steps = new List<(int delayMs, Action fn)>();
         var display = selected.FirstOrDefault(c => c.Required);
         var extras = selected.Where(c => !c.Required).Select(c => c.Name).ToList();
@@ -419,6 +434,16 @@ public static class Jobs
             // leftovers). Each step records the entries it writes; the zip step packs
             // exactly those. Entry names are archive-relative and use '/'.
             var archiveEntries = new List<(string abs, string entry)>();
+            // HARD-01: undo a prior CleanDriver build in this directory before writing. Must run
+            // before WriteCustomized, which recreates payload/ and overwrites manifest.json —
+            // the old manifest IS the delete-list. Manifest-scoped and enumerable-by-name only:
+            // foreign files always survive, and a directory that is not ours is never touched.
+            steps.Add((200, () =>
+            {
+                var cleaned = Packages.CleanPreviousBuild(outDir);
+                if (cleaned.Count > 0)
+                    job.LogLine($"> Cleaning previous CleanDriver build: {string.Join(", ", cleaned)}", "mut");
+            }));
             steps.Add((300, () => job.LogLine($"> Extracting package {manifest.Version}…")));
             if (deselected.Count > 0)
                 steps.Add((250, () => job.LogLine(

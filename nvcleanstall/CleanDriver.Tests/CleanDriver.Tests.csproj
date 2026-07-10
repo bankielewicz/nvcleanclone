@@ -26,6 +26,9 @@
     <Content Include="fixtures\**" CopyToOutputDirectory="PreserveNewest" />
     <!-- GAP-02 AC-3: the download engine's source is scanned by a no-execution guard test. -->
     <Content Include="..\Lib\Jobs.cs" Link="src\Jobs.cs" CopyToOutputDirectory="PreserveNewest" />
+    <!-- HARD-01 AC-3: the outDir clean is enumerable-by-name only. Both files reachable from
+         StartExecute are scanned for recursive-delete primitives. -->
+    <Content Include="..\Lib\Packages.cs" Link="src\Packages.cs" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
