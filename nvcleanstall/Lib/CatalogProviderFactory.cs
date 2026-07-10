@@ -23,7 +23,7 @@ public static class CatalogProviderFactory
 /// <summary>Shapes the /api/catalog response: provider releases plus a derived source.</summary>
 public static class CatalogEndpoint
 {
-    public sealed record Response(IReadOnlyList<Release> Releases, string Source);
+    public sealed record Response(IReadOnlyList<Release> Releases, string Source, string? SourceDetail = null);
 
     public static Response Build(ICatalogProvider provider, GpuInfo gpu)
     {
