@@ -185,4 +185,84 @@ public class RealDownloadTests
         Assert.Equal("done", job.Status);
         Assert.Null(Record.Exception(() => Jobs.Cancel(job.Id)));
     }
+
+    // HARD-05 AC-2: an on-allowlist multi-hop redirect chain (≥2 hops, including a
+    // RELATIVE Location) is followed manually, and the body from the final hop lands as
+    // the final file. On the unfixed code the fake's 302 is never followed and
+    // EnsureSuccessStatusCode fails the job — this is the natural red.
+    [Fact]
+    public async Task StartRealDownload_OnAllowlistRedirectChain_FollowsAndSucceeds()
+    {
+        const int mib = 1024 * 1024;
+        var body = new byte[2 * mib];
+        for (int i = 0; i < body.Length; i++) body[i] = (byte)(i % 251);
+        var dir = TempDir.Create();
+
+        var rel = LiveRelease.New(version: "610.74", channel: "WHQL", sizeMB: 2);
+        var initial = rel.DownloadUrl!;
+        var handler = new RecordingRedirectHandler(uri =>
+            uri.AbsoluteUri == initial
+                // hop 1: absolute, different .nvidia.com subdomain
+                ? RecordingRedirectHandler.Redirect("https://uk.download.nvidia.com/hop2/driver.exe")
+                : uri.AbsoluteUri == "https://uk.download.nvidia.com/hop2/driver.exe"
+                    // hop 2: RELATIVE Location — must resolve against the uk host that issued it
+                    ? RecordingRedirectHandler.Redirect("/final/driver.exe")
+                    : RecordingRedirectHandler.Body(body));
+
+        var job = Jobs.StartRealDownload(rel, dir, handler);
+        await job.Completion!;
+
+        var final = Path.Combine(dir, "610.74-whql.exe");
+        Assert.Equal("done", job.Status);
+        Assert.True(File.Exists(final), "final file should exist after following the chain");
+        Assert.Equal(body, File.ReadAllBytes(final));
+        // the relative Location resolved against the uk host (the hop that issued it):
+        Assert.Contains(handler.Requests, u => u.AbsoluteUri == "https://uk.download.nvidia.com/final/driver.exe");
+    }
+
+    // HARD-05 AC-1: a redirect whose target is OFF the .nvidia.com allowlist fails with
+    // the named host error, leaves no residue, and — the load-bearing assertion — no
+    // request is ever sent to the off-allowlist host (validate the target before follow).
+    [Fact]
+    public async Task StartRealDownload_RedirectToOffAllowlistHost_FailsWithoutContactingIt()
+    {
+        var dir = TempDir.Create();
+        var rel = LiveRelease.New();
+        var initial = rel.DownloadUrl!;
+        const string evil = "https://evil.example.com/610.74/driver.exe";
+        var handler = new RecordingRedirectHandler(uri =>
+            uri.AbsoluteUri == initial
+                ? RecordingRedirectHandler.Redirect(evil)
+                : RecordingRedirectHandler.Body(new byte[64]));
+
+        var job = Jobs.StartRealDownload(rel, dir, handler);
+        await job.Completion!;
+
+        Assert.Equal("failed", job.Status);
+        Assert.Contains("non-NVIDIA host", job.Error ?? "");     // same named-error family as the initial-host guard
+        Assert.Empty(Directory.GetFiles(dir));                    // no .part, no final file
+        Assert.DoesNotContain(handler.Requests, u => u.Host == "evil.example.com"); // never contacted
+    }
+
+    // HARD-05 AC-4: an unbounded on-allowlist redirect loop is stopped by the hop cap —
+    // fails with the named cap error, no residue, and exactly cap+1 requests were sent
+    // (the initial plus MaxRedirectHops follows, then it stops rather than looping forever).
+    [Fact]
+    public async Task StartRealDownload_RedirectChainExceedingCap_FailsWithCapError()
+    {
+        var dir = TempDir.Create();
+        var rel = LiveRelease.New();
+        int n = 0;
+        // every hop redirects to another distinct .nvidia.com URL, forever
+        var handler = new RecordingRedirectHandler(_ =>
+            RecordingRedirectHandler.Redirect($"https://us.download.nvidia.com/hop/{n++}/driver.exe"));
+
+        var job = Jobs.StartRealDownload(rel, dir, handler);
+        await job.Completion!;
+
+        Assert.Equal("failed", job.Status);
+        Assert.Contains("too many redirects", job.Error ?? "");
+        Assert.Empty(Directory.GetFiles(dir));
+        Assert.Equal(Jobs.MaxRedirectHops + 1, handler.Requests.Count);
+    }
 }

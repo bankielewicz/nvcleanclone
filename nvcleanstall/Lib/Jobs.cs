@@ -148,6 +148,12 @@ public static class Jobs
     // In-flight real downloads keyed by version, for idempotent double-click handling.
     private static readonly ConcurrentDictionary<string, string> ActiveDownloads = new();
 
+    // HARD-05: the manual redirect follow is bounded so a redirect loop can never spin
+    // forever (the unbounded-loop defect family HARD-03 closed for the WMI read). The
+    // register does not pin the number; 5 hops is generous headroom over the real NVIDIA
+    // path, which serves bytes directly with zero redirects. Disclosed as a deviation.
+    public const int MaxRedirectHops = 5;
+
     // A separate client from GAP-01's 5s metadata client: a real installer legitimately
     // takes minutes, so the client has no overall timeout (ResponseHeadersRead + a
     // per-read stall timeout enforce liveness instead).

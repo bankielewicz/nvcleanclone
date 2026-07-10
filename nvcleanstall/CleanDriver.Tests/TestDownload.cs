@@ -30,6 +30,30 @@ internal sealed class DownloadHandler : HttpMessageHandler
         Task.FromResult(_respond(request));
 }
 
+// HARD-05: a fake transport that records every URI it is asked to fetch and answers each
+// from a per-URI script. Recording the requests is what lets a test prove the manual-follow
+// loop never sent a request to an off-allowlist host (validate-before-follow).
+internal sealed class RecordingRedirectHandler : HttpMessageHandler
+{
+    private readonly Func<Uri, HttpResponseMessage> _respond;
+    public List<Uri> Requests { get; } = new();
+    public RecordingRedirectHandler(Func<Uri, HttpResponseMessage> respond) => _respond = respond;
+
+    // A 302 to `location` (absolute or relative — the loop must resolve relative ones).
+    public static HttpResponseMessage Redirect(string location) =>
+        new(HttpStatusCode.Found) { Headers = { Location = new Uri(location, UriKind.RelativeOrAbsolute) } };
+
+    // A terminal 200 carrying the body bytes.
+    public static HttpResponseMessage Body(byte[] body) =>
+        new(HttpStatusCode.OK) { Content = new ByteArrayContent(body) };
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        Requests.Add(request.RequestUri!);
+        return Task.FromResult(_respond(request.RequestUri!));
+    }
+}
+
 // A read stream that emits `prefix` bytes, then throws mid-stream (fault) or blocks
 // until cancelled (used to drive the AC-2 failure path and the cancel path).
 internal sealed class ScriptedStream : Stream
