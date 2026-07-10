@@ -71,6 +71,35 @@ public static class Gpu
         };
     }
 
+    // The whole WMI query's time budget — the read and the exit-wait share it.
+    public static readonly TimeSpan WmiBudget = TimeSpan.FromSeconds(5);
+
+    // HARD-03: read `stdout` to the end and wait for the process, bounded by ONE budget.
+    //
+    // The read used to run unbounded before the wait, so a wedged powershell holding
+    // stdout open blocked ReadToEnd forever and the budget could never fire. Bounding
+    // the read is the fix; bounding it from the *same* budget is what keeps the worst
+    // case at ~5s rather than a read budget stacked on a wait budget.
+    //
+    // On either timeout: kill the process and return null, which DetectFrom maps to the
+    // Simulated fallback. Killing closes the pipe, which releases the abandoned read.
+    //
+    // Testable seam: the process is reached only through `waitForExit` and `kill`, so a
+    // never-closing stdout stand-in exercises the timeout path without a real process
+    // (GpuTimeoutTests). QueryWmi's own Process.Start stays live-only.
+    public static string? ReadBounded(TextReader stdout, Func<int, bool> waitForExit, Action kill, TimeSpan budget)
+    {
+        var elapsed = Stopwatch.StartNew();
+        var read = Task.Factory.StartNew(stdout.ReadToEnd, TaskCreationOptions.LongRunning);
+
+        if (!read.Wait(budget)) { kill(); return null; }
+
+        var remaining = (int)Math.Max(0, (budget - elapsed.Elapsed).TotalMilliseconds);
+        if (!waitForExit(remaining)) { kill(); return null; }
+
+        return read.Result;
+    }
+
     // Shell out to powershell for the `Name|DriverVersion` lines; null on any failure
     // (the caller falls back to Simulated via DetectFrom).
     private static string? QueryWmi()
@@ -89,9 +118,7 @@ public static class Gpu
             psi.ArgumentList.Add("Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name + '|' + $_.DriverVersion }");
             using var proc = Process.Start(psi);
             if (proc == null) return null;
-            string output = proc.StandardOutput.ReadToEnd();
-            if (!proc.WaitForExit(5000)) { proc.Kill(); return null; }
-            return output;
+            return ReadBounded(proc.StandardOutput, proc.WaitForExit, proc.Kill, WmiBudget);
         }
         catch
         {
