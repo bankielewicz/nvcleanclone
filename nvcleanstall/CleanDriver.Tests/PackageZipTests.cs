@@ -169,9 +169,12 @@ public class PackageZipTests
         Assert.DoesNotContain("payload/hd-audio.bin", entries);   // deselected in run 2
         Assert.DoesNotContain("tweak-msi-mode.reg", entries);     // tweak switched off in run 2
 
-        // The archive agrees with its own manifest.
-        Assert.True(File.Exists(Path.Combine(outDir, "payload", "physx.bin")),
-            "the directory output is never cleaned — the leftover must remain on disk");
+        // HARD-01 (register pin D1) — the deferred half of this defect, filed as PR #12's
+        // optional cleanup #3 and now implemented: the DIRECTORY is cleaned too, manifest-scoped.
+        // This assertion previously read `Assert.True(... "the directory output is never
+        // cleaned")`, characterizing the then-deferred behavior. See OutDirHygieneTests.
+        Assert.False(File.Exists(Path.Combine(outDir, "payload", "physx.bin")),
+            "the deselected payload is removed from the directory by the manifest-scoped clean");
     }
 
     // AC-2 — unrelated files sitting in outDir (including a stale archive from an earlier

@@ -121,6 +121,69 @@ public static class Packages
         return (written, modified, manifestPath);
     }
 
+    // HARD-01: remove exactly the artifacts a PRIOR CleanDriver build declared it wrote, then
+    // let the caller write fresh. "Undo what that manifest says was written", never "empty the
+    // directory": outDir is user-supplied, so foreign files must always survive.
+    //
+    // HARD BOUNDARY: deletion is enumerable-by-name only — File.Delete on a named file, nothing
+    // else. No recursive whole-tree removal, ever: outDir is user-supplied and a recursive
+    // directory delete could destroy a user's files (owner ruling, D12 round, reaffirmed in pin
+    // D1). OutDirHygieneTests scans this file and asserts the primitive is absent — including
+    // from comments, which is why this one names no API.
+    //
+    // Returns the archive-relative names removed, in a stable order; empty when nothing was
+    // cleaned. A directory with no manifest.json, a manifest that is not ours, or a manifest
+    // that is malformed JSON, is left entirely alone — and never throws.
+    public static List<string> CleanPreviousBuild(string outDir)
+    {
+        var removed = new List<string>();
+        var manifestPath = Path.Combine(outDir, "manifest.json");
+        if (!File.Exists(manifestPath)) return removed;
+
+        JsonDocument doc;
+        try { doc = JsonDocument.Parse(File.ReadAllText(manifestPath)); }
+        catch (JsonException) { return removed; }   // not parseable → not ours → touch nothing
+        using (doc)
+        {
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) return removed;
+            // The stamp WriteCustomized leaves. Absent or different → someone else's directory.
+            if (!root.TryGetProperty("customizedBy", out var by)
+                || by.ValueKind != JsonValueKind.String
+                || by.GetString() != "CleanDriver") return removed;
+
+            // Its own component payloads, by the payload filename the manifest records.
+            if (root.TryGetProperty("components", out var comps) && comps.ValueKind == JsonValueKind.Array)
+                foreach (var c in comps.EnumerateArray())
+                    if (c.ValueKind == JsonValueKind.Object
+                        && c.TryGetProperty("payload", out var pay)
+                        && pay.ValueKind == JsonValueKind.String
+                        && !string.IsNullOrWhiteSpace(pay.GetString()))
+                        Remove(Path.Combine(outDir, "payload", pay.GetString()!), $"payload/{pay.GetString()}");
+
+            // The .reg set is exactly recoverable: the manifest records the same tweak dict the
+            // writer consulted, and a snippet exists iff the tweak is reg-capable and was true.
+            if (root.TryGetProperty("tweaks", out var tweaks) && tweaks.ValueKind == JsonValueKind.Object)
+                foreach (var t in Tweaks.All.Where(t => t.Reg))
+                    if (tweaks.TryGetProperty(t.Id, out var v) && v.ValueKind == JsonValueKind.True)
+                        Remove(Path.Combine(outDir, $"tweak-{t.Id}.reg"), $"tweak-{t.Id}.reg");
+        }
+
+        // The build's own fixed-name artifacts. install.cmd/config.json exist only for the
+        // `package` action, but an `extract` into a prior package build must clear them too.
+        foreach (var name in new[] { "install.cmd", "config.json", "manifest.json" })
+            Remove(Path.Combine(outDir, name), name);
+
+        return removed;
+
+        void Remove(string abs, string display)
+        {
+            if (!File.Exists(abs)) return;
+            File.Delete(abs);          // a single named file — never a directory, never recursive
+            removed.Add(display);
+        }
+    }
+
     // GAP-06 / D12-F2: where the archive goes — a SIBLING of outDir (owner Ruling 2).
     //
     // Directory.GetParent on a path with a trailing separator returns that path itself, and

@@ -95,6 +95,8 @@ public class OutDirHygieneTests
         Assert.Equal("done", built.Status);
         Assert.True(File.Exists(Path.Combine(outDir, "install.cmd")));
         Assert.True(File.Exists(Path.Combine(outDir, "config.json")));
+        // The package build legitimately wrote a sibling archive; extract must add no further one.
+        var zipsAfterPackage = Directory.GetFiles(root, "*.zip").Length;
 
         var extracted = await Run("extract", outDir, Sel(new[] { "display-driver" }));
         Assert.Equal("done", extracted.Status);
@@ -103,8 +105,9 @@ public class OutDirHygieneTests
             new[] { "leftover.txt", "manifest.json", "payload/display-driver.bin" },
             FilesUnder(outDir).ToArray());
 
-        // extract still writes no archive (existing behavior, unchanged).
-        Assert.Empty(Directory.GetFiles(root, "*.zip"));
+        // extract still writes no archive of its own (existing behavior, unchanged).
+        Assert.Equal(zipsAfterPackage, Directory.GetFiles(root, "*.zip").Length);
+        Assert.Empty(Directory.GetFiles(outDir, "*.zip", SearchOption.AllDirectories));
     }
 
     // ---- HARD-01 AC-2 -------------------------------------------------------------

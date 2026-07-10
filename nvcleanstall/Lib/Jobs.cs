@@ -419,6 +419,16 @@ public static class Jobs
             // leftovers). Each step records the entries it writes; the zip step packs
             // exactly those. Entry names are archive-relative and use '/'.
             var archiveEntries = new List<(string abs, string entry)>();
+            // HARD-01: undo a prior CleanDriver build in this directory before writing. Must run
+            // before WriteCustomized, which recreates payload/ and overwrites manifest.json —
+            // the old manifest IS the delete-list. Manifest-scoped and enumerable-by-name only:
+            // foreign files always survive, and a directory that is not ours is never touched.
+            steps.Add((200, () =>
+            {
+                var cleaned = Packages.CleanPreviousBuild(outDir);
+                if (cleaned.Count > 0)
+                    job.LogLine($"> Cleaning previous CleanDriver build: {string.Join(", ", cleaned)}", "mut");
+            }));
             steps.Add((300, () => job.LogLine($"> Extracting package {manifest.Version}…")));
             if (deselected.Count > 0)
                 steps.Add((250, () => job.LogLine(
