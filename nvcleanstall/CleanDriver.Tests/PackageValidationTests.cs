@@ -176,6 +176,27 @@ public class PackageValidationTests
         Assert.False(File.Exists(Path.Combine(root, "buildzone", "PWNED.bin")));
     }
 
+    // ==== AC-1 / Sink 3 (zip read): a .zip whose manifest declares a traversal payload is
+    // rejected at load with a path-free error, and a sentinel outside the archive survives. ==
+    [Fact]
+    public void LoadLocal_ZipWithTraversalPayload_RejectsWithPathFreeError()
+    {
+        var root = TempDir.Create();
+        var sentinel = Path.Combine(root, "SENTINEL.txt");
+        File.WriteAllText(sentinel, "do not touch");
+        var zipPath = MakeZip(
+            ("manifest.json", """
+                { "version":"572.16","channel":"WHQL","components":[
+                  {"id":"display-driver","name":"d","required":true,"payload":"display-driver.bin"},
+                  {"id":"evil","name":"e","payload":"..\\..\\SENTINEL.txt"} ] }
+                """),
+            ("payload/display-driver.bin", "core"));
+
+        var ex = Assert.Throws<InvalidDataException>(() => Packages.LoadLocal(zipPath));
+        AssertPathFree(ex.Message);
+        Assert.True(File.Exists(sentinel), "the sentinel outside the archive is untouched");
+    }
+
     // ==== AC-2 / Sink 6: a client version that would escape the default outDir is
     // rejected at the relabel point, before any job/path is derived. ================
     [Theory]
