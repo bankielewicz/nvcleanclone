@@ -31,30 +31,36 @@ public sealed class NvidiaCatalogProvider : ICatalogProvider
         _log = log ?? (_ => { });
     }
 
+    public IReadOnlyList<Release> GetReleases(GpuInfo gpu) => GetCatalog(gpu).Releases;
+
     // Any failure (unresolved GPU, timeout, non-200, empty/parse error) falls back to
-    // the mock catalog and is logged — never thrown to the UI.
-    public IReadOnlyList<Release> GetReleases(GpuInfo gpu)
+    // the mock catalog and is logged — never thrown to the UI. HARD-06: the fallback
+    // reason is also bucketed into a sourceDetail (unresolved GPU -> GPU-not-matched;
+    // no-rows / transport error -> live-lookup-failed) for the /api/catalog marker.
+    public CatalogResult GetCatalog(GpuInfo gpu)
     {
         if (gpu.IsSimulated)
-            return Fallback(gpu, "GPU is simulated");
+            return Fallback(gpu, "GPU is simulated", CatalogDetail.GpuNotMatched);
         if (!_map.TryResolve(gpu.Name, out var psid, out var pfid))
-            return Fallback(gpu, $"GPU '{gpu.Name}' not in pfid table");
+            return Fallback(gpu, $"GPU '{gpu.Name}' not in pfid table", CatalogDetail.GpuNotMatched);
 
         try
         {
             var releases = Parse(Fetch(psid, pfid));
-            return releases.Count > 0 ? releases : Fallback(gpu, "live lookup returned no rows");
+            return releases.Count > 0
+                ? new CatalogResult(releases, null)
+                : Fallback(gpu, "live lookup returned no rows", CatalogDetail.LiveLookupFailed);
         }
         catch (Exception ex)
         {
-            return Fallback(gpu, $"live lookup failed: {ex.GetType().Name}");
+            return Fallback(gpu, $"live lookup failed: {ex.GetType().Name}", CatalogDetail.LiveLookupFailed);
         }
     }
 
-    private IReadOnlyList<Release> Fallback(GpuInfo gpu, string reason)
+    private CatalogResult Fallback(GpuInfo gpu, string reason, string detail)
     {
         _log($"NvidiaCatalogProvider: using mock catalog ({reason}).");
-        return _fallback.GetReleases(gpu);
+        return new CatalogResult(_fallback.GetReleases(gpu), detail);
     }
 
     private string Fetch(int psid, int pfid)
