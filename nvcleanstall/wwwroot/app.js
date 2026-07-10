@@ -159,6 +159,10 @@ function pollDownload(jobId) {
     $('dl-done').textContent = `${j.doneMB} MB`;
     $('dl-speed').textContent = j.speed || '';
     if (j.status === 'failed') { alert('Download failed: ' + (j.error || 'unknown error')); return show('source'); }
+    // HARD-04: the server can cancel a real download on its own (Jobs.cs sets "cancelled"
+    // and deletes the .part). Terminal, and silent: a cancel is a cancel whoever started
+    // it, and R3 already puts cancel back on screen 1. Failure alerts because it is news.
+    if (j.status === 'cancelled') return show('source');
     if (j.status === 'done') {
       const r = await api.post('/api/package', { kind: 'catalog', version: state.version });
       if (r.error) return alert(r.error);
