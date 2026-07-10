@@ -533,7 +533,14 @@ $('btn-load-preset').onclick = async () => {
 
   // GAP-01: mark the mock-fallback state (GPU not matched / offline) so the sample
   // catalog isn't mistaken for live NVIDIA releases. Only shown when source is mock.
-  $('catalog-source-note').classList.toggle('hidden', cat.source !== 'mock');
+  const sourceNote = $('catalog-source-note');
+  sourceNote.classList.toggle('hidden', cat.source !== 'mock');
+  // HARD-06: render WHY the mock catalog is in play from the API's sourceDetail,
+  // keeping the sentence frame. If the field is missing, the static text stays —
+  // never a blank marker. textContent, so the server-supplied reason can't inject markup.
+  if (cat.source === 'mock' && cat.sourceDetail) {
+    sourceNote.textContent = `Sample catalog (${cat.sourceDetail}) — showing bundled sample releases.`;
+  }
 
   $('gpu-name').textContent = sys.name;
   $('gpu-driver').textContent = sys.installedDriverVersion;

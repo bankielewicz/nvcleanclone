@@ -16,8 +16,25 @@ public static class CatalogProviderFactory
     public static ICatalogProvider Create(IEnumerable<string> args, Func<string, string?> env,
         Action<string>? log = null) =>
         UseMock(args, env)
-            ? new MockCatalogProvider()
+            ? new DeliberateMockCatalogProvider()
             : new NvidiaCatalogProvider(new HttpClientHandler(), log: log);
+}
+
+/// <summary>
+/// Composition-level marker (HARD-06): mock mode was chosen deliberately
+/// (<c>--mock-catalog</c> / env), so <c>/api/catalog</c> reads "(mock mode)" rather than
+/// a fallback reason. Only <see cref="CatalogProviderFactory.Create"/> constructs this;
+/// a directly-constructed <see cref="MockCatalogProvider"/> — as tests and the live
+/// provider's fallback build it — never claims deliberateness.
+/// </summary>
+public sealed class DeliberateMockCatalogProvider : ICatalogProvider
+{
+    private readonly MockCatalogProvider _inner = new();
+
+    public IReadOnlyList<Release> GetReleases(GpuInfo gpu) => _inner.GetReleases(gpu);
+
+    public CatalogResult GetCatalog(GpuInfo gpu) =>
+        new(_inner.GetReleases(gpu), CatalogDetail.MockMode);
 }
 
 /// <summary>Shapes the /api/catalog response: provider releases plus a derived source.</summary>
@@ -27,10 +44,13 @@ public static class CatalogEndpoint
 
     public static Response Build(ICatalogProvider provider, GpuInfo gpu)
     {
-        var releases = provider.GetReleases(gpu);
+        var result = provider.GetCatalog(gpu);
+        var releases = result.Releases;
         var source = releases.Count > 0
             ? releases[0].Source ?? MockCatalogProvider.SourceName
             : MockCatalogProvider.SourceName;
-        return new Response(releases, source);
+        // sourceDetail is a mock-only marker; WhenWritingNull omits it for live.
+        var sourceDetail = source == MockCatalogProvider.SourceName ? result.SourceDetail : null;
+        return new Response(releases, source, sourceDetail);
     }
 }
