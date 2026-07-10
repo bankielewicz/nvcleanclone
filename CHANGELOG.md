@@ -8,8 +8,63 @@ truth for in-flight PRs, and is accurate for free. (This file previously kept an
 flow updated it, and it caused a merge conflict on three consecutive PRs — CL-1. Removed
 2026-07-09.)
 
+## 2026-07-10
+
+- **HARD-06 — catalog-source marker wording** (`9516d85`, PR #19, merged): `/api/catalog` gains an
+  additive `sourceDetail` field, present only when `source == "mock"`, carrying one of three reason
+  buckets — `mock mode` (deliberate `--mock-catalog`/env, decided at the factory via a composition-level
+  `DeliberateMockCatalogProvider`), `GPU not matched` (simulated / not in the pfid table), `live lookup
+  failed` (no rows / transport error). The wizard's existing `#catalog-source-note` renders the reason in
+  the unchanged sentence frame via `textContent`; `index.html` is untouched, so today's static text is the
+  byte-identical no-field fallback. The four detailed fallback strings still reach the log verbatim.
+  `ICatalogProvider.GetCatalog` is a default interface member, so every existing implementer compiles
+  unedited. 102/102 tests (95 + 7). **This closed wave B** — HARD-03…06 landed with zero required review
+  findings across four reviews.
+- **HARD-05 — download redirect validation** (`a466dc2`, PR #18, merged): the real-download client no
+  longer follows redirects invisibly. `AllowAutoRedirect` is off; the worker follows 3xx itself,
+  validating **each hop's host** against the same single `.nvidia.com` predicate as the initial URL
+  (`IsNvidiaHost`) **before any request reaches the target**, resolving relative `Location` headers
+  against the issuing hop, bounded by `MaxRedirectHops = 5` (recorded amendment; exceeding it fails with
+  `too many redirects (exceeded 5 hops)`). Mid-chain failures reuse the existing `.part`-cleanup path.
+  Streaming half byte-identical (11 pins unedited). Live-verified: 337 MB @ 99 MB/s with the flag off.
+  Known scope edge (candidates #39): an on-allowlist hop may still downgrade `https → http`.
+- **HARD-04 — `pollDownload` handles server-initiated cancel** (`3188547`, PR #17, merged): a
+  server-set `"cancelled"` job status (real downloads cancelled via `POST /api/download/{id}/cancel`)
+  previously matched no terminal branch in `pollDownload` — the wizard polled every 150 ms forever with
+  the progress bar frozen. Now it returns silently to Screen 1, mirroring the user-cancel path per ruling
+  R3 (the `failed` branch keeps its alert; a cancel is not news). Four added lines in `app.js`, nothing
+  else. First slice under the declared no-test-surface gate (`wwwroot/` has no JS runner): red and green
+  are browser transcripts (+20 polls/3 s before; 1 poll, Screen 1, 0 alerts after), C# suite untouched.
+- **HARD-03 — `Gpu.QueryWmi` hang guard** (`69a782f`, PR #16, merged): `QueryWmi` read stdout to EOF
+  *before* its 5 s `WaitForExit`, so a wedged powershell holding the pipe open hung the first
+  `/api/system` (and `/api/catalog`) call forever. `Gpu.ReadBounded(stdout, waitForExit, kill, budget)`
+  bounds the **read** and hands `waitForExit` only the remaining budget — one ~5 s worst case, not two
+  stacked; either timeout kills the process and falls back to `Simulated` exactly as the documented
+  `WMI → simulated` order promises. Happy-path `GpuInfo` JSON byte-identical; `Detect()` caching intact.
+  Recorded amendment: a valid-but-slow (>5 s total) WMI query now yields `Simulated` where it previously
+  eventually succeeded (local cold query ~0.47 s, ~10× margin). 92/92 tests (87 + 5).
+- **HARD-01 + HARD-02 — outDir hygiene** (`94aac92`, PR #15, merged): rebuilding into the same output
+  directory no longer leaves the previous build's payloads and `.reg` snippets on disk.
+  `Packages.CleanPreviousBuild` deletes **only** artifacts named by the prior run's own
+  `CleanDriver`-stamped manifest (enumerable-by-name, `File.Delete` only — recursive deletion is
+  guard-tested absent); foreign files always survive; malformed/foreign manifests are never cleaned and
+  never throw. `IsFilesystemRoot` rejects a drive-root `outputPath` at the top of `StartExecute`, before
+  any filesystem write, with a named error — verified live against `C:\` (entry count unchanged).
+  Recorded amendment: the root check is action-uniform — `install`/`silent` jobs with a root
+  `outputPath` now fail by name where they previously ignored the path. 87/87 tests (75 + 12).
+- **Hardening register** (`0e974d7`, PR #14, merged): `docs/hardening_register.md` — the successor task
+  register to the closed `docs/gaps_analysis.md`. Wave A (HARD-01/02, one slice), wave B (HARD-03…06,
+  sequential), DOCS-01 (architect-owned docs polish), §3 amendments A1/A2, and a §5 ledger disposition
+  table accounting for every open candidate (landed / deferred-with-trigger / dropped-with-reason).
+
 ## 2026-07-09
 
+- **Post-GAP docs refresh** (`b94e3fe`, PR #13, merged, after a two-finding fix round): CHANGELOG's
+  stale `Unreleased (open PRs)` section deleted — the CL-1 structural fix; entries land at merge time
+  and `gh pr list` owns open work. `specs/nvcleanstall/parity.md` re-graded against the post-GAP tree
+  (21 parity / 7 simplified; FEAT-002/005/027 promoted; §3 revised; §4 provenance corrected to "0 → 75
+  tests" with the per-PR-vs-post-merge CI distinction). `docs/gaps_analysis.md` STATUS flipped to
+  CLOSED with the FEAT-004 → GAP-OUT-1 bookkeeping fixed.
 - **GAP-06 — true single-file package output** (`99f53a1`, PR #12, merged): the **Build package** action now
   additionally writes one redistributable archive,
   `output/<version>-cleandriver-package.zip`, containing the customized package tree

@@ -87,7 +87,7 @@
   <div class="title">Handoff Workflow</div>
   <div class="meta">How a cold builder session executes a plan authored by another AI session</div>
   <h2>Orientation</h2>
-  <a href="#purpose">1. Purpose &amp; audience</a>
+  <a href="#purpose-audience">1. Purpose &amp; audience</a>
   <a href="#inbound">2. Anatomy of an inbound handoff</a>
   <a href="#chain">3. The governing chain</a>
   <a href="#loop">4. The execution loop</a>
@@ -108,6 +108,8 @@
 
 <h1 id="purpose">Executing a plan written by another AI</h1>
 <p class="lead">In this repository an <b>architect session</b> writes the plan and a <b>cold builder session</b> executes it. The two never share a context window. Everything that survives the gap between them is a document: a register (<code class="inline">docs/gaps_analysis.md</code>), a kickoff prompt (<code class="inline">prompts/gap-0N-implementation-prompt.md</code>), and a review comment on a pull request.</p>
+
+<h2 id="purpose-audience">1. Purpose &amp; audience</h2>
 
 <p>This page documents the <b>builder side</b> of that exchange — the loop actually followed while delivering GAP-01 through GAP-05 and the CI fix. It is a playbook, not a retrospective, but every rule below is illustrated with something that really happened, because the parts most worth writing down are the parts that were nearly gotten wrong.</p>
 
@@ -300,7 +302,7 @@
 </table>
 
 <h3>Tests that are green from the start</h3>
-<p>Some tests never fail, and that is correct: <b>back-compat pins</b> (an existing value must not change), <b>safety pins</b> (a forbidden API must remain absent), and <b>characterization pins</b> (locking behavior that already happens to be right). They do not drive new code, so they are exempt from red-first — but the exemption must be <em>disclosed in the PR body</em>, by name. Silence here looks like a fabricated red.</p>
+<p>Some tests never fail, and that is correct: <b>back-compat pins</b> (an existing value must not change), <b>safety pins</b> (a forbidden API must remain absent), and <b>characterization pins</b> (locking behavior that already happens to be right). They do not drive new code, so they are exempt from red-first — but the exemption must be <em>disclosed in the PR body</em>, by name. Silence here looks like a fabricated red. (This disclosure rule was practice before it was law; it is now recorded as amendment <b>A2</b> in the task register — <code class="inline">docs/hardening_register.md</code> §3 — which is the citable source.)</p>
 
 <div class="callout warn">
   <span class="lbl">Existing tests are pins</span>
@@ -393,9 +395,9 @@ git diff --check</code></pre>
   <tr><td><code class="inline">CONTRIBUTING.md</code></td><td>Binds process: TDD, gates, one-slice rule, never-merge, safety invariants.</td></tr>
   <tr><td><code class="inline">CLAUDE.md</code></td><td>The ordered docs chain and the hard safety/IP boundaries.</td></tr>
   <tr><td><code class="inline">.github/pull_request_template.md</code></td><td>Demands the red-then-green evidence table on every PR.</td></tr>
-  <tr><td><code class="inline">.claude/skills/spec-driven-collaboration/</code></td><td>Tier-2 escalation: the six-phase peer-LLM packaging skill.</td></tr>
-  <tr><td><code class="inline">tmp/collaborate-{target}-{slug}-{date}.md</code></td><td>Its output — a self-contained ten-section package.</td></tr>
-  <tr><td><code class="inline">tmp/architect-response-*.md</code></td><td>Tier-3 binding rulings from the architect session.</td></tr>
+  <tr><td><code class="inline">.claude/skills/spec-driven-collaboration/</code></td><td>Tier-2 escalation: the six-phase peer-LLM packaging skill. <b>Session-local</b> — gitignored (<code class="inline">.gitignore:2</code>), present in the working checkout but absent from any fresh clone or worktree.</td></tr>
+  <tr><td><code class="inline">tmp/collaborate-{target}-{slug}-{date}.md</code></td><td>Its output — a self-contained ten-section package. <b>Session-local</b> — <code class="inline">tmp/</code> is gitignored (<code class="inline">.gitignore:8</code>).</td></tr>
+  <tr><td><code class="inline">tmp/architect-response-*.md</code></td><td>Tier-3 binding rulings from the architect session. <b>Session-local</b> — same gitignored <code class="inline">tmp/</code>.</td></tr>
 </table>
 
 <h3 id="quotes">The contract, in the words that bind it</h3>

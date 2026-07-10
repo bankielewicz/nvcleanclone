@@ -115,7 +115,7 @@
   <a href="#ladder">5. The consultation ladder</a>
   <a href="#halt">6. HALT → ruling → amendment</a>
   <h2>Doing the work</h2>
-  <a href="#red">7. Red-first, when the red is a conflict</a>
+  <a href="#red">7. Red-first, when the red is a merge conflict</a>
   <a href="#gates">8. Gates, F&lt;n&gt; commits, force-push</a>
   <a href="#closing">9. Closing report &amp; delta re-review</a>
   <h2>Evidence</h2>
@@ -453,7 +453,7 @@ $ git merge --abort          # tree restored before doing anything else</code></
 
 <div class="callout warn">
   <span class="lbl">A red gate is a claim, not a fact</span>
-  <p>GitHub's <code class="inline">mergeable: CONFLICTING</code> is a <em>claim</em>. The test-merge is the <em>evidence</em>. The distinction is not pedantry: this repository's CI once reported <code class="inline">whitespace errors</code> on every merge for about five hours. There were none. <code class="inline">git diff --check HEAD~1 HEAD</code> was running against a depth-1 shallow clone, where <code class="inline">HEAD~1</code> does not resolve, and a <code class="inline">|| echo '::error::whitespace errors'</code> wrapper relabelled <code class="inline">fatal: ambiguous argument</code> as a whitespace failure. Root-cause a red before you believe what it says about itself.</p>
+  <p>GitHub's <code class="inline">mergeable: CONFLICTING</code> is a <em>claim</em>. The test-merge is the <em>evidence</em>. The distinction is not pedantry: this repository's CI once reported <code class="inline">whitespace errors</code> on every merge for about five hours. There were none. <code class="inline">git diff --check HEAD~1 HEAD</code> was running against a depth-1 shallow clone, where <code class="inline">HEAD~1</code> does not resolve, and a <code class="inline">|| { echo '::error::git diff --check found whitespace errors'; exit 1; }</code> wrapper (verbatim from <code class="inline">e239a1f</code>) relabelled <code class="inline">fatal: ambiguous argument</code> as a whitespace failure. Root-cause a red before you believe what it says about itself.</p>
 </div>
 
 <p>The symmetric error is trusting a green. <b>A green signal proves nothing about a thing whose job is to say no.</b> When the change is a check, guard, validator, or fallback, feed it bad input and watch it refuse — passing on good input is exactly what the broken version did too.</p>
@@ -570,7 +570,7 @@ git diff --check</code></pre>
   <tr><td><code class="inline">CONTRIBUTING.md</code></td><td>Binds process: TDD and red evidence, the three gates, one slice = one worktree = one branch = one PR, <b>never merge</b>.</td></tr>
   <tr><td><code class="inline">CLAUDE.md</code></td><td>Architecture, the ordered governing chain, and the hard safety and IP boundaries.</td></tr>
   <tr><td><code class="inline">docs/gaps_analysis.md</code></td><td>The closed task register. Its <b>§4 out-of-scope fence is absolute</b>; no fix round lifts it.</td></tr>
-  <tr><td><code class="inline">.claude/skills/spec-driven-collaboration/</code></td><td>The tier-2 fallback: packages an issue into a self-contained document for an external model.</td></tr>
+  <tr><td><code class="inline">.claude/skills/spec-driven-collaboration/</code></td><td>The tier-2 fallback: packages an issue into a self-contained document for an external model. <b>Session-local</b> — gitignored (<code class="inline">.gitignore:2</code>), present in the working checkout but absent from any fresh clone or worktree.</td></tr>
   <tr><td><code class="inline">docs/ai-handoff-workflow.html</code></td><td>Sibling: how a cold builder executes a plan from scratch.</td></tr>
   <tr><td><code class="inline">docs/ai-review-workflow.html</code></td><td>Sibling: how a reviewer validates the resulting PR — the step that produces the rejection this page begins with.</td></tr>
 </table>
