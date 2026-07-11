@@ -30,14 +30,12 @@ public class JobStoreTests
         return j;
     }
 
-    // A deterministically-running job: a download whose stream blocks past the prefix until
-    // cancelled. With a long stall window it stays "running" for the test's synchronous asserts.
-    private static Job RunningDownload(out string dir, string? sessionToken = null)
-    {
-        dir = TempDir.Create();
-        var stream = new ScriptedStream(prefixLen: 64 * 1024, blockAfterPrefix: true);
-        return Jobs.StartRealDownload(LiveRelease.New(), dir, DownloadHandler.Stream(stream));
-    }
+    // A deterministically-running job: the SIMULATED download runs a ~5 s progress timer, so the
+    // job stays "running" for this test's sub-second synchronous asserts. Deliberately NOT the
+    // real stalling download — that depends on the shared Jobs.StallTimeout static, which
+    // RealDownloadTests mutates in parallel (candidate #6); a timer-based sim avoids that race.
+    private static Job RunningDownload() =>
+        Jobs.StartDownload(new Release { Version = "572.16", Channel = "WHQL", SizeMB = 100 });
 
     // ---- AC-5: crypto job ids ----------------------------------------------------
     [Fact]
@@ -57,12 +55,10 @@ public class JobStoreTests
     public async Task JobStore_Eviction_NeverRemovesRunningJob()
     {
         var priorMax = Jobs.MaxRetainedJobs;
-        var priorStall = Jobs.StallTimeout;
         Jobs.MaxRetainedJobs = 3;
-        Jobs.StallTimeout = TimeSpan.FromSeconds(30);   // keep the stalling job running
         try
         {
-            var running = RunningDownload(out _);       // oldest, and pinned (running)
+            var running = RunningDownload();            // oldest, and pinned (running)
             Assert.Equal("running", running.Status);
 
             var firstTerminal = await TerminalJob();    // oldest terminal — first to be shed
@@ -76,11 +72,8 @@ public class JobStoreTests
             var still = Jobs.Get(running.Id);
             Assert.NotNull(still);
             Assert.Equal("running", still!.Status);
-
-            Jobs.Cancel(running.Id);
-            await running.Completion!;
         }
-        finally { Jobs.MaxRetainedJobs = priorMax; Jobs.StallTimeout = priorStall; }
+        finally { Jobs.MaxRetainedJobs = priorMax; }
     }
 
     // Expiry seam: with an overridable clock and retention, a stale terminal job is evicted on
