@@ -4,10 +4,16 @@
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+// GAP-S02a (SEC-02): the native shell hands us the per-launch API token in the URL fragment
+// (#token=…); read it once and send it as X-CleanDriver-Token on every /api call. The api
+// object is the sole fetch chokepoint, so this is the only place the header is added.
+const apiToken = new URLSearchParams(location.hash.slice(1)).get('token') || '';
 const api = {
-  get: p => fetch(p).then(r => r.json()),
+  get: p => fetch(p, { headers: { 'X-CleanDriver-Token': apiToken } }).then(r => r.json()),
   post: (p, body) => fetch(p, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CleanDriver-Token': apiToken },
+    body: JSON.stringify(body),
   }).then(r => r.json()),
 };
 
@@ -113,10 +119,13 @@ function renderCombo() {
   for (const r of state.releases) {
     const row = document.createElement('div');
     row.className = 'row' + (r.version === state.version ? ' on' : '');
+    // SEC-05: release metadata is escaped before interpolation — malicious version/channel/
+    // date text renders literally, never as markup. (The channel === 'Beta' test is a value
+    // comparison, not interpolation.)
     row.innerHTML =
-      `<span class="ver">${r.version}</span>` +
-      `<span class="tag${r.channel === 'Beta' ? ' beta' : ''}">${r.channel}</span>` +
-      `<span class="date">${r.releaseDate}</span>` +
+      `<span class="ver">${esc(r.version)}</span>` +
+      `<span class="tag${r.channel === 'Beta' ? ' beta' : ''}">${esc(r.channel)}</span>` +
+      `<span class="date">${esc(r.releaseDate)}</span>` +
       (r.version === latest ? '<span class="anno latest">Latest</span>' : '') +
       (state.gpu && r.version === state.gpu.installedDriverVersion ? '<span class="anno installed">Installed</span>' : '') +
       (r.version === state.version ? '<span class="check"><svg viewBox="0 0 16 16"><path d="M3 8 L6.5 11.5 L13 4.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>' : '');

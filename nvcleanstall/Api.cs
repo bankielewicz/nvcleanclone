@@ -7,9 +7,19 @@ namespace CleanDriver;
 
 public static class Api
 {
-    // package sources loaded this session, keyed by token handed to the client
-    private static readonly ConcurrentDictionary<string, (Manifest manifest, PackageSource source)> Sessions = new();
-    private static int _nextSession;
+    // GAP-S02a (BUG-05 pin 5): package sources loaded this session, keyed by a crypto-random
+    // token. Bounded + expiring, and a session referenced by a running job is PINNED so eviction
+    // never pulls state out from under an in-flight build. Caps/clock overridable for tests.
+    public static int MaxSessions { get; set; } = 32;
+    public static TimeSpan SessionRetentionPeriod { get; set; } = TimeSpan.FromMinutes(30);
+    public static Func<DateTimeOffset> SessionClock { get; set; } = () => DateTimeOffset.UtcNow;
+
+    private static readonly BoundedStore<(Manifest manifest, PackageSource source)> Sessions = new()
+    {
+        MaxEntries = 32,
+        Retention = TimeSpan.FromMinutes(30),
+        Pinned = token => Jobs.HasRunningJobForSession(token),
+    };
 
     private record PackageRequest(string Kind, string? Version, string? Path);
     private record DownloadRequest(string Version);
@@ -58,8 +68,11 @@ public static class Api
                 {
                     loaded = Packages.LoadLocal(req.Path ?? throw new InvalidDataException("path required"));
                 }
-                var token = Interlocked.Increment(ref _nextSession).ToString();
-                Sessions[token] = loaded;
+                var token = Ids.NewId();   // crypto-random session token (SEC-02 pin 4)
+                Sessions.MaxEntries = MaxSessions;
+                Sessions.Retention = SessionRetentionPeriod;
+                Sessions.Clock = SessionClock;
+                Sessions.Add(token, loaded);
                 return Results.Json(new { token, manifest = loaded.manifest }, Json.Web);
             }
             catch (InvalidDataException ex)
@@ -93,7 +106,7 @@ public static class Api
 
         app.MapPost("/api/execute", (ExecuteRequest req) =>
         {
-            if (!Sessions.TryGetValue(req.Token, out var src))
+            if (!Sessions.TryGet(req.Token, out var src))
                 return Results.Json(new { error = "unknown package token" }, Json.Web, statusCode: 400);
             if (req.Action is not ("install" or "silent" or "extract" or "package"))
                 return Results.Json(new { error = "unknown action" }, Json.Web, statusCode: 400);
@@ -106,7 +119,8 @@ public static class Api
                     ? new DownloadArtifact { FilePath = file, SizeBytes = new FileInfo(file).Length, Source = "live" }
                     : null;
                 var job = Jobs.StartExecute(req.Action, src.manifest, src.source,
-                    req.Selection ?? new Selection(), req.OutputPath, Gpu.Detect(), artifact);
+                    req.Selection ?? new Selection(), req.OutputPath, Gpu.Detect(), artifact,
+                    sessionToken: req.Token);   // pins the session while this job runs (BUG-05)
                 return Results.Json(new { jobId = job.Id }, Json.Web);
             }
             catch (Exception ex) when (ex is IOException or InvalidDataException)

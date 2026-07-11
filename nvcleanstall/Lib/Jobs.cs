@@ -32,6 +32,11 @@ public class Job
     public Task? Completion { get; internal set; }          // not serialized; tests await it
     internal CancellationTokenSource? Cancellation { get; set; } // null for simulated jobs
 
+    // GAP-S02a (BUG-05): the session an execute job was started from, so Api.Sessions can pin a
+    // session referenced by a running job. Null for downloads. Internal plumbing — never
+    // serialized (Snapshot omits it), so the /api/jobs/{id} shape is unchanged.
+    internal string? SessionToken { get; set; }
+
     public void LogLine(string text, string cls = "")
     {
         lock (_lock) _log.Add(new { text, cls });
@@ -67,17 +72,38 @@ public static class Jobs
 {
     public static string OutputDir => Path.Combine(AppContext.BaseDirectory, "output");
 
-    private static readonly ConcurrentDictionary<string, Job> Store = new();
-    private static int _nextId;
+    // GAP-S02a (BUG-05 pin 5): bounded + expiring, and a job that is still running is PINNED so
+    // eviction never removes it. Caps/clock are overridable for tests (the StallTimeout idiom).
+    public static int MaxRetainedJobs { get; set; } = 128;
+    public static TimeSpan RetentionPeriod { get; set; } = TimeSpan.FromMinutes(30);
+    public static Func<DateTimeOffset> Clock { get; set; } = () => DateTimeOffset.UtcNow;
+
+    private static readonly BoundedStore<Job> Store = new()
+    {
+        MaxEntries = 128,
+        Retention = TimeSpan.FromMinutes(30),
+        Pinned = id => Get(id) is { } j && !IsTerminal(j.Status),
+    };
+
+    private static bool IsTerminal(string status) =>
+        status is "done" or "failed" or "cancelled";
+
+    // A session is "referenced by a running job" iff some non-terminal execute job carries it.
+    public static bool HasRunningJobForSession(string sessionToken) =>
+        Store.Values.Any(j => j.SessionToken == sessionToken && !IsTerminal(j.Status));
 
     private static Job Create(string type)
     {
-        var job = new Job { Id = Interlocked.Increment(ref _nextId).ToString(), Type = type };
-        Store[job.Id] = job;
+        // GAP-S02a (SEC-02 pin 4): crypto-random id, not a guessable counter.
+        var job = new Job { Id = Ids.NewId(), Type = type };
+        Store.MaxEntries = MaxRetainedJobs;
+        Store.Retention = RetentionPeriod;
+        Store.Clock = Clock;
+        Store.Add(job.Id, job);   // triggers cap/expiry eviction, never touching a running job
         return job;
     }
 
-    public static Job? Get(string id) => Store.GetValueOrDefault(id);
+    public static Job? Get(string id) => Store.Get(id);
 
     // GAP-04: the final path of the most recent completed real download for a version, or
     // null if none this session. Simulated/mock jobs carry no FilePath and are excluded,
@@ -373,9 +399,11 @@ public static class Jobs
     // ---- execute (install / silent / extract / package) ---------------------
 
     public static Job StartExecute(string action, Manifest manifest, PackageSource source,
-        Selection selection, string? outputPath, GpuInfo gpu, DownloadArtifact? artifact = null)
+        Selection selection, string? outputPath, GpuInfo gpu, DownloadArtifact? artifact = null,
+        string? sessionToken = null)
     {
         var job = Create(action);
+        job.SessionToken = sessionToken;
         // Enrich only when the driver came from the live path (GAP-02 real download).
         // A mock/absent artifact leaves the receipt byte-identical to before GAP-04.
         bool liveArtifact = artifact is { Source: "live" } && !string.IsNullOrEmpty(artifact.FilePath);
