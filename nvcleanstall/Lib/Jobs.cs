@@ -32,6 +32,11 @@ public class Job
     public Task? Completion { get; internal set; }          // not serialized; tests await it
     internal CancellationTokenSource? Cancellation { get; set; } // null for simulated jobs
 
+    // GAP-S02a (BUG-05): the session an execute job was started from, so Api.Sessions can pin a
+    // session referenced by a running job. Null for downloads. Internal plumbing — never
+    // serialized (Snapshot omits it), so the /api/jobs/{id} shape is unchanged.
+    internal string? SessionToken { get; set; }
+
     public void LogLine(string text, string cls = "")
     {
         lock (_lock) _log.Add(new { text, cls });
@@ -69,6 +74,15 @@ public static class Jobs
 
     private static readonly ConcurrentDictionary<string, Job> Store = new();
     private static int _nextId;
+
+    // GAP-S02a (BUG-05) — inert scaffold (red commit): the caps/clock seam and the
+    // session-reference query exist so the tests compile, but Create still mints sequential ids
+    // into an unbounded dictionary, so the crypto-id / eviction / expiry tests fail.
+    public static int MaxRetainedJobs { get; set; } = 128;
+    public static TimeSpan RetentionPeriod { get; set; } = TimeSpan.FromMinutes(30);
+    public static Func<DateTimeOffset> Clock { get; set; } = () => DateTimeOffset.UtcNow;
+
+    public static bool HasRunningJobForSession(string sessionToken) => false;
 
     private static Job Create(string type)
     {
@@ -373,9 +387,11 @@ public static class Jobs
     // ---- execute (install / silent / extract / package) ---------------------
 
     public static Job StartExecute(string action, Manifest manifest, PackageSource source,
-        Selection selection, string? outputPath, GpuInfo gpu, DownloadArtifact? artifact = null)
+        Selection selection, string? outputPath, GpuInfo gpu, DownloadArtifact? artifact = null,
+        string? sessionToken = null)
     {
         var job = Create(action);
+        job.SessionToken = sessionToken;
         // Enrich only when the driver came from the live path (GAP-02 real download).
         // A mock/absent artifact leaves the receipt byte-identical to before GAP-04.
         bool liveArtifact = artifact is { Source: "live" } && !string.IsNullOrEmpty(artifact.FilePath);
