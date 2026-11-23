@@ -52,7 +52,8 @@ The route assumes that "the record type says non-null" and "StartExecute validat
 ## Impact
 - Any direct API client gets `500` with an empty body instead of the route's own `{"error": …}` 400 contract. That includes scripts, the Playwright and curl verification flow the repo is built around, and future GAP-S02 token-bearing callers. If the wizard ever sent such a body, `app.js:8-11` (`r.json()`) would reject on the empty body, `startExecute` would never reach `alert(r.error)`, and the click would silently do nothing.
 - Each such request that carries a valid token leaks a zombie `Job` (type `install`/`extract`, `status: "running"`, `progress: 0`, `log: []`) into the static `Jobs.Store` for the life of the process. Under GAP-S02's planned cap ("retained completed jobs at 128 … eviction never removes a running job"), zombies are never evicted, so they grow without bound even after that fix.
-- Reachability: the shipped wizard always sends a token and arrays, so normal UI use does not trigger this. That makes it a bounded robustness defect: **Low**.
+- Reachability: the shipped wizard always sends a token and arrays, so normal UI use does not trigger the token/null-list cases. That makes it a bounded robustness defect: **Low**.
+  - *Addendum (E2E functional pass, 2026-11-23, test R-01/R-09):* the **`outputPath` case is reachable through the wizard**. A NUL character in the Output folder field (entered via Playwright `fill`; hard for a human to type or paste, which keeps the grade at Low) produces this bodiless 500, and Start then silently does nothing, exactly as the first bullet predicts. The client half of that failure is [`api-helper-silent-on-non-json-errors`](../api-helper-silent-on-non-json-errors/api-helper-silent-on-non-json-errors.md). The Remedy's "the wizard already shows `r.error` through `alert`" holds **after** this fix (a JSON 400 body parses), not before it.
 
 ## How to reproduce
 ### A. Automated — failing xunit test

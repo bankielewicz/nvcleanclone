@@ -52,7 +52,7 @@ function pollRun(jobId) {
 Captured RED (harness, `BASE_URL=http://127.0.0.1:4806`):
 ```
 RED   (a) double-click Next on Screen 1 → POST /api/download ×2, POST /api/package ×2
-RED   (b) double-click Start (Build package) → POST /api/execute ×2; jobs [9:done; 10:failed (The process cannot access the file '/tmp/claude-0/-home-user-nvcleancl…)]; 10 log lines, 2 duplicates; error line shown=true; banner "Package built — written to output\package-571.96"
+RED   (b) double-click Start (Build package) → POST /api/execute ×2; jobs [9:done; 10:failed (The process cannot access the file '<scratch>/…)]; 10 log lines, 2 duplicates; error line shown=true; banner "Package built — written to output\package-571.96"
 exit=1
 ```
 Press-interval sweep (`probe-click-interval.js`, warm server):

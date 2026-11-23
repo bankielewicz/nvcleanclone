@@ -18,16 +18,22 @@ tailored per fix) → Acceptance criteria.
 
 ## Summary
 
-| Severity | Count |
-|---|---|
-| High | 1 |
-| Medium | 15 |
-| Low | 16 |
-| **Total (code-level hunt)** | **32** |
+| Severity | Code-level hunt | Functional UI pass (new) | Total |
+|---|---|---|---|
+| High | 1 | 0 | 1 |
+| Medium | 15 | 1 | 16 |
+| Low | 16 | 6 | 22 |
+| **Total** | **32** | **7** | **39** |
 
-31 are **Confirmed** (the repro fails on unmodified HEAD). One is **Plausible**:
+38 are **Confirmed** (the repro fails on unmodified HEAD). One is **Plausible**:
 `shell-url-from-raw-cleandriver-urls` is a WinForms path that cannot run on Linux, though both of
-its halves are reproduced. Results of the functional UI pass are in its own section below.
+its halves are reproduced.
+
+The functional UI pass ran **81 browser tests: 57 PASS / 23 FAIL / 0 BLOCKED / 1 N-A**. Its 23
+failures map onto 7 new reports, 5 reports from the code-level hunt, and the registered BUG-06. See
+[Functional UI pass](#functional-ui-pass). **AC-005 fails as written.** That contradicts
+`specs/nvcleanstall/parity.md`, which records it as passing (it only passes if the preset is
+loaded after Components is reached).
 
 ## Findings
 
@@ -98,14 +104,39 @@ BUG-07 already records.
 - **One row, two ACs:** `execute-malformed-body-500` (route) + `execute-prelude-throw-orphans-running-job` (engine).
 - **Honesty-marker pair:** `customized-manifest-drops-sample-flag` (`manifest.json`) + `receipt-drops-sample-components-flag` (receipt, `config.json`).
 - **Order-dependent frontend fixes:** `preset-on-screen1-freezes-download-at-100` → `preset-components-lost-after-back-to-source`; `pollrun-failed-job-dead-ends-run-screen` → `job-pollers-no-exit-on-404-or-network-error`.
-- **Owner rulings required before any build:** `clean-deletes-foreign-config-after-extract` (amends pin D1), `sibling-zip-shared-across-outdirs` (amends the GAP-06 archive name).
+- **Owner rulings required before any build:** `clean-deletes-foreign-config-after-extract` (amends pin D1), `sibling-zip-shared-across-outdirs` (amends the GAP-06 archive name), `run-log-lines-have-no-timestamps` (code or spec wording), `component-order-differs-from-mockup` (data or mockup).
+- **Spec record to correct:** `specs/nvcleanstall/parity.md` records AC-005 as passing; it fails as written until `preset-on-screen1-freezes-download-at-100` lands.
+- **In-flight guards (one pattern, two handlers):** `screen1-next-no-inflight-guard-wrong-version` (Screen 1 Next) and `double-click-start-runs-two-jobs` (Screen 5 Start).
+- **Silent client failures:** `api-helper-silent-on-non-json-errors` is the client half of every bodiless-500 report (`execute-malformed-body-500`, `preset-load-invalid-name-500`, BUG-06).
 - **Server/client halves:** `dependency-target-check-ignores-case` ↔ `component-dependency-closure-incomplete`; `preset-save-accepts-null-selection` (server) ↔ its Load-handler crash; `auto-reboot-submitted-with-unattended-off` ↔ GAP-C01's server-side orphan check.
 
 ## Functional UI pass
 
-See [`ui-functional-test-report.md`](ui-functional-test-report.md).
+Full results: [`ui-functional-test-report.md`](ui-functional-test-report.md). It has 81 rows, each
+traced to an FR, AC, ruling R1–R10, parity row or the mockups, plus the suite source and re-run
+steps for port 4780. The pass drove the real `Lib/`, `Api.cs` and `wwwroot/` through
+Playwright/Chromium against `--mock-catalog`.
 
-<!-- E2E-SECTION -->
+- **Passing:** AC-001…AC-004; rulings R2–R10 (R1 is N-A, doc-level only); all four actions write the artifacts FR-011…FR-016 require, including well-formed `.reg` snippets that are never applied; local folder/zip loading with all invalid-input errors; Screen 2 cancel/retry; Recommended; dependency notices; the `566.36` component switch.
+- **Failing (23 rows):**
+
+| Report | Sev. | Failing test ids | Root cause | Note |
+|---|---|---|---|---|
+| [`keyboard-cannot-reach-wizard-controls`](keyboard-cannot-reach-wizard-controls/keyboard-cannot-reach-wizard-controls.md) | Medium | N-07 | The Screen 1 source options, version combo, expert switch, action cards and preset rows are not focusable; toggling a checkbox drops focus to `<body>`. A keyboard-only user can only Install the latest version. | New |
+| [`api-helper-silent-on-non-json-errors`](api-helper-silent-on-non-json-errors/api-helper-silent-on-non-json-errors.md) | Low | R-01, R-09, P-05 (client half) | The `api` helper never checks `r.ok`, so a bodiless 500 makes Start / Load preset… do nothing and leaves start-up on "Detecting…". | Client half of `execute-malformed-body-500`, `preset-load-invalid-name-500` and BUG-06 |
+| [`double-click-start-runs-two-jobs`](double-click-start-runs-two-jobs/double-click-start-runs-two-jobs.md) | Low | N-06 | Start has no in-flight guard. Presses ≤5 ms apart start two jobs; with Build package one fails while the banner says "Package built". | Machine-speed only: presses ≥15 ms apart start one job. The code-level frontend hunter rejected it as humanly unreachable; it is kept at Low as the first dynamic reproduction of **BUG-04** (two writers on one folder) |
+| [`long-output-path-pushes-finish-offscreen`](long-output-path-pushes-finish-offscreen/long-output-path-pushes-finish-offscreen.md) | Low | L-03 | A ~90+ character unbroken output path in the result banner pushes Finish outside the 960 px shell window. | Removes one of R4's two exits |
+| [`source-note-clips-local-option`](source-note-clips-local-option/source-note-clips-local-option.md) | Low | L-01, L-02 | With the version dropdown open, the "Sample catalog" note clips "Use driver files on disk" by 14 px. | Cosmetic |
+| [`run-log-lines-have-no-timestamps`](run-log-lines-have-no-timestamps/run-log-lines-have-no-timestamps.md) | Low | S5-10 | FR-010 and CLAUDE.md say the log is timestamped; log entries are only `{text, cls}` (`Jobs.cs`). | Needs an **owner ruling**: fix the code or the wording |
+| [`component-order-differs-from-mockup`](component-order-differs-from-mockup/component-order-differs-from-mockup.md) | Low | M-01 | Container Runtime Services is row 7, not last as in the frozen Screen 3 mockup (data order in the sample manifests). | Design-contract deviation; owner decides data vs. mockup |
+| `preset-on-screen1-freezes-download-at-100` | Medium | **AC-005**, P-02 | (code-level hunt, above) | Also fails after a real process restart, not only on a fresh page |
+| `pollrun-failed-job-dead-ends-run-screen` | Medium | R-07, R-08 | (above) | A trigger that writes nothing: Output folder = the sample's `manifest.json` file |
+| `job-pollers-no-exit-on-404-or-network-error` | Low | N-04, R-02…R-05 | (above) | Reproduced by a real server restart mid-run |
+| `screen1-next-no-inflight-guard-wrong-version` | Low | N-05, R-06 | (above) | The local-package branch has the same gap |
+| `auto-reboot-submitted-with-unattended-off` | Low | S4-08 | (above) | — |
+| *known:* BUG-06 | — | P-03, P-05 | Preset names silently stripped, truncated or overwritten; one malformed preset file breaks the list. | Registered (GAP-C03) |
+
+- **Not testable here** (listed in the report header): the live NVIDIA catalog and its `sourceDetail` buckets, real driver download, the WebView2 shell, and real WMI detection.
 
 ## Unfiled leads (reported by the hunters, not reproduced or written up)
 
@@ -121,7 +152,9 @@ These are recorded so they are not lost; none is a confirmed finding.
 
 Every "Confirmed" report was reproduced by its author, then **re-run independently** against
 unmodified HEAD `54b3c31`. Totals: catalog 9 red cases / 4 reports, jobs 12 / 5, packages 23 / 9,
-API 19 / 7, and frontend 7 / 7 transcript scripts RED. The authors also applied each proposed
+API 19 / 7, and frontend 7 / 7 transcript scripts RED. The full 81-test functional UI suite was
+re-run on a fresh server and gave the identical 57 / 23 / 0 / 1 result, covering every failing row
+behind the seven UI-pass reports. The authors also applied each proposed
 remedy to a scratch copy and saw the full suite plus the repros go green. That check is advisory;
 the real fix PR must produce its own red/green evidence.
 
