@@ -13,6 +13,13 @@
 - **D-ADOPT** — this document is the active successor register; it supersedes the architect's candidates ledger (already absorbing deferred items #9 → BUG-02 and #39 → SEC-03). Wave S begins immediately with **SEC-01** (manifest path traversal), whose failing test is already reproduced and in hand.
 - **D-WAVEF** — Wave F (real NVIDIA package ingest/rebuild, GAP-F03/F04) is **in scope**. This lifts the extraction safety boundary under GAP-F03's exact controls, with owner sign-off recorded above per the standing safety rule. GAP-F01 still needs its own recorded UI ruling before build; the 7-Zip CLI interface is verified against primary sources at GAP-F03 prompt time.
 
+**Owner rulings — 2026-11-23 (bug-report triage of `docs/bugs/`).** Rulings only: none schedules implementation, and each affected fix still needs its own register entry before it is built.
+
+- **D-CLEAN** — *clarifies pin D1* (`docs/hardening_register.md` §HARD-01); not a reversal. The manifest-scoped clean deletes **only artifacts the prior build actually wrote**. D1 enumerates `install.cmd` / `config.json` but also says "foreign files always survive", and an `extract` never writes those two files. The builder picks the mechanism, but any read made before a delete must be size-bounded and must not follow links. Pair it with the reparse-point clean fix, since both change `CleanPreviousBuild`. Source: `docs/bugs/clean-deletes-foreign-config-after-extract/`.
+- **D-ZIPNAME** — *amends GAP-06 Resolution (2)* (`docs/gaps_analysis.md`). Build folders other than the default get `<version>-<folder>-cleandriver-package.zip`; the default folder keeps today's exact name, so existing pins stay green. Resolution (2)'s sibling destination and no-self-inclusion are kept. The name is server-side only: the UI never rebuilds it. Source: `docs/bugs/sibling-zip-shared-across-outdirs/`.
+- **D-LOGTS** — the code is not changed to add timestamps to log lines; the documentation is corrected instead, and `docs/bugs/run-log-lines-have-no-timestamps/` is re-graded a documentation defect. Basis: the frozen Screen 5 mockup shows no timestamps, and R9 adopts that log as the reference shape. FR-010's "timestamped log and receipt file" is read as met by the receipt (`installedAt` plus its dated file name; the file name's date is itself open under `docs/bugs/receipt-name-date-uses-culture-calendar/`). The `CLAUDE.md` sentence "appending timestamped log lines" is corrected by a docs-only (A2) slice. Any edit to FR-010's wording needs a separate owner sign-off.
+- **D-MOCKDATA** — component names and order in the mockups are sample data, not part of the frozen design contract; the contract is the screens, controls, states and rulings R1–R10. A local package's component order is user data the UI must keep anyway. `docs/bugs/component-order-differs-from-mockup/` is closed won't-fix.
+
 ## 1. Method and verified baseline
 
 The audit read every production C# file, the WebView frontend, project/workflow files, tests, the current spec/parity/register chain, and recent history. It did not execute an NVIDIA installer, mutate the registry, fuzz native parsers, or perform a privileged penetration test.
@@ -189,6 +196,75 @@ Each ID is one PR and must include its own red/green evidence, full build/test o
 **Fix:** Bundle `wwwroot/**` and `data/**` using the .NET single-file content mechanism (`IncludeAllContentForSelfExtract`) and keep `IncludeNativeLibrariesForSelfExtract`. Microsoft documents that this mode extracts bundled content before startup in its [single-file deployment guidance](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview). Store mutable output/presets under `%LOCALAPPDATA%\CleanDriver`, never beside extracted bundle content.
 
 **Acceptance:** a clean `win-x64` publish directory contains only `CleanDriver.exe` plus checksum/provenance artifacts; copying only the EXE to an empty directory starts native and headless modes, serves UI/data, saves presets, and writes output under LocalAppData. The published EXE is inspected for all expected bundle entries.
+
+
+### Wave R — bug-report follow-ups (owner-pinned 2026-11-23)
+
+Source: the 39 reports under `docs/bugs/` (index `docs/bugs/README.md`), found at `main` @ `54b3c31`. One slice is one PR. **Acceptance: as in each source report's "Acceptance criteria" section** (no new ACs are pinned here). The register gate in each report is satisfied by the slice ID below; any ID a report suggests is superseded.
+
+**Order (owner-pinned):** GAP-R01 lands first. GAP-R01 → R02 → R03 are serialized because all three edit `Packages.cs`. The rest follow the listed order. **Not pinned:** where GAP-R02 onward sit relative to the remaining GAP-S02…S04, Wave C and Wave F items; the owner places them at scheduling time.
+
+`docs/bugs/component-order-differs-from-mockup/` is closed won't-fix (D-MOCKDATA) and has no slice.
+
+#### GAP-R01 — Building into the source folder must not destroy the package
+
+**Reports:** `docs/bugs/build-into-source-folder-destroys-package/`.
+
+High; a regression from GAP-S01 (PR #23). Does not depend on D-CLEAN.
+
+#### GAP-R02 — `CleanPreviousBuild` deletes only what the prior build wrote, never through a link
+
+**Reports:** `docs/bugs/clean-previous-build-follows-reparse-point/`, `docs/bugs/clean-deletes-foreign-config-after-extract/`.
+
+Implements ruling **D-CLEAN**. Both reports change `CleanPreviousBuild`, hence one slice.
+
+#### GAP-R03 — Package input hardening (GAP-S01 follow-ups)
+
+**Reports:** `docs/bugs/folder-manifest-read-before-size-cap/`, `docs/bugs/manifest-null-collections-crash-validator/`, `docs/bugs/validation-regex-allows-newline-and-unicode/`, `docs/bugs/dependency-target-check-ignores-case/`.
+
+#### GAP-R04 — App host and process launch
+
+**Reports:** `docs/bugs/host-ambient-config-overrides-bind/`, `docs/bugs/open-folder-explorer-search-path/`, `docs/bugs/shell-url-from-raw-cleandriver-urls/`.
+
+Cross-reference: lands alongside GAP-S02 (local control plane) and GAP-C04 (PATH-based process launch); those entries' text and ACs are unchanged.
+
+#### GAP-R05 — API input contract: malformed requests get a JSON 400, never a bodiless 500 or a zombie job
+
+**Reports:** `docs/bugs/execute-malformed-body-500/`, `docs/bugs/execute-prelude-throw-orphans-running-job/`, `docs/bugs/preset-load-invalid-name-500/`, `docs/bugs/preset-save-accepts-null-selection/`.
+
+The two `execute-*` reports are the route and engine halves of one defect.
+
+#### GAP-R06 — Artifact identity and honesty
+
+**Reports:** `docs/bugs/receipt-drops-sample-components-flag/`, `docs/bugs/customized-manifest-drops-sample-flag/`, `docs/bugs/sibling-zip-shared-across-outdirs/`, `docs/bugs/receipt-name-date-uses-culture-calendar/`.
+
+Implements ruling **D-ZIPNAME**. Cross-reference: joins GAP-C02 (artifact identity, receipts, concurrent jobs); GAP-C02's own text and ACs are unchanged.
+
+#### GAP-R07 — Download engine robustness
+
+**Reports:** `docs/bugs/download-headers-phase-has-no-stall-timeout/`, `docs/bugs/shutdown-mid-download-leaves-part-file/`, `docs/bugs/download-reresolve-unknown-version/`.
+
+#### GAP-R08 — Catalog and GPU detection correctness
+
+**Reports:** `docs/bugs/studio-only-release-listed-as-game-ready/`, `docs/bugs/marketing-version-unpadded-wmi-field/`, `docs/bugs/gpu-detect-concurrent-first-call-race/`, `docs/bugs/live-size-parse-ignores-unit/`.
+
+#### GAP-R09a — Wizard frontend, pass 1: robustness
+
+**Reports:** `docs/bugs/pollrun-failed-job-dead-ends-run-screen/`, `docs/bugs/job-pollers-no-exit-on-404-or-network-error/`, `docs/bugs/preset-on-screen1-freezes-download-at-100/`, `docs/bugs/preset-components-lost-after-back-to-source/`, `docs/bugs/screen1-next-no-inflight-guard-wrong-version/`, `docs/bugs/double-click-start-runs-two-jobs/`, `docs/bugs/api-helper-silent-on-non-json-errors/`, `docs/bugs/component-dependency-closure-incomplete/`, `docs/bugs/auto-reboot-submitted-with-unattended-off/`.
+
+Frontend evidence per amendment A6. Within the slice: `pollrun-failed-job-dead-ends-run-screen` before `job-pollers-no-exit-on-404-or-network-error`, and `preset-on-screen1-freezes-download-at-100` before `preset-components-lost-after-back-to-source`. This slice's PR re-runs AC-005 exactly as written (preset loaded on Screen 1 after a relaunch) and confirms `specs/nvcleanstall/parity.md`'s existing AC-005 "pass", which is true only once this slice merges (§5 point 5: re-grade only what a merge proves).
+
+#### GAP-R09b — Wizard frontend, pass 2: keyboard access and layout
+
+**Reports:** `docs/bugs/keyboard-cannot-reach-wizard-controls/`, `docs/bugs/long-output-path-pushes-finish-offscreen/`, `docs/bugs/source-note-clips-local-option/`.
+
+Frontend evidence per amendment A6; follows GAP-R09a.
+
+#### GAP-R10 — Documentation corrections
+
+**Reports:** `docs/bugs/run-log-lines-have-no-timestamps/`.
+
+Implements ruling **D-LOGTS**: the `CLAUDE.md` sentence only; FR-010 is not reworded. Docs-only (A2). *(Amended 2026-11-23 on the owner's instruction, after the PR #25 review: the earlier `parity.md` AC-005 correction moved to GAP-R09a.)*
 
 ## 5. Required execution order
 
