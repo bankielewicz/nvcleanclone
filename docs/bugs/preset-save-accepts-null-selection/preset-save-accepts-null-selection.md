@@ -48,7 +48,7 @@ The route assumes the request record's types are already validated. Nothing chec
 
 ## How to reproduce
 ### A. Automated — failing xunit test
-Add to `nvcleanstall/CleanDriver.Tests/PresetRouteTests.cs` (the same in-process host helper as the sibling preset-route test). The test deletes only the single named file it may have written.
+Add as `nvcleanstall/CleanDriver.Tests/PresetSaveValidationTests.cs`. It uses the same in-process host helper as the `preset-load-invalid-name-500` test; extract it to `TestHttp.cs` once both land. The test deletes only the single named file it may have written.
 
 ```csharp
 using System;
