@@ -5,7 +5,7 @@
 | **Slug** | `validation-regex-allows-newline-and-unicode` |
 | **Severity** | Low. The allowlists are wider than documented and admit control characters and non-ASCII digits into version labels, file names and archive entry names. They cannot produce traversal (no separator or `..` gets through), so this is bounded incorrectness, not escape. |
 | **Confidence** | Confirmed: the repro test fails on HEAD (Linux harness), and it was reproduced live. These are pure regex semantics, identical on Windows. |
-| **Area** | `nvcleanstall/Lib/PackageValidation.cs` (`VersionRe`, `ComponentIdRe`, `PayloadRe`, so `ValidateVersion`, `ValidateManifest`, `IsSafeLeafPayload`) |
+| **Area** | `nvcleanstall/Lib/PackageValidation.cs` (`VersionRe`, `ComponentIdRe`, `PayloadRe`, so `ValidateVersion`, `ValidateManifest`, `IsSafeLeafPayload`), and `nvcleanstall/Lib/Jobs.cs` (`DriverVersionRe`, used by `StartRealDownload`; added after the PR #25 review) |
 | **Baseline** | `main` @ `54b3c31` |
 | **Platform** | Both. The Windows consequences below are reasoned from Win32 naming rules, not run. |
 | **Related register entries** | GAP-S01 Fix: "Current-format version, component ID, and payload names use allowlists". The `PackageValidation.cs:41-42` comment says "dotted decimals only". The `5447080`/`62b19ed` commit messages say "VersionRe not widened", but `\d` already is wider. |
@@ -41,11 +41,21 @@ with { Version = version, SampleComponents = true };
 ```
 `Jobs.cs:386-388` then derives `Path.Combine(OutputDir, $"{action}-{manifest.Version}")`, and `Packages.ZipPathFor` derives `$"{version}-cleandriver-package.zip"`.
 
+**Same flaw in `Jobs.cs`** (added after the PR #25 review). The real-download path validates the live version with its own regex before building the installer's file path:
+```csharp
+// Jobs.cs:146 — "Untrusted live version strings are used to build a file path — accept only NNN.NN."
+private static readonly Regex DriverVersionRe = new(@"^\d{3}\.\d{2}$", RegexOptions.Compiled);
+// Jobs.cs:221
+if (!DriverVersionRe.IsMatch(version)) { job.Status = "failed"; job.Error = "invalid driver version"; ... }
+```
+`NvidiaCatalogProvider` passes NVIDIA's `Version` field through verbatim (`NvidiaCatalogProvider.cs:88`, only an empty-check), so this regex is the only guard on that path.
+
 ## Impact
 - **A control character in on-disk names.** `POST /api/package {"kind":"catalog","version":"572.16\n"}` is accepted (HTTP 200, relabeled sample). A default `extract` then creates the directory `output/extract-572.16\n`. That was observed on Linux.
 - On Windows, LF is invalid in NTFS names (reasoned, not run), so the same request passes validation and then fails the job inside `Directory.CreateDirectory`/`File.Create` with an `IOException`. AC-2 requires a 400 at the boundary instead. Its message embeds the absolute path, because job errors surface `ex.Message`.
 - A payload `"display-driver.bin\n"` behaves the same way: accepted at load, then written as a newline-suffixed file (Linux) or failing at write time (Windows). On Linux it produces an archive entry `payload/display-driver.bin\n`, which contradicts AC-4's "normalized relative paths".
 - **Version identity confusion.** `572.16` and `572.16\n` are distinct accepted versions. `572.16\n` doesn't match the bundled `572.16` directory, so it is served the *sample template* with `SampleComponents=true`. Fullwidth and Arabic-Indic digit versions are accepted labels that render as different-looking but "valid" versions in the UI, receipts and file names.
+- **Real-download file names (`Jobs.cs`).** A live release whose version is `572.16\n` or uses full-width digits passes `DriverVersionRe`, and the installer is streamed to a file named from it. The only trigger is a malformed or hostile lookup response from NVIDIA's own host, so this half is defense in depth: on Windows an LF fails later inside the file write (reasoned), and non-ASCII digits produce a non-ASCII installer name.
 - No traversal: neither LF nor Unicode digits is a separator, and `..` still can't form. That's why this is Low.
 
 ## How to reproduce
@@ -96,6 +106,35 @@ Failed ...ValidateManifest_RejectsAComponentIdWithATrailingNewline              
 Failed ...IsSafeLeafPayload_RejectsATrailingNewline                                 Assert.False() Failure  Expected: False
 Failed!  - Failed: 6, Passed: 0
 ```
+`Jobs.cs` half, added after the PR #25 review: add to `nvcleanstall/CleanDriver.Tests/RealDownloadTests.cs` (it uses that file's `TempDir`, `LiveRelease` and `RecordingRedirectHandler` helpers):
+```csharp
+[Theory]
+[InlineData("572.16\n")]
+[InlineData("\uFF15\uFF17\uFF12.\uFF11\uFF16")]   // full-width digits
+public async Task StartRealDownload_VersionWithTrailingNewlineOrNonAsciiDigits_IsRejectedBeforeAnyRequest(string version)
+{
+    var dir = TempDir.Create();
+    var requests = 0;
+    var handler = new DownloadHandler(_ => { Interlocked.Increment(ref requests); return RecordingRedirectHandler.Body(new byte[16]); });
+
+    var job = Jobs.StartRealDownload(LiveRelease.New(version: version), dir, handler);
+    if (job.Completion != null) await job.Completion;
+
+    Assert.Equal("invalid driver version", job.Error);
+    Assert.Equal(0, requests);
+}
+```
+RED from the Linux `net10.0` harness at `54b3c31` (class `DriverVersionValidationTests`, identical body):
+```
+Failed ...StartRealDownload_VersionWithTrailingNewlineOrNonAsciiDigits_IsRejectedBeforeAnyRequest(version: "５７２.１６")
+   Assert.Equal() Failure: Strings differ
+Expected: "invalid driver version"
+Actual:   null
+Failed ...StartRealDownload_VersionWithTrailingNewlineOrNonAsciiDigits_IsRejectedBeforeAnyRequest(version: "572.16\n")
+   Assert.Equal() Failure: Strings differ
+Expected: "invalid driver version"
+Actual:   null
+```
 
 ### B. Live — running app
 Captured with the Linux harness on port 4802. `\n` is JSON-escaped in the body.
@@ -127,6 +166,8 @@ Anchor with `\z` and spell the digit class out:
 private static readonly Regex VersionRe     = new(@"^[0-9]{1,5}(\.[0-9]{1,5}){1,3}\z", RegexOptions.Compiled);
 private static readonly Regex ComponentIdRe = new(@"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\z", RegexOptions.Compiled);
 private static readonly Regex PayloadRe     = new(@"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\z", RegexOptions.Compiled);
+// Jobs.cs — same rule for the real-download version guard
+private static readonly Regex DriverVersionRe = new(@"^[0-9]{3}\.[0-9]{2}\z", RegexOptions.Compiled);
 ```
 Why this is minimal: three pattern strings, no behavior change for any value the documented format allows. `ValidateVersion_AcceptsCurrentFormat` (572.16 / 566.36 / 610.74 / 999.10) and every existing reject row stay green.
 
@@ -169,3 +210,4 @@ Fences respected: validator only; no path, deletion or UI change; error constant
 2. `IsSafeLeafPayload("display-driver.bin\n")` is false, and a component id with a trailing `\n` fails `ValidateManifest`.
 3. `POST /api/package {"kind":"catalog","version":"572.16\n"}` returns HTTP 400 with `BadVersion`, and no `extract-572.16\n` directory can be created by any flow.
 4. All existing `PackageValidationTests` pass unedited.
+5. `Jobs.StartRealDownload` rejects a live release whose version is `572.16\n` or contains non-ASCII digits with `invalid driver version`, before any HTTP request or file is created; `RealDownloadTests` pins stay green and unedited.
