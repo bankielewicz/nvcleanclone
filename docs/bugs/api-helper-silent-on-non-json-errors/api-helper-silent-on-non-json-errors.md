@@ -115,8 +115,11 @@ Frontend-only, A6. Use no new controls, and keep using the existing `alert` patt
     catch { return { error: r.ok ? 'unreadable server response' : `server error (HTTP ${r.status})` }; }
   };
   const net = e => ({ error: 'cannot reach the CleanDriver service' });
-  const api = { get: p => fetch(p).then(toJson, net), post: (p, b) => fetch(p, { ... }).then(toJson, net) };
+  // .catch(net) — not .then(toJson, net) — so a body that fails mid-read (r.text() rejects after
+  // the headers arrived) is caught too, not only a failed fetch.
+  const api = { get: p => fetch(p).then(toJson).catch(net), post: (p, b) => fetch(p, { ... }).then(toJson).catch(net) };
   ```
+  *Revised after the Codex review of PR #25.* The first sketch used `.then(toJson, net)`, which does not catch a rejection from `toJson` itself. Checked in Chromium (Playwright) against a local server that sends the headers and half a JSON body, then destroys the socket: with `.then(toJson, net)` the call rejects with `TypeError: Failed to fetch`; with `.then(toJson).catch(net)` it resolves to `{ error: 'cannot reach the CleanDriver service' }`.
 - Callers that read a field without checking `error` must check it first: `btn-load-preset` (`r.presets`), `btn-browse` (`r.path`), and `boot` (`sys`/`cat`/`tw`). For boot, `alert` the error and leave Screen 1 inert rather than posting `version: undefined`.
 - **Order within GAP-R09a: this lands before `job-pollers-no-exit-on-404-or-network-error`.** The pollers then consume this helper's `{error}`, and both use the single message `cannot reach the CleanDriver service` for a lost connection, so the user sees one wording whichever screen loses the server.
 - Show server text with `alert`/`textContent` only, never `innerHTML`.
@@ -146,6 +149,7 @@ Frontend-only, A6. Use no new controls, and keep using the existing `alert` patt
    - A network abort on `/api/presets` POST (Save).
    - `/api/tweaks` 500 at boot.
    - A 200 with a non-JSON body.
+   - A response cut off mid-body: a local HTTP server (not `page.route`, which cannot truncate a body) that writes the headers with `Content-Length: 100`, writes `{"presets":[`, then destroys the socket.
    - Each produces one readable alert and no uncaught rejection.
 6. **Verdict doc.**
 7. **Implementer handoff** → C0–C7.
@@ -156,3 +160,4 @@ Frontend-only, A6. Use no new controls, and keep using the existing `alert` patt
 2. Existing JSON error alerts are unchanged in wording: S1-06 "expected a package folder or .zip file", S1-07, S1-08, S1-09, N-03 "unknown package token".
 3. A failed start-up never lets **Next** post `version: undefined`.
 4. The full C# suite is green, and `git diff --check` is clean.
+5. A response whose body is cut off after the headers (headers plus partial JSON, then the connection closes) produces the same `cannot reach the CleanDriver service` alert as a failed fetch, with zero unhandled rejections.
