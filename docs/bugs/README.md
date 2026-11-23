@@ -120,7 +120,7 @@ the remaining GAP-S02…S04 and Waves C/F is not pinned yet.
 | **GAP-R08** | Catalog and GPU detection correctness | `studio-only-release-listed-as-game-ready`, `marketing-version-unpadded-wmi-field`, `gpu-detect-concurrent-first-call-race`, `live-size-parse-ignores-unit` |
 | **GAP-R09a** | Wizard frontend, pass 1: robustness (A6) | `pollrun-failed-job-dead-ends-run-screen`, `job-pollers-no-exit-on-404-or-network-error`, `preset-on-screen1-freezes-download-at-100`, `preset-components-lost-after-back-to-source`, `screen1-next-no-inflight-guard-wrong-version`, `double-click-start-runs-two-jobs`, `api-helper-silent-on-non-json-errors`, `component-dependency-closure-incomplete`, `auto-reboot-submitted-with-unattended-off` |
 | **GAP-R09b** | Wizard frontend, pass 2: keyboard access and layout (A6) | `keyboard-cannot-reach-wizard-controls`, `long-output-path-pushes-finish-offscreen`, `source-note-clips-local-option` |
-| **GAP-R10** | Documentation corrections (D-LOGTS; parity.md AC-005) | `run-log-lines-have-no-timestamps` |
+| **GAP-R10** | Documentation corrections: the `CLAUDE.md` sentence (D-LOGTS) | `run-log-lines-have-no-timestamps` |
 | — | Closed won't-fix (D-MOCKDATA) | `component-order-differs-from-mockup` |
 
 ## Fix ordering and pairings
@@ -135,7 +135,7 @@ the remaining GAP-S02…S04 and Waves C/F is not pinned yet.
   - **D-ZIPNAME** amends GAP-06 Resolution (2): Option A of `sibling-zip-shared-across-outdirs`. The default folder keeps its archive name; other folders get `<version>-<leaf>-cleandriver-package.zip`.
   - **D-LOGTS**: `run-log-lines-have-no-timestamps` is re-graded a **documentation defect**. The fix is a docs-only `CLAUDE.md` correction; FR-010 is read as met by the receipt and is not reworded.
   - **D-MOCKDATA**: mockup component names and order are illustrative, so `component-order-differs-from-mockup` is **closed won't-fix**.
-- **Spec record to correct:** `specs/nvcleanstall/parity.md` records AC-005 as passing; it fails as written until `preset-on-screen1-freezes-download-at-100` lands.
+- **AC-005 record:** `specs/nvcleanstall/parity.md` records AC-005 as passing, which is true only once `preset-on-screen1-freezes-download-at-100` lands. GAP-R09a's PR re-runs AC-005 as written and confirms the row; `parity.md` is not edited before then.
 - **In-flight guards (one pattern, two handlers):** `screen1-next-no-inflight-guard-wrong-version` (Screen 1 Next) and `double-click-start-runs-two-jobs` (Screen 5 Start).
 - **Silent client failures:** `api-helper-silent-on-non-json-errors` is the client half of every bodiless-500 report (`execute-malformed-body-500`, `preset-load-invalid-name-500`, BUG-06).
 - **Server/client halves:** `dependency-target-check-ignores-case` ↔ `component-dependency-closure-incomplete`; `preset-save-accepts-null-selection` (server) ↔ its Load-handler crash; `auto-reboot-submitted-with-unattended-off` ↔ GAP-C01's server-side orphan check.

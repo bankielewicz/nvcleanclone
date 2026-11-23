@@ -238,3 +238,4 @@ RESULT: GREEN
 3. After **Finish**, loading a preset and then choosing a local package whose component ids differ reaches Screen 3 without an error.
 4. The flow without a preset is unchanged: same default selection, same highlighted row (first non-required component), and same "682 MB of 832 MB" total on the bundled 572.16 package.
 5. The diff is confined to `nvcleanstall/wwwroot/app.js`. `dotnet build`, `dotnet test` (unchanged count), and `git diff --check` are green.
+6. AC-005 passes exactly as written in `specs/nvcleanstall/spec.md` (relaunch, load the preset on Screen 1, Next): the PR's live-exercise evidence shows it, confirming `parity.md`'s existing AC-005 "pass" (GAP-R09a; no `parity.md` edit is needed).

@@ -252,7 +252,7 @@ Implements ruling **D-ZIPNAME**. Cross-reference: joins GAP-C02 (artifact identi
 
 **Reports:** `docs/bugs/pollrun-failed-job-dead-ends-run-screen/`, `docs/bugs/job-pollers-no-exit-on-404-or-network-error/`, `docs/bugs/preset-on-screen1-freezes-download-at-100/`, `docs/bugs/preset-components-lost-after-back-to-source/`, `docs/bugs/screen1-next-no-inflight-guard-wrong-version/`, `docs/bugs/double-click-start-runs-two-jobs/`, `docs/bugs/api-helper-silent-on-non-json-errors/`, `docs/bugs/component-dependency-closure-incomplete/`, `docs/bugs/auto-reboot-submitted-with-unattended-off/`.
 
-Frontend evidence per amendment A6. Within the slice: `pollrun-failed-job-dead-ends-run-screen` before `job-pollers-no-exit-on-404-or-network-error`, and `preset-on-screen1-freezes-download-at-100` before `preset-components-lost-after-back-to-source`.
+Frontend evidence per amendment A6. Within the slice: `pollrun-failed-job-dead-ends-run-screen` before `job-pollers-no-exit-on-404-or-network-error`, and `preset-on-screen1-freezes-download-at-100` before `preset-components-lost-after-back-to-source`. This slice's PR re-runs AC-005 exactly as written (preset loaded on Screen 1 after a relaunch) and confirms `specs/nvcleanstall/parity.md`'s existing AC-005 "pass", which is true only once this slice merges (§5 point 5: re-grade only what a merge proves).
 
 #### GAP-R09b — Wizard frontend, pass 2: keyboard access and layout
 
@@ -264,7 +264,7 @@ Frontend evidence per amendment A6; follows GAP-R09a.
 
 **Reports:** `docs/bugs/run-log-lines-have-no-timestamps/`.
 
-Implements ruling **D-LOGTS** (the `CLAUDE.md` sentence; FR-010 is not reworded). Also corrects `specs/nvcleanstall/parity.md`'s AC-005 "pass", which fails as written until `preset-on-screen1-freezes-download-at-100` (GAP-R09a) lands. Docs-only (A2).
+Implements ruling **D-LOGTS**: the `CLAUDE.md` sentence only; FR-010 is not reworded. Docs-only (A2). *(Amended 2026-11-23 on the owner's instruction, after the PR #25 review: the earlier `parity.md` AC-005 correction moved to GAP-R09a.)*
 
 ## 5. Required execution order
 
