@@ -90,13 +90,15 @@ public class OpenFolderLaunchTests
         return (app, new HttpClient { BaseAddress = new Uri(app.Urls.First()) });
     }
 
-    // (a) No process in Api.cs is started by a bare, search-path-resolved file name.
+    // (a) No process in Api.cs is started by a bare, search-path-resolved file name, in any of
+    // the three literal forms: Process.Start("x", …), new ProcessStartInfo("x", …), FileName = "x".
     [Fact]
     public void Api_NeverStartsAProcessByBareName()
     {
         var src = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "src", "Api.cs"));
-        var bare = Regex.Matches(src, "ProcessStartInfo\\(\\s*\"([^\"]+)\"")
-            .Select(m => m.Groups[1].Value)
+        var bare = Regex.Matches(src,
+                "(?:Process\\.Start|new\\s+ProcessStartInfo)\\(\\s*\"([^\"]+)\"|FileName\\s*=\\s*\"([^\"]+)\"")
+            .Select(m => m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value)
             .Where(name => !Path.IsPathFullyQualified(name))
             .ToList();
         Assert.Empty(bare);
@@ -150,6 +152,16 @@ RED, Linux net10.0 harness output (class named `OpenFolderExplorerSearchPathRepr
 Collection: ["explorer"]
 Failed!  - Failed:     2, Passed:     0, Skipped:     0, Total:     2, Duration: 1 s - Harness.Tests.dll (net10.0)
 ```
+
+Re-run after the PR #25 review with the strengthened guard (a), the §A block compiled as written (class `OpenFolderLaunchTests`, Linux net10.0 harness at `54b3c31`). Both still fail:
+```
+  Failed CleanDriver.Tests.OpenFolderLaunchTests.OpenFolder_DoesNotRunAnExplorerPlantedInTheAppOrWorkingDirectory [1 s]
+   the planted 'explorer' beside the app was executed
+  Failed CleanDriver.Tests.OpenFolderLaunchTests.Api_NeverStartsAProcessByBareName [13 ms]
+   Assert.Empty() Failure: Collection was not empty
+Collection: ["explorer"]
+```
+The same pattern also flags `Process.Start("explorer", dir)` and `new ProcessStartInfo { FileName = "explorer" }`, and passes the Remedy's `new ProcessStartInfo(explorer, …)` (a variable), checked in the harness.
 
 ### B. Live — running app
 **Linux harness, captured.** The server was started from its own folder (the CWD), and a harmless marker-writing script named `explorer` was planted there:
@@ -222,7 +234,7 @@ Launch `%SystemRoot%\explorer.exe` by absolute path, never by bare name. Quote t
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active. The natural home is **GAP-C04** ("Remove PATH-based PowerShell execution"), widened by the owner to "remove every search-path-resolved process launch (`Gpu.cs` powershell, `Api.cs` explorer)". That needs an owner-pinned amendment. Otherwise it needs a new SEC-ID, because §7 says a new finding is never silently folded into an unrelated PR.
-   > *Pinned 2026-11-23 as **GAP-R04** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R04** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-explorer -b feat/open-folder-absolute-explorer origin/main`.
 2. **Red.** Add §A at `nvcleanstall/CleanDriver.Tests/OpenFolderLaunchTests.cs` plus the `src\Api.cs` content link in `CleanDriver.Tests.csproj`. Run the filter on Windows: (a) fails with `Collection: ["explorer"]`. Attach the Linux (b) red from §A and the Windows notepad evidence from §B as additional red. Commit `"open-folder-explorer-search-path (red): Api.cs never launches a process by bare name"`.
 3. **Green.** Apply the diff and run the FULL suite. Commit `"open-folder-explorer-search-path: launch %SystemRoot%\\explorer.exe by absolute path, quoted"`.
@@ -247,7 +259,7 @@ Launch `%SystemRoot%\explorer.exe` by absolute path, never by bare name. Quote t
 4. **Finder pass:**
    - Is the path built from `SpecialFolder.Windows` (not `%windir%` via an env-var lookup, which the process environment can set)?
    - Is `File.Exists` checked before launch?
-   - Is there no remaining `ProcessStartInfo("…")` with a bare name anywhere in `Api.cs` (or a `FileName = "…"` form that the regex in (a) would miss)? Extend the guard if so.
+   - Is there no remaining bare-name launch anywhere in `Api.cs`? Guard (a) covers `Process.Start("…"`, `new ProcessStartInfo("…"` and `FileName = "…"`; any other form (a `const` name, string interpolation) means extending it.
    - Is the argument quoted exactly once?
    - Is `UseShellExecute` still `false`?
 5. **Adversarial verify:**

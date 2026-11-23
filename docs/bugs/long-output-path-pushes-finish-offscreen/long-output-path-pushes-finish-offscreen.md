@@ -110,7 +110,7 @@ Optionally, `shortPath` could also abbreviate the middle of very long paths with
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active, and no entry covers banner layout. Get a new owner-pinned entry, or fold this into a small "frontend robustness" item. Declare `slice_start --no-surface '^nvcleanstall/wwwroot/'`.
-   > *Pinned 2026-11-23 as **GAP-R09b** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R09b** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-longpath -b feat/long-output-path-pushes-finish-offscreen origin/main`.
 2. **Red.** The §A transcript must show `RED … from 90 chars`, with screenshot.
 3. **Green.** Make the three CSS declarations. §A must print `GREEN` and every sweep row inside. Run the full C# suite (unchanged). Commit `"long-output-path-pushes-finish-offscreen: let the banner path wrap"`.

@@ -176,7 +176,7 @@ One poll failed at the transport level, polling stopped, and 11 s later the page
 2. Click **Next** on Screen 1.
 3. While the bar is moving, stop the server. Use Ctrl+C, or `taskkill.exe /F /IM CleanDriver.exe` from WSL.
 4. Restart the server with the same command.
-5. **Expected:** the download view reports the failure (for example "Download failed: lost contact with the CleanDriver server") and returns to Screen 1.
+5. **Expected:** the download view reports the failure (for example "Download failed: cannot reach the CleanDriver service") and returns to Screen 1.
    **Actual:** the bar freezes at its last value with "continues automatically when complete" shown. DevTools shows `Uncaught (in promise) TypeError: Failed to fetch`. No further polls are made.
 6. Run-view variant: go through to Screen 5, click **Start**, then repeat steps 3–4 during the run. The log freezes and there is no Finish and no Back.
 
@@ -184,6 +184,8 @@ One poll failed at the transport level, polling stopped, and 11 s later the page
 The pollers have no error model. `api.get` returns `r.json()` whatever the status, so a 404 error body reaches the caller looking like a successful snapshot. Neither `tick` catches a rejected `fetch`. Each poller decides when to stop only by matching known `status` strings, so a response with *no* status falls into "keep polling" (`pollDownload`) or into code that dereferences snapshot fields (`pollRun`).
 
 ## Remedy
+**Order within GAP-R09a:** lands after `api-helper-silent-on-non-json-errors` (and after `pollrun-failed-job-dead-ends-run-screen`). With that helper in place a lost connection arrives as `{ error: 'cannot reach the CleanDriver service' }`, which `pollJob` turns into `failed` with the same message.
+
 Add one helper that turns "no job" and "no server" into the terminal `failed` status. Both pollers then use their existing failure branches. The `pollRun` branch is added by `pollrun-failed-job-dead-ends-run-screen`, shown here as context:
 ```diff
 @@ app.js:145 @@
@@ -195,7 +197,8 @@ Add one helper that turns "no job" and "no server" into the terminal `failed` st
 +    const j = await api.get(`/api/jobs/${jobId}`);
 +    return j && j.status ? j : { status: 'failed', error: j?.error || 'unknown job', progress: 0, doneMB: 0, log: [] };
 +  } catch {
-+    return { status: 'failed', error: 'lost contact with the CleanDriver server', progress: 0, doneMB: 0, log: [] };
++    // Unreachable once api-helper-silent-on-non-json-errors lands (api.get never throws); kept as defense, same wording.
++    return { status: 'failed', error: 'cannot reach the CleanDriver service', progress: 0, doneMB: 0, log: [] };
 +  }
 +}
 +
@@ -218,7 +221,7 @@ Add one helper that turns "no job" and "no server" into the terminal `failed` st
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active, and no entry covers client polling. A **new owner-pinned entry** is needed. Suggested: one "run-view and poller terminal states" entry shared with `pollrun-failed-job-dead-ends-run-screen`, with this slice landing second. Declare the no-test-surface slice: `slice_start --no-surface '^nvcleanstall/wwwroot/'` (sanctioned by that pattern appearing verbatim in the build plan).
-   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** After the sibling merges: `git worktree add ../nvcleanclone-poll-errors -b feat/job-pollers-no-exit-on-404-or-network-error origin/main`.
 2. **Red.** Run the §A script against the unmodified app and save the RED transcript. Also repeat the manual §B restart once and paste it as live red. Both go in the PR body (HARD-04/HARD-06 precedent: no JS test location, no toolchain).
 3. **Green.** Apply the diff. Rerun the script, which should produce the GREEN transcript below, and repeat §B. Run the full C# suite. Commit `job-pollers-no-exit-on-404-or-network-error: treat a lost job or server as a failed job in both pollers`.
@@ -228,6 +231,7 @@ Add one helper that turns "no job" and "no server" into the terminal `failed` st
 7. **PR.** Use the template, with one evidence row per case (A–D) plus the live-restart row. Name **amendment A6** and the dependency on the sibling. Push, and never merge.
 
 GREEN transcript (same script, with the candidate diff, which already includes the sibling's `failed` branch, served through the harness `PATCHED_APPJS` hook):
+*(Captured with the remedy's earlier wording, "lost contact with the CleanDriver server"; the message is now unified with `api-helper-silent-on-non-json-errors`.)*
 ```
 [A download/404] screen=screen-source dl-done="0 MB" polls in 3 s=0 alerts=["Download failed: no such job"]
 [A download/404] GREEN: poller stopped and left Screen 2: true (expected true)
@@ -264,7 +268,7 @@ RESULT: GREEN
 ## Acceptance criteria
 1. The §A script prints `GREEN` for A–D. Each case produces zero unhandled rejections, zero page errors, and exactly one alert.
 2. A 404 job on Screen 2 stops polling within one tick (≤1 poll over 3 s after it), and the app returns to Screen 1 with "Download failed: no such job".
-3. A transport error on Screen 2 or the run view alerts "…lost contact with the CleanDriver server" and returns to Screen 1 or Screen 5A respectively.
+3. A transport error on Screen 2 or the run view alerts "…cannot reach the CleanDriver service" and returns to Screen 1 or Screen 5A respectively.
 4. A real server restart during a headless download (§B) ends on Screen 1 with that alert, not a frozen bar.
 5. Normal download, user cancel, HARD-04 server-cancel (silent), and successful runs are unchanged.
 6. The diff is confined to `nvcleanstall/wwwroot/app.js` and lands after `pollrun-failed-job-dead-ends-run-screen`. `dotnet build`, `dotnet test` (unchanged count) and `git diff --check` are green.

@@ -122,11 +122,11 @@ Minimal fix: read the unit, convert the known ones, and return 0 for anything el
 - **Back-compat pins:** `NvidiaCatalogProviderTests.GetReleases_ParsesRecordedFixture_IntoLiveReleases` (`Assert.Equal(979, releases[0].SizeMB)`) is still green. Verified in a scratch copy: full suite plus repros 161/161.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** `docs/security_register.md` is active; GAP-F01 is catalog work but blocked on a UI ruling. Ask the owner to pin a new ID (for example BUG-13, "live catalog parsing") per §7, or to bundle it with the Studio-row fix under one ID as a separately disclosed finding.
-   > *Pinned 2026-11-23 as **GAP-R08** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+0. **Register gate.** Settled: slice **GAP-R08**, with the other catalog and GPU fixes; GAP-F01 stays separate.
+   > *Pinned 2026-11-23 as **GAP-R08** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-size-unit -b feat/live-size-parse-ignores-unit origin/main`
-2. **Red.** Add the §A theory to `nvcleanstall/CleanDriver.Tests/NvidiaCatalogProviderTests.cs`. Run the filter and confirm `Actual: 1` for both cases. Commit `"BUG-13 (red): a live size stated in GB is converted to MB"`.
-3. **Green.** Unit-aware `ParseSizeMB`. Run the FULL suite. Commit `"BUG-13: read the unit in DownloadURLFileSize"`.
+2. **Red.** Add the §A theory to `nvcleanstall/CleanDriver.Tests/NvidiaCatalogProviderTests.cs`. Run the filter and confirm `Actual: 1` for both cases. Commit `"GAP-R08 (red): live-size-parse-ignores-unit — a live size stated in GB is converted to MB"`.
+3. **Green.** Unit-aware `ParseSizeMB`. Run the FULL suite. Commit `"GAP-R08: live-size-parse-ignores-unit — read the unit in DownloadURLFileSize"`.
 4. **Refactor.** Suite green only.
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.**

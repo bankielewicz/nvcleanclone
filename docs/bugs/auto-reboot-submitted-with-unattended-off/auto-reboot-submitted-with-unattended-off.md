@@ -160,7 +160,7 @@ At the point of submission, derive the effective tweaks: a sub-option whose pare
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active. This belongs **with GAP-C01**, which names the invariant. Record it there as the client-side counterpart so that its "Valid UI … selections remain green" AC is achievable, or pin it as a new owner-approved entry ordered **before** GAP-C01. Declare the no-test-surface slice: `slice_start --no-surface '^nvcleanstall/wwwroot/'` (sanctioned by that pattern appearing verbatim in the build plan).
-   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-auto-reboot -b feat/auto-reboot-submitted-with-unattended-off origin/main`.
 2. **Red.** Run the §A script against the unmodified app and save the RED transcript. It goes in the PR body, since the repo has no JS test location and no toolchain (HARD-04/HARD-06 precedent).
 3. **Green.** Apply the diff and rerun the script, expecting the GREEN transcript below. Run the full C# suite; mock receipts for selections *without* an orphan must stay byte-identical (the existing receipt pins). Commit `auto-reboot-submitted-with-unattended-off: submit a sub-tweak only when its parent is on`.

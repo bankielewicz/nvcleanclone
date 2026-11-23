@@ -79,7 +79,7 @@ Frontend-only, A6. No new controls, and the note text and position stay as HARD-
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active, and no entry covers this. Get a new owner-pinned entry, or fold it into a frontend-layout item with `long-output-path-pushes-finish-offscreen`. Declare `slice_start --no-surface '^nvcleanstall/wwwroot/'`.
-   > *Pinned 2026-11-23 as **GAP-R09b** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R09b** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-srcnote -b feat/source-note-clips-local-option origin/main`.
 2. **Red.** §A transcript (`RED … clipped by 14px`) plus screenshot.
 3. **Green.** Make the minimal change from the Remedy. §A must print `GREEN`. Run the full C# suite (unchanged). Commit `"source-note-clips-local-option: keep the local card inside the window with the menu open"`.

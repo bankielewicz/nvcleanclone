@@ -170,7 +170,7 @@ Allow one Screen 1 request at a time, and bind the download to the version it wa
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active. GAP-C02 ("Create same-version downloads atomically …") is the server half, and this client half is not in it. Fold it into GAP-C02 as an explicit client line item, or pin a new owner entry. Declare the no-test-surface slice: `slice_start --no-surface '^nvcleanstall/wwwroot/'` (sanctioned by that pattern appearing verbatim in the build plan).
-   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-next-guard -b feat/screen1-next-no-inflight-guard-wrong-version origin/main`.
 2. **Red.** Run the §A script against the unmodified app and save the RED transcript (PR body; HARD-04/HARD-06 precedent: no JS test location, no toolchain).
 3. **Green.** Apply the diff, rerun the script, and expect the GREEN transcript below. Run the full C# suite. Commit `screen1-next-no-inflight-guard-wrong-version: one Screen 1 request in flight; bind the download to its version`.

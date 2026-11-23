@@ -133,7 +133,7 @@ Fences: docs-only. No production, test or `wwwroot/` change.
 
 ## Fix workflow (docs-only — exemption A2)
 0. **Register gate.** D-LOGTS rules the outcome. Per CLAUDE.md, the owner still pins the slice: a register entry, or explicit word that D-LOGTS suffices for this one-sentence docs fix.
-   > *Pinned 2026-11-23 as **GAP-R10** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R10** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-log-wording -b docs/claude-md-log-wording origin/main`.
 2. **Edit** the one `CLAUDE.md` sentence. Touch no other file.
 3. **No red/green.** Under exemption **A2** a docs-only slice satisfies the TDD gate vacuously; name A2 in the PR body.

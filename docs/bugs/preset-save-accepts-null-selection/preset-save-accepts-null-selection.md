@@ -176,7 +176,7 @@ Reject a missing selection at the route. This was validated in a scratch copy of
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active. Fold into **GAP-C03** (presets) as an added AC ("a save without a selection is rejected and writes nothing"). The owner must pin it; otherwise it needs a new owner-pinned ID.
-   > *Pinned 2026-11-23 as **GAP-R05** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R05** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-presetsel -b feat/preset-save-requires-selection origin/main`.
 2. **Red.** Add §A at `nvcleanstall/CleanDriver.Tests/PresetSaveValidationTests.cs` and run the filter. Both cases fail with `Expected: BadRequest / Actual: OK`. Commit `"preset-save-accepts-null-selection (red): POST /api/presets requires a selection"`.
 3. **Green.** Apply the guard and run the FULL suite. Commit `"preset-save-accepts-null-selection: reject a preset save without a selection"`.

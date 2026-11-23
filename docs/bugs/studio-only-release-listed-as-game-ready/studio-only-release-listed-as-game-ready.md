@@ -8,7 +8,7 @@
 | **Area** | `nvcleanstall/Lib/NvidiaCatalogProvider.cs` (`Parse`) |
 | **Baseline** | `main` @ `54b3c31` |
 | **Platform** | Both |
-| **Related register entries** | Related to GAP-F01, but a different defect. The register (§2 table, `docs/security_register.md:46`) records only the *same-version* collapse: Studio and Game Ready rows that share a version are reduced to the Game Ready row. This bug runs the other way. A Studio row whose version has **no** Game Ready twin is kept and served as an ordinary WHQL release. GAP-F01's model (distinct `(version,type,platform)` releases) would eventually replace this code, but GAP-F01 is blocked on a UI ruling. Until it lands, the provider breaks its own documented "Game-Ready only" contract. |
+| **Related register entries** | Related to GAP-F01, but a different defect. The register (§2 capability table, row "Game Ready/Studio and desktop/notebook distinction") records only the *same-version* collapse: Studio and Game Ready rows that share a version are reduced to the Game Ready row. This bug runs the other way. A Studio row whose version has **no** Game Ready twin is kept and served as an ordinary WHQL release. GAP-F01's model (distinct `(version,type,platform)` releases) would eventually replace this code, but GAP-F01 is blocked on a UI ruling. Until it lands, the provider breaks its own documented "Game-Ready only" contract. |
 | **Found** | 2026-11-23 |
 | **Register slice** | **GAP-R08** — Catalog and GPU detection correctness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
@@ -141,11 +141,11 @@ Minimal fix: drop Studio rows at the point the flag is read. The existing `Group
 - **Verified:** I applied this diff to a scratch copy. The full suite (151 tests) plus every repro passed (161/161), with no existing test edited.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** `docs/security_register.md` is active. Do not fold this silently into GAP-F01: F01 is blocked on its UI ruling, and §7 says "Any new finding receives a new ID". Ask the owner to pin a new ID (for example BUG-10, destination "interim fix ahead of GAP-F01") before building.
-   > *Pinned 2026-11-23 as **GAP-R08** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+0. **Register gate.** Settled: slice **GAP-R08**, an interim fix ahead of GAP-F01, which stays blocked on its UI ruling; do not fold it into F01.
+   > *Pinned 2026-11-23 as **GAP-R08** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-studio-filter -b feat/studio-only-release-listed-as-game-ready origin/main`
-2. **Red.** Add the §A test to `nvcleanstall/CleanDriver.Tests/NvidiaCatalogProviderTests.cs`. Run the §A filter and confirm `Assert.DoesNotContain() Failure ... 611.05 ... -nsd-`. Commit `"BUG-10 (red): a Studio-only live row is never served as a Game Ready release"`.
-3. **Green.** Add `if (isCrd) continue;`. Run the FULL suite. Commit `"BUG-10: drop Studio rows from the Game-Ready-only live catalog"`.
+2. **Red.** Add the §A test to `nvcleanstall/CleanDriver.Tests/NvidiaCatalogProviderTests.cs`. Run the §A filter and confirm `Assert.DoesNotContain() Failure ... 611.05 ... -nsd-`. Commit `"GAP-R08 (red): studio-only-release-listed-as-game-ready — a Studio-only live row is never served as a Game Ready release"`.
+3. **Green.** Add `if (isCrd) continue;`. Run the FULL suite. Commit `"GAP-R08: studio-only-release-listed-as-game-ready — drop Studio rows from the Game-Ready-only live catalog"`.
 4. **Refactor.** Remove the now-dead `gameReady` tuple element and its `OrderByDescending`, with the suite green. Update the `Parse` comment so it says "Game Ready rows only".
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.**

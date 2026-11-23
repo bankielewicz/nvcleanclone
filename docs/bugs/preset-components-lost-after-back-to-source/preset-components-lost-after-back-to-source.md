@@ -166,7 +166,7 @@ Defer whenever the user is on a screen that precedes package adoption, and apply
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active, and no existing GAP covers client-side preset application, so a **new owner-pinned entry** is needed (it can be shared with `preset-on-screen1-freezes-download-at-100` as separate, ordered slices). Declare the slice with `slice_start --no-surface '^nvcleanstall/wwwroot/'`, sanctioned by that pattern appearing verbatim in the build plan.
-   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** After the sibling merges, run `git worktree add ../nvcleanclone-preset-back -b feat/preset-components-lost-after-back-to-source origin/main`.
 2. **Red.** Run the §A script against the unmodified app and save the RED transcript. It goes in the PR body (HARD-04/HARD-06 precedent: no JS test location, no toolchain).
 3. **Green.** Apply the diff and rerun the script, which should produce the GREEN transcript below. Run the full C# suite. Commit as `preset-components-lost-after-back-to-source: defer presets loaded before package adoption`.

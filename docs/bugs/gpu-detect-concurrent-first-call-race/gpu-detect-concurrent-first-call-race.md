@@ -245,13 +245,13 @@ Minimal fix: make the cache single-flight with `Lazy<T>` (`ExecutionAndPublicati
 - **Verified:** I applied the diff to a scratch copy. Full suite plus all repros: 161/161 green, including `GpuDetectCacheTests` (2/2). HEAD's PATH-stand-in test run against the fixed `Detect()` records **1** launch.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** `docs/security_register.md` is active. This is a `Gpu.cs` correctness defect next to GAP-C04 but not covered by it. Ask the owner to pin a new ID (for example BUG-12, "Wave C — Gpu.cs single-flight cache") per §7, or to rule that it rides with GAP-C04 as a disclosed second finding.
-   > *Pinned 2026-11-23 as **GAP-R08** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+0. **Register gate.** Settled: slice **GAP-R08**. It sits next to GAP-C04 but is not covered by it.
+   > *Pinned 2026-11-23 as **GAP-R08** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-gpu-once -b feat/gpu-detect-concurrent-first-call-race origin/main`
 2. **Red.** Add `nvcleanstall/CleanDriver.Tests/GpuDetectCacheTests.cs` (§A). In the same commit, add the seam `Gpu.Memoize(Func<string?>)` containing HEAD's check-then-set logic **moved verbatim** (`GpuInfo? cached = null; return () => { if (cached != null) return cached; cached = DetectFrom(query()); return cached; };`), with `Detect()` routed through it. That is a behavior-preserving extraction the test needs in order to compile.
    - Run `--filter "FullyQualifiedName~GpuDetectCacheTests"` and capture `Expected: 1 / Actual: 2`.
-   - Commit `"BUG-12 (red): concurrent first Detect() calls run one WMI query"`.
-3. **Green.** Replace the verbatim body with `Lazy<GpuInfo>(…, ExecutionAndPublication)`. Run the FULL suite. Commit `"BUG-12: single-flight the GPU detection cache"`.
+   - Commit `"GAP-R08 (red): gpu-detect-concurrent-first-call-race — concurrent first Detect() calls run one WMI query"`.
+3. **Green.** Replace the verbatim body with `Lazy<GpuInfo>(…, ExecutionAndPublication)`. Run the FULL suite. Commit `"GAP-R08: gpu-detect-concurrent-first-call-race — single-flight the GPU detection cache"`.
 4. **Refactor.** Fix the CLAUDE.md wording "the first `/api/system` or `/api/catalog` call pays the query" only if the owner wants docs touched in this PR (otherwise note it). Suite green.
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.** On Windows, run `dotnet run --project nvcleanstall -- --headless --mock-catalog`. In PowerShell, record `Get-CimInstance Win32_Process -Filter "Name='powershell.exe'"` before and after. Fire the three boot requests concurrently (`Start-Job`/`curl.exe … &`), then `curl -s localhost:4780/api/system`. Paste evidence of exactly one new `powershell.exe` (Process Monitor "Process Create" filter, or the CommandLine containing `Win32_VideoController`).

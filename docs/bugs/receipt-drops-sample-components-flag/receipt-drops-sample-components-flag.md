@@ -165,7 +165,7 @@ Add the flag to both `StartExecute` writers, additive and null-omitted exactly l
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** The active register is `docs/security_register.md`, and no item covers this. The owner pins a new finding ID first. Destination: **fold into GAP-C02** ("Correct artifact identity, receipts …"). GAP-C02 already moves the `DownloadArtifact` onto the catalog session that consumed it and renames receipts, so it is the slice that touches these exact writers, and the marker is part of making the receipt's artifact identity truthful. Per §7 it needs its own ID and AC row.
-   > *Pinned 2026-11-23 as **GAP-R06** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R06** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-sample-flag -b feat/receipt-sample-components-marker origin/main` (or the GAP-C02 branch, if folded).
 2. **Red.** Add the two facts from §A. Run the filter and confirm both fail on the missing `sampleComponents` assertion, not on a compile or setup error. Commit `"<ID> (red): live-session receipt/config mark sample components"`.
 3. **Green.** Add the two `Jobs.cs` fields, plus the `Packages.cs` manifest sibling if the owner scopes it in, with its own red first. Run the full suite. Commit `"<ID>: carry SampleComponents into receipt and config.json"`.

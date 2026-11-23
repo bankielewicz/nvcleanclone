@@ -250,8 +250,8 @@ Validate the body at the top of the route, before any job exists. This patch was
 - **Back-compat pins.** `ExecuteReceiptTests`, `OutDirHygieneTests` and `PackageZipTests` call `Jobs.StartExecute` directly and are unaffected.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** `docs/security_register.md` is active. This fits **GAP-C01** ("Validate before creating a job") as three extra direct-API reds: missing token, null collections, and unparseable `outputPath`. The owner must pin those added ACs into GAP-C01. Otherwise it needs a new owner-pinned entry (for example `BUG-10`); per §7, "any new finding receives a new ID".
-   > *Pinned 2026-11-23 as **GAP-R05** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+0. **Register gate.** Settled: slice **GAP-R05**, together with `execute-prelude-throw-orphans-running-job` (the engine half). It sits next to **GAP-C01** ("Validate before creating a job"), whose text and ACs are unchanged.
+   > *Pinned 2026-11-23 as **GAP-R05** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-exec400 -b feat/execute-malformed-body-400 origin/main`.
 2. **Red.** Add §A's test at `nvcleanstall/CleanDriver.Tests/ExecuteMalformedBodyTests.cs` and run the filter. All 7 cases fail with `Actual: InternalServerError`, which is the stated reason (the unhandled ArgumentNullException, NullReferenceException or ArgumentException). Commit `"execute-malformed-body-500 (red): /api/execute answers malformed bodies with a named 400"`.
 3. **Green.** Apply the route-level validation above and run the FULL suite. Commit `"execute-malformed-body-500: validate token/selection/outputPath before any job is created"`.

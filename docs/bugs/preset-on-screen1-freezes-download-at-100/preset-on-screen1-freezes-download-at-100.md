@@ -186,7 +186,7 @@ Choose the highlighted row before anything renders:
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active. GAP-C03 is server-side preset I/O and does not cover this, so it needs a **new owner-pinned entry**, for example "client preset application (FR-015)". It can share an entry with `preset-components-lost-after-back-to-source`, but should be a separate slice that lands first. Declare the no-test-surface slice: `slice_start --no-surface '^nvcleanstall/wwwroot/'`, sanctioned by that pattern appearing verbatim in the build plan.
-   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-preset-s1 -b feat/preset-on-screen1-freezes-download-at-100 origin/main`.
 2. **Red.** Run the §A script against the unmodified app (`--headless --mock-catalog`) and save the RED transcript above. The script and transcript go in the PR body, because the repo has no JS test location (HARD-04/HARD-06 precedent).
 3. **Green.** Apply the diff and rerun the same script. Expect the GREEN transcript below. Run the full C# suite. Commit with `preset-on-screen1-freezes-download-at-100: pick the highlighted component before applying a pending preset`.

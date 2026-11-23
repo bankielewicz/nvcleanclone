@@ -186,7 +186,7 @@ Add a drain seam to `Jobs`, and register it once on the host's stopping event in
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** The active register is `docs/security_register.md`, and no item covers this. The owner pins a new finding ID first. Destination: Wave C, most naturally **fold into GAP-C02** ("Correct artifact identity, receipts, and concurrent jobs"), which owns download-job lifecycle correctness (atomic same-version creation). Otherwise it is a standalone new entry. Per §7 it needs its own ID and AC.
-   > *Pinned 2026-11-23 as **GAP-R07** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R07** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-host-drain -b feat/download-host-stop-drain origin/main`
 2. **Red.** Add `HostLifetimeTests.cs` (§A). Run `--filter "FullyQualifiedName~HostLifetimeTests"` and confirm `Expected: "cancelled" / Actual: "running"`, which is not a compile error. Commit `"<ID> (red): host stop cancels in-flight downloads and removes .part"`.
 3. **Green.** Add `Jobs.CancelActiveDownloads` and the `Api.Map` registration. Grep `Jobs.cs` for `shutdown`, which must return nothing. Run the full suite. Commit `"<ID>: drain real downloads on host stop"`.

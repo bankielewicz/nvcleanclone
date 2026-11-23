@@ -118,13 +118,13 @@ Frontend-only, A6. Use no new controls, and keep using the existing `alert` patt
   const api = { get: p => fetch(p).then(toJson, net), post: (p, b) => fetch(p, { ... }).then(toJson, net) };
   ```
 - Callers that read a field without checking `error` must check it first: `btn-load-preset` (`r.presets`), `btn-browse` (`r.path`), and `boot` (`sys`/`cat`/`tw`). For boot, `alert` the error and leave Screen 1 inert rather than posting `version: undefined`.
-- Coordinate with `job-pollers-no-exit-on-404-or-network-error`. Its poller-local helper and this helper must not double-handle. Landing this first lets the pollers consume `{error}`.
+- **Order within GAP-R09a: this lands before `job-pollers-no-exit-on-404-or-network-error`.** The pollers then consume this helper's `{error}`, and both use the single message `cannot reach the CleanDriver service` for a lost connection, so the user sees one wording whichever screen loses the server.
 - Show server text with `alert`/`textContent` only, never `innerHTML`.
 - The server fixes stay where they are documented: BUG-06/GAP-C03, `execute-malformed-body-500`, `preset-load-invalid-name-500`.
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active. GAP-C03 (presets) and the 500 docs are server-side, and no entry covers the client error model. Get a new owner-pinned entry, or fold this into the same slice as `job-pollers-no-exit-on-404-or-network-error`. Declare `slice_start --no-surface '^nvcleanstall/wwwroot/'`.
-   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-apierr -b feat/api-helper-silent-on-non-json-errors origin/main`.
 2. **Red.** §A transcript with all three lines `RED`. A6 applies: there is no JS runner, and no test file.
 3. **Green.** Make the minimal helper change and the caller checks. §A must show an alert for (a) and (b) and a boot alert for (c), with no `pageerror`. Run the full C# suite (unchanged). Commit `"api-helper-silent-on-non-json-errors: surface non-JSON server errors"`.

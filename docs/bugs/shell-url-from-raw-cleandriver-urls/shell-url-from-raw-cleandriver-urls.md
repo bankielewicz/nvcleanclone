@@ -152,17 +152,31 @@ Two different parsers read one string. Kestrel interprets `CLEANDRIVER_URLS` as 
 Derive the shell address from the bound addresses, preferring a loopback one:
 
 ```csharp
+using System.Net;
+
 namespace CleanDriver.Lib;
 
 public static class ShellAddress
 {
-    // The address the WebView2 shell loads: one Kestrel actually bound (after Start()),
-    // loopback preferred. Never derived from the CLEANDRIVER_URLS text.
+    public const string NoLoopbackError = "CleanDriver is not listening on a loopback address; the window cannot open";
+
+    // The address the WebView2 shell loads: one Kestrel actually bound (read after Start()),
+    // never derived from the CLEANDRIVER_URLS text. Loopback only: an any-address bind maps to
+    // localhost on its port, and nothing else is ever used. Parsing never throws.
     public static Uri From(IEnumerable<string> boundUrls)
     {
-        var bound = boundUrls.Select(u => new Uri(u)).ToList();
-        var pick = bound.FirstOrDefault(u => u.IsLoopback) ?? bound.First();
-        return new Uri(new Uri(pick.GetLeftPart(UriPartial.Authority)), "/?shell=1");
+        Uri? viaAny = null;
+        foreach (var raw in boundUrls)
+        {
+            if (!Uri.TryCreate(raw, UriKind.Absolute, out var u)) continue;
+            if (u.IsLoopback) return Shell(u);
+            if (viaAny is null && IPAddress.TryParse(u.Host.Trim('[', ']'), out var ip)
+                && (ip.Equals(IPAddress.Any) || ip.Equals(IPAddress.IPv6Any)))
+                viaAny = new UriBuilder(u) { Host = "localhost" }.Uri;
+        }
+        return viaAny is not null ? Shell(viaAny) : throw new InvalidOperationException(NoLoopbackError);
+
+        static Uri Shell(Uri u) => new(new Uri(u.GetLeftPart(UriPartial.Authority)), "/?shell=1");
     }
 }
 ```
@@ -175,7 +189,7 @@ public static class ShellAddress
 +            Application.Run(new ShellForm(ShellAddress.From(app.Urls).ToString()));
          }
 ```
-The same logic, inlined into the harness test, turned both cases green.
+The same logic, inlined into the harness test, turned both cases green. *Revised after the PR #25 review:* the first sketch fell back to `bound.First()`, a non-loopback address, which the fence below forbids. On .NET 10 (Linux harness) `app.Urls` reports `http://0.0.0.0:<port>` after `Start()` for `http://*:0` and `http://+:0`, so that fallback would have loaded an any-address. The revised sketch passed 8/8 pure cases in the harness: loopback kept (`127.0.0.1`, `localhost`, `[::1]`); `0.0.0.0` and `[::]` mapped to `localhost:<port>`; loopback preferred over an earlier any-address; `http://192.168.1.5:4780` and an unparseable `http://*:4781` failing with `NoLoopbackError`.
 
 - **Why this is minimal.** One seam and a one-line call-site change. `ShellForm` is unchanged; it still receives a string. Optionally, print `string.Join(", ", app.Urls)` in the startup line for the same reason; that is a separate commit, forced by its own test if wanted.
 - **Alternatives rejected.**
@@ -189,7 +203,7 @@ The same logic, inlined into the harness test, turned both cases green.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active. Fold into **GAP-S02** (it already rewrites how the shell address is formed, to add the token fragment) as an added AC: "the shell loads an address Kestrel actually bound". The owner must pin it; otherwise it needs a new owner-pinned Low entry.
-   > *Pinned 2026-11-23 as **GAP-R04** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R04** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-shelladdr -b feat/shell-address-from-bound-urls origin/main`.
 2. **Red.** Add §A at `nvcleanstall/CleanDriver.Tests/ShellAddressTests.cs`, plus `Lib/ShellAddress.cs` with HEAD's semantics (`From(a) => new Uri(string.Join(";", a).TrimEnd('/') + "/?shell=1")`) and `Program.cs:46` calling `ShellAddress.From(new[] { urls })`. This is behavior-preserving, and it is the minimum production code the test needs to compile; disclose it. Run the filter: the `;`-list case fails with `UriFormatException`. Attach the harness mirror red from §A for the port-0 case, which is a call-site defect. Commit `"shell-url-from-raw-cleandriver-urls (red): the shell loads an address the server actually bound"`.
 3. **Green.** Implement `From` over the bound addresses, switch `Program.cs:46` to `ShellAddress.From(app.Urls)`, and run the FULL suite. Commit `"shell-url-from-raw-cleandriver-urls: derive the WebView2 address from app.Urls"`.
@@ -217,6 +231,7 @@ The same logic, inlined into the harness test, turned both cases green.
 5. **Adversarial verify:**
    - Try `CLEANDRIVER_URLS` values `http://localhost:4780/` (trailing slash), `http://[::1]:0`, `http://127.0.0.1:4780;http://localhost:4781` and `http://localhost:0` (Kestrel refuses dynamic ports on `localhost`; the app should fail at `Start()` exactly as today, not later).
    - Try the default with no variable.
+   - Feed `ShellAddress.From` `http://0.0.0.0:4781`, `http://[::]:4781`, `http://192.168.1.5:4780` and `http://*:4781`: the first two map to `localhost`, the last two fail by name.
 
    Each either opens the wizard on a bound address or fails before the window, never after.
 6. **Verdict document.** APPROVE or REQUEST CHANGES, with findings marked CONFIRMED or PLAUSIBLE.
@@ -228,3 +243,4 @@ The same logic, inlined into the harness test, turned both cases green.
 2. With `CLEANDRIVER_URLS=http://127.0.0.1:0`, the window loads the wizard from the OS-assigned port.
 3. The shell address always carries `?shell=1`, and its host and port match an entry of `app.Urls`.
 4. Default launch (no variable) still loads `http://localhost:4780/?shell=1`. Headless behavior is unchanged, and the full suite is green.
+5. The shell address is never a non-loopback address. An any-address bind (`0.0.0.0`, `[::]`) opens `http://localhost:<port>/?shell=1`; a bound list with no loopback or any-address entry (or only unparseable entries) fails before the window opens with `ShellAddress.NoLoopbackError`, never with a `UriFormatException`.

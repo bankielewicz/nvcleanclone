@@ -262,11 +262,11 @@ Pins checked: `OutDirHygieneTests`, `PackageZipTests` and `PackageValidationTest
 Known limit: being name-based, the predicate does not catch an alias created through a junction. Treat that as a documented limit, as with `IsFilesystemRoot`.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** `docs/security_register.md` is active, and §7 says "any new finding receives a new ID". Ask the owner to pin a new row (e.g. `BUG-10`, High). Mechanism (1) is a GAP-S01 regression, so the natural destination is a GAP-S01 follow-up slice. Do not fold it silently into GAP-C02.
-   > *Pinned 2026-11-23 as **GAP-R01** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+0. **Register gate.** Settled: slice **GAP-R01**, pinned to land first. Mechanism (1) is a GAP-S01 regression; do not fold it into GAP-C02.
+   > *Pinned 2026-11-23 as **GAP-R01** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-srcalias -b feat/build-into-source-folder origin/main`
-2. **Red.** Add `nvcleanstall/CleanDriver.Tests/BuildIntoSourceFolderTests.cs` (§A). Run `--filter "FullyQualifiedName~BuildIntoSourceFolderTests"`. It should show 4 failures for the stated reasons. Commit `"BUG-10 (red): building into the package folder must not destroy the source"`.
-3. **Green.** Add `OutputAliasesSource` + `OutputIsSourceError` and call them from `StartExecute`. Reorder `CopyPayload` to open the source first. Run the full suite. Commit `"BUG-10: refuse outputPath == package folder; CopyPayload opens source before destination"`.
+2. **Red.** Add `nvcleanstall/CleanDriver.Tests/BuildIntoSourceFolderTests.cs` (§A). Run `--filter "FullyQualifiedName~BuildIntoSourceFolderTests"`. It should show 4 failures for the stated reasons. Commit `"GAP-R01 (red): build-into-source-folder-destroys-package — building into the package folder must not destroy the source"`.
+3. **Green.** Add `OutputAliasesSource` + `OutputIsSourceError` and call them from `StartExecute`. Reorder `CopyPayload` to open the source first. Run the full suite. Commit `"GAP-R01: build-into-source-folder-destroys-package — refuse outputPath == package folder; CopyPayload opens source before destination"`.
 4. **Refactor.** Only with the suite green, for example sharing `Norm` with `IsFilesystemRoot`.
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.** Repeat §B steps 1-4. The job must be `failed` with `outputPath is the package's own folder; choose a different folder`, and `display-driver.bin` must still be 4096 B. Repeat with the `/api/sample-package` path, and confirm the bundled payload size is unchanged.

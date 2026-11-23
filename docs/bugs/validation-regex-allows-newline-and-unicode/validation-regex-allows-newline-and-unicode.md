@@ -176,11 +176,11 @@ Alternative: `RegexOptions.ECMAScript`. It fixes `\d`, but whether it also fixes
 Fences respected: validator only; no path, deletion or UI change; error constants unchanged and path-free.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** This is a GAP-S01 allowlist defect. Request a new ID per §7 (e.g. `SEC-10`, Low) with destination "GAP-S01 follow-up". It can share a validator-hardening slice with `manifest-null-collections-crash-validator` and `dependency-target-check-ignores-case`, with one TDD row each.
-   > *Pinned 2026-11-23 as **GAP-R03** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+0. **Register gate.** Settled: slice **GAP-R03**, the validator slice shared with `manifest-null-collections-crash-validator` and `dependency-target-check-ignores-case`, one TDD row each (a GAP-S01 allowlist follow-up).
+   > *Pinned 2026-11-23 as **GAP-R03** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-regexanchor -b feat/validation-regex-anchors origin/main`
-2. **Red.** Add the §A tests and run `--filter "FullyQualifiedName~PackageValidationTests"`. The 6 new cases fail with "No exception was thrown". Commit `"SEC-10 (red): allowlists must be whole-string ASCII"`.
-3. **Green.** Replace the three patterns and run the full suite. Commit `"SEC-10: anchor allowlists with \z and use [0-9] for version digits"`.
+2. **Red.** Add the §A tests and run `--filter "FullyQualifiedName~PackageValidationTests"`. The 6 new cases fail with "No exception was thrown". Commit `"GAP-R03 (red): validation-regex-allows-newline-and-unicode — allowlists must be whole-string ASCII"`.
+3. **Green.** Replace the three patterns and run the full suite. Commit `"GAP-R03: validation-regex-allows-newline-and-unicode — anchor allowlists with \z and use [0-9] for version digits"`.
 4. **Refactor.** None.
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.** Steps 1-2 of §B now return HTTP 400 `manifest rejected: version is not a valid driver version`, and `572.16` still loads (HTTP 200).

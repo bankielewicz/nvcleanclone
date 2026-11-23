@@ -104,7 +104,7 @@ Frontend-only, A6. There is **no visual change** and no new controls (frozen fiv
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active, and no entry covers accessibility. This needs a new owner-pinned register entry (suggested: a Wave C item, "keyboard parity for the frozen five screens", citing R5). Declare `slice_start --no-surface '^nvcleanstall/wwwroot/'`.
-   > *Pinned 2026-11-23 as **GAP-R09b** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R09b** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-kbd -b feat/keyboard-cannot-reach-wizard-controls origin/main`.
 2. **Red.** Run the §A transcript (`RED unreachable by Tab: […]`, `focus is on <body>`). There is no JS test runner (A6), and no commit is needed for a red with no test file.
 3. **Green.** Make the minimum attribute, key-handler and focus-restore changes. Re-run §A until both lines are `GREEN`. Run the full C# suite (unchanged, green). Commit `"keyboard-cannot-reach-wizard-controls: make wizard choices focusable and keep focus on toggle"`.

@@ -214,7 +214,7 @@ Keep the publish-first shape, which HARD-02 relies on to return a failed job, bu
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** The active register is `docs/security_register.md`, and no item covers this. The owner pins a new finding ID first. Destination: **fold into GAP-C01** ("Enforce selections on the server"). That slice already validates the execute request before job creation, and its AC "invalid requests create no job or files" is exactly the orphan property. Per §7 it needs its own ID and AC row, because the `outputPath` trigger is not a selection rule.
-   > *Pinned 2026-11-23 as **GAP-R05** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R05** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-exec-prelude -b feat/execute-prelude-total origin/main`
 2. **Red.** Add `ExecutePreludeTests.cs` (§A). Run `--filter "FullyQualifiedName~ExecutePreludeTests"` and confirm the `ArgumentException`, `NullReferenceException` and orphan-id reds. Commit `"<ID> (red): StartExecute never throws and never orphans a running job"`.
 3. **Green.** Split `StartExecute` into the publish+guard wrapper and `StartExecuteCore`, and run the full suite. Commit `"<ID>: fail prelude errors by name instead of throwing"`.

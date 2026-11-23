@@ -132,11 +132,11 @@ Alternatives rejected:
 Fences respected: no filesystem change, no UI change, and messages stay path-free (watchpoint 5). All existing `PackageValidationTests` rows stay green, because they never send `null` collections.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** This is a GAP-S01 AC-2 gap. Request a new ID per §7 (e.g. `BUG-14`, Low) with destination "GAP-S01 follow-up". It can share one validator-hardening slice with `validation-regex-allows-newline-and-unicode` and `dependency-target-check-ignores-case` if the owner pins them together, with one TDD row per behavior.
-   > *Pinned 2026-11-23 as **GAP-R03** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+0. **Register gate.** Settled: slice **GAP-R03**, the validator slice shared with `validation-regex-allows-newline-and-unicode` and `dependency-target-check-ignores-case`, one TDD row per behavior (a GAP-S01 AC-2 follow-up).
+   > *Pinned 2026-11-23 as **GAP-R03** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-nullmanifest -b feat/manifest-null-collections origin/main`
-2. **Red.** Add the §A theory to `PackageValidationTests.cs` and run its filter. Three failures, `NullReferenceException`. Commit `"BUG-14 (red): null manifest collections must be a 400-class rejection"`.
-3. **Green.** Add the two guards and run the full suite. Commit `"BUG-14: reject null components/dependsOn in the manifest validator"`.
+2. **Red.** Add the §A theory to `PackageValidationTests.cs` and run its filter. Three failures, `NullReferenceException`. Commit `"GAP-R03 (red): manifest-null-collections-crash-validator — null manifest collections must be a 400-class rejection"`.
+3. **Green.** Add the two guards and run the full suite. Commit `"GAP-R03: manifest-null-collections-crash-validator — reject null components/dependsOn in the manifest validator"`.
 4. **Refactor.** Green only.
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.** Run §B. p1-p3 now return HTTP 400 with the stable messages, and p4 is unchanged.

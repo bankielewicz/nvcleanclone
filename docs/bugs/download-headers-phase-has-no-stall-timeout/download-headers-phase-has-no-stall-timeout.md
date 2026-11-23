@@ -137,7 +137,7 @@ public async Task StartRealDownload_RedirectHopNeverSendsHeaders_FailsAsStalled(
 
 // Consequence pin: a wedged version must not be handed back to a retry forever.
 [Fact]
-public async Task StartRealDownload_WedgedHeaders_RetryReturnsSameWedgedJob()
+public async Task StartRealDownload_WedgedHeaders_RetryGetsAFreshJob()
 {
     var dir = TempDir.Create();
     var prior = Jobs.StallTimeout;
@@ -162,23 +162,19 @@ public async Task StartRealDownload_WedgedHeaders_RetryReturnsSameWedgedJob()
 
 Run (real repo):
 ```
-dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj --filter "FullyQualifiedName~RealDownloadTests.StartRealDownload_PeerNeverSendsHeaders_FailsAsStalled|FullyQualifiedName~RealDownloadTests.StartRealDownload_RedirectHopNeverSendsHeaders_FailsAsStalled|FullyQualifiedName~RealDownloadTests.StartRealDownload_WedgedHeaders_RetryReturnsSameWedgedJob"
+dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj --filter "FullyQualifiedName~RealDownloadTests.StartRealDownload_PeerNeverSendsHeaders_FailsAsStalled|FullyQualifiedName~RealDownloadTests.StartRealDownload_RedirectHopNeverSendsHeaders_FailsAsStalled|FullyQualifiedName~RealDownloadTests.StartRealDownload_WedgedHeaders_RetryGetsAFreshJob"
 ```
 
-Captured RED on unmodified HEAD (Linux net10.0 harness, class `DownloadHeadersPhaseHasNoStallTimeoutRepro`, same bodies):
+Captured RED on unmodified HEAD, re-run after the PR #25 review renamed the third fact (Linux net10.0 harness; the §A blocks compiled as written, with the facts wrapped in a harness-only class `RealDownloadTests_DocHeaders` so they don't collide with the suite's `RealDownloadTests`; trimmed):
 ```
-Failed ...StartRealDownload_RedirectHopNeverSendsHeaders_FailsAsStalled [3 s]
-  Error Message:
+Failed ...RealDownloadTests_DocHeaders.StartRealDownload_RedirectHopNeverSendsHeaders_FailsAsStalled [3 s]
    job still 'running' after 3 s with a 150 ms stall window (redirect hop is unbounded)
-Failed ...StartRealDownload_WedgedHeaders_RetryReturnsSameWedgedJob [1 s]
-  Error Message:
-   Assert.NotEqual() Failure: Strings are equal
-Expected: Not "2"
-Actual:       "2"
-Failed ...StartRealDownload_PeerNeverSendsHeaders_FailsAsStalled [3 s]
-  Error Message:
+Failed ...RealDownloadTests_DocHeaders.StartRealDownload_PeerNeverSendsHeaders_FailsAsStalled [3 s]
    job still 'running' after 3 s with a 150 ms stall window (headers phase is unbounded)
-Failed!  - Failed:     3, Passed:     0, Skipped:     0, Total:     3
+Failed ...RealDownloadTests_DocHeaders.StartRealDownload_WedgedHeaders_RetryGetsAFreshJob [1 s]
+   Assert.NotEqual() Failure: Strings are equal
+Expected: Not "4"
+Actual:       "4"
 ```
 
 ### B. Live — running app (if applicable)
@@ -219,7 +215,7 @@ Also correct the comment at `Jobs.cs:157-159` so it describes both bounds.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** The active register is `docs/security_register.md`, and no item there covers this. The owner pins a new finding ID first. Destination: **fold into GAP-S03**, which already rewrites this exact loop to require `https` on the initial URL and every redirect before contact. The liveness bound is a natural same-seam rider, but it must carry its own ID and AC, per §7 ("never silently folded"). If GAP-S03 is not next, it can go out as a standalone Wave C entry.
-   > *Pinned 2026-11-23 as **GAP-R07** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R07** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-hdr-stall -b feat/download-headers-stall-timeout origin/main`
 2. **Red.** Add `SilentPeerHandler` to `TestDownload.cs` and the three facts to `RealDownloadTests.cs` (§A). Run the single-test filter and confirm `job still 'running' after 3 s …` and `Expected: Not "N"`. Neither may be a compile error. Commit `"<ID> (red): headers phase of every hop is bounded by the stall window"`.
 3. **Green.** Apply the `GetFollowingRedirectsAsync` diff and run the full suite. Commit `"<ID>: bound each hop's headers wait by StallTimeout"`.

@@ -137,11 +137,11 @@ Alternative rejected: making `app.js`/`Jobs` case-insensitive. That spreads a lo
 Fences respected: no UI change (R1-R10 intact); messages unchanged and path-free; `ValidateManifest_RejectsMissingDependencyTarget` and `ValidateManifest_RejectsDuplicateId_CaseInsensitive` stay green.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** This is a GAP-S01 AC-1 gap. Request a new ID per §7 (e.g. `BUG-15`, Low) with destination "GAP-S01 follow-up". It's a natural companion of `manifest-null-collections-crash-validator` and `validation-regex-allows-newline-and-unicode` in one validator slice, if the owner pins it that way.
-   > *Pinned 2026-11-23 as **GAP-R03** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+0. **Register gate.** Settled: slice **GAP-R03**, the validator slice shared with `manifest-null-collections-crash-validator` and `validation-regex-allows-newline-and-unicode` (a GAP-S01 AC-1 follow-up).
+   > *Pinned 2026-11-23 as **GAP-R03** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-depcase -b feat/dependency-resolution-ordinal origin/main`
-2. **Red.** Add both §A tests and run the filter. Both fail with "No exception was thrown". Commit `"BUG-15 (red): dependency targets resolve ordinally"`.
-3. **Green.** Add the ordinal set and run the full suite. Commit `"BUG-15: resolve dependsOn against exact component ids"`.
+2. **Red.** Add both §A tests and run the filter. Both fail with "No exception was thrown". Commit `"GAP-R03 (red): dependency-target-check-ignores-case — dependency targets resolve ordinally"`.
+3. **Green.** Add the ordinal set and run the full suite. Commit `"GAP-R03: dependency-target-check-ignores-case — resolve dependsOn against exact component ids"`.
 4. **Refactor.** None expected.
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.** §B step 2 now returns HTTP 400 `manifest rejected: dependency target not found`. The bundled catalog packages still load (their edges are exact), e.g. `POST /api/package {"kind":"catalog","version":"572.16"}` → 200.

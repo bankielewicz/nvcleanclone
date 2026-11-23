@@ -248,7 +248,7 @@ Captured RED transcripts: `<E2E>/outputs/repro-red/*.txt`. Final suite transcrip
  *                 the suite uses an already-running server and restart tests report BLOCKED.
  *   KILL_CMD      optional shell command that stops the server (default: kill SERVER_CMD's group;
  *                 on WSL→Windows use `taskkill.exe /F /IM CleanDriver.exe`).
- *   PRESETS_DIR   server's presets/ dir as seen from this machine (P-06 only; else BLOCKED)
+ *   PRESETS_DIR   server's presets/ dir as seen from this machine (P-05 only; else BLOCKED)
  *   OUT_ROOT      local dir for fixtures + outputPath targets (default ../outputs/run-<ts>)
  *   PATH_MAP_FROM / PATH_MAP_TO   map local paths to server paths (WSL: /mnt/c/ -> C:/)
  *   SHOTS_DIR     screenshot dir (default ../shots)

@@ -170,7 +170,7 @@ Map the exception to the existing not-found response in the route. This was vali
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active. Fold into **GAP-C03** (presets) as an added AC: the GET route returns a named 404/400 for an invalid name. The owner must pin it; otherwise it needs a new owner-pinned ID.
-   > *Pinned 2026-11-23 as **GAP-R05** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R05** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-preset404 -b feat/preset-load-invalid-name-404 origin/main`.
 2. **Red.** Add §A at `nvcleanstall/CleanDriver.Tests/PresetRouteTests.cs` and run the filter. All 4 cases fail with `expected 404/400, got 500`. Commit `"preset-load-invalid-name-500 (red): GET /api/presets/{name} answers unloadable names with 404"`.
 3. **Green.** Apply the diff and run the FULL suite. Commit `"preset-load-invalid-name-500: map Presets.Load's invalid-name InvalidDataException to 404"`.

@@ -162,11 +162,11 @@ Minimal fix: when the value has the four-field shape, compute from the fields, p
 - **Verified:** I applied the diff to a scratch copy. Full suite plus all repros: 161/161 green.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** `docs/security_register.md` is active. GAP-C04 touches `Gpu.cs` but is scoped to the PowerShell path, so this does not fit there. Ask the owner to pin a new ID (for example BUG-11, destination "Wave C, Gpu.cs") per §7.
-   > *Pinned 2026-11-23 as **GAP-R08** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+0. **Register gate.** Settled: slice **GAP-R08**. GAP-C04 touches `Gpu.cs` but is scoped to the PowerShell path, so this was never part of it.
+   > *Pinned 2026-11-23 as **GAP-R08** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-wmi-version -b feat/marketing-version-unpadded-wmi-field origin/main`
-2. **Red.** Add the §A theory and fact to `nvcleanstall/CleanDriver.Tests/GpuDetectionTests.cs`. Run `--filter "FullyQualifiedName~GpuDetectionTests"` and confirm the five failures above (`136.97`, `131.42`, `016.74`, `161.23`, `016.74`). Commit `"BUG-11 (red): unpadded fourth WMI field keeps its implied leading zero"`.
-3. **Green.** Apply the guarded branch. Run the FULL suite. Commit `"BUG-11: derive the marketing version per field, not from the last five digits"`.
+2. **Red.** Add the §A theory and fact to `nvcleanstall/CleanDriver.Tests/GpuDetectionTests.cs`. Run `--filter "FullyQualifiedName~GpuDetectionTests"` and confirm the five failures above (`136.97`, `131.42`, `016.74`, `161.23`, `016.74`). Commit `"GAP-R08 (red): marketing-version-unpadded-wmi-field — unpadded fourth WMI field keeps its implied leading zero"`.
+3. **Green.** Apply the guarded branch. Run the FULL suite. Commit `"GAP-R08: marketing-version-unpadded-wmi-field — derive the marketing version per field, not from the last five digits"`.
 4. **Refactor.** Optionally fold the 3.2 formatting into one local helper used by both branches, with the suite green. Update the `Gpu.cs:26-27` comment so it states the per-field rule.
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.** `dotnet run --project nvcleanstall -- --headless --mock-catalog` then `curl -s localhost:4780/api/system`.

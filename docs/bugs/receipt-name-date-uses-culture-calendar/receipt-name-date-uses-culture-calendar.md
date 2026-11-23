@@ -113,7 +113,7 @@ Failed!  - Failed:     3, Passed:     0, Skipped:     0, Total:     3
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** The active register is `docs/security_register.md`, and no item covers this. The owner pins a new finding ID first. Destination: **fold into GAP-C02**, which owns receipt naming (BUG-03) and will rewrite this exact line. Add AC "receipt names are culture-invariant (Gregorian ISO) under any `CurrentCulture`". Per §7 it gets its own ID.
-   > *Pinned 2026-11-23 as **GAP-R06** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R06** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-receipt-culture -b feat/receipt-name-invariant-date origin/main` (or the GAP-C02 branch).
 2. **Red.** Add the theory from §A to `ExecuteReceiptTests.cs`. Run the filter and confirm three `Not found: "receipt-2569…"`-style failures. Commit `"<ID> (red): receipt name date is ISO-Gregorian in any culture"`.
 3. **Green.** Make the one-line change and run the full suite. Commit `"<ID>: format the receipt stamp with InvariantCulture"`.

@@ -135,11 +135,11 @@ Fences respected:
 - No UI change: app.js already honors the field.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** New finding: request an ID in `docs/security_register.md` §3 (e.g. `BUG-13`, Medium). The natural destination is GAP-C05 ("make tweak claims … truthful", the honesty wave). Do not fold it into an unrelated PR.
-   > *Pinned 2026-11-23 as **GAP-R06** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+0. **Register gate.** Settled: slice **GAP-R06**, paired with `receipt-drops-sample-components-flag` (the honesty-marker pair).
+   > *Pinned 2026-11-23 as **GAP-R06** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-sampleflag -b feat/keep-sample-flag-in-output origin/main`
-2. **Red.** Add both §A tests to `PackageHonestyTests.cs`. Run `--filter "FullyQualifiedName~PackageHonestyTests"` and confirm the two new tests fail as shown. Commit `"BUG-13 (red): sample-template builds must keep sampleComponents"`.
-3. **Green.** Add the one-line field and run the full suite. Commit `"BUG-13: carry sampleComponents into the customized manifest (null-omitted)"`.
+2. **Red.** Add both §A tests to `PackageHonestyTests.cs`. Run `--filter "FullyQualifiedName~PackageHonestyTests"` and confirm the two new tests fail as shown. Commit `"GAP-R06 (red): customized-manifest-drops-sample-flag — sample-template builds must keep sampleComponents"`.
+3. **Green.** Add the one-line field and run the full suite. Commit `"GAP-R06: customized-manifest-drops-sample-flag — carry sampleComponents into the customized manifest (null-omitted)"`.
 4. **Refactor.** None expected.
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.** Run §B steps 1-4. The archived manifest has `"sampleComponents": true`, and both reloads report `sampleComponents True`. A catalog 572.16 build's manifest has no `sampleComponents` key, so it stays byte-identical. Browser: the reloaded folder shows the sample note. That is an A6-style transcript.

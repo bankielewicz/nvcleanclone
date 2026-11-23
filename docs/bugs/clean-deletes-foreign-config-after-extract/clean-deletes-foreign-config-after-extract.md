@@ -118,23 +118,19 @@ Fences respected:
 - **D-CLEAN constraints:** any read before a delete is size-bounded (check the length before reading, as `IsOur*` does with its cap), and no check or delete resolves through a symlink or junction (check `FileAttributes.ReparsePoint` first). See ACs 5–6.
 - Enumerable-by-name deletion only, nothing recursive. The change only narrows what is deleted.
 - Existing pins stay green: `Extract_IntoPreviousPackageBuild_CleansTheStalePackageArtifacts` (CleanDriver's own `config.json`/`install.cmd` still match and are removed), `Rebuild_SmallerSelection_…`, `ForeignOrMalformedManifest_NothingIsDeleted` and `JobLog_NamesTheCleanedFiles_WhenACleanRan`.
-- **Owner pin D1** lists these two files as unconditionally declared, so amending that wording is an owner decision. See step 0.
+- **Ruling D-CLEAN** (2026-11-23) settles pin D1's wording: the clean deletes only artifacts the prior build wrote, so this change is within the ruling.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** HARD-01's register is closed, and pin D1's text is the defect. Ask the owner for:
+0. **Register gate.** Settled: ruling **D-CLEAN** (clarifies pin D1) and slice **GAP-R02**.
    > *Ruling recorded 2026-11-23: **D-CLEAN** (see the header). The register entry is **GAP-R02**.*
-   > *Pinned 2026-11-23 as **GAP-R02** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
-   - a new ID in `docs/security_register.md` §3 (e.g. `BUG-11`, Medium; destination GAP-C02 "correct artifact identity", or a new GAP-C entry);
-   - a recorded amendment to pin D1: "`install.cmd`/`config.json` only when they are CleanDriver's own".
-
-   Do not start without both.
+   > *Pinned 2026-11-23 as **GAP-R02** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-foreigncfg -b feat/clean-only-own-config origin/main`
-2. **Red.** Add the §A method to `OutDirHygieneTests.cs`. Run its single-test filter and confirm it fails on the `config.json` assertion. Commit `"BUG-11 (red): re-extract must not delete a user's own config.json/install.cmd"`.
-3. **Green.** Add `IsOurConfig`/`IsOurInstaller` and gate the two removals. Run the full suite, where all HARD-01 pins must pass unedited. Commit `"BUG-11: HARD-01 clean removes config.json/install.cmd only when CleanDriver wrote them"`.
+2. **Red.** Add the §A method to `OutDirHygieneTests.cs`. Run its single-test filter and confirm it fails on the `config.json` assertion. Commit `"GAP-R02 (red): clean-deletes-foreign-config-after-extract — re-extract must not delete a user's own config.json/install.cmd"`.
+3. **Green.** Add `IsOurConfig`/`IsOurInstaller` and gate the two removals. Run the full suite, where all HARD-01 pins must pass unedited. Commit `"GAP-R02: clean-deletes-foreign-config-after-extract — HARD-01 clean removes config.json/install.cmd only when CleanDriver wrote them"`.
 4. **Refactor.** Green only. For example, share the installer header string between `Jobs.cs` and `Packages.cs` through a `Packages` constant. Mind the `NoExecutionGuardTests` forbidden-token list in `Jobs.cs`; a plain string constant is fine.
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.** Run §B. Extract #2's log line names only `payload/display-driver.bin, manifest.json`, and both user files survive. Then run `package` → `extract` into one folder: CleanDriver's own `install.cmd`/`config.json` are still cleaned.
-7. **PR.** Template TDD row. Name the pin-D1 amendment under "Deviations". No existing test edited. Push; never merge.
+7. **PR.** Template TDD row. Cite ruling D-CLEAN under "What & why". No existing test edited. Push; never merge.
 
 ## Code-review workflow (docs/ai-review-workflow.html → docs/ai-fix-loop-workflow.html)
 1. **CI triage.** `build-test-smoke` green.
@@ -144,7 +140,7 @@ Fences respected:
    - The ownership checks never throw: a locked, huge, binary or malformed `config.json` means "not ours, skip". This preserves the never-throws contract.
    - They read a bounded amount.
    - The installer check matches what `Jobs.cs` actually writes (CRLF line endings).
-   - The pin-D1 amendment is recorded.
+   - The change matches ruling D-CLEAN: only files the prior build itself wrote are deleted.
    - No recursive primitive names were added.
 5. **Adversarial verify.** Try:
    - A user `config.json` that *contains* `"builtBy":"CleanDriver"` as a nested value (it must not match unless top-level).

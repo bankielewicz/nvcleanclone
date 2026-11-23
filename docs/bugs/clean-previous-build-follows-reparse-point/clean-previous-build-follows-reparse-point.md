@@ -131,13 +131,12 @@ Run:
 ```
 dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj --filter "FullyQualifiedName~CleanReparsePointTests"
 ```
-RED output, trimmed, from the Linux `net10.0` harness at `54b3c31` (class `CleanPreviousBuildFollowsReparsePointRepro`):
+RED output, trimmed, from the Linux `net10.0` harness at `54b3c31`: the §A class `CleanReparsePointTests` compiled as written (re-run after the PR #25 review, which noticed the earlier transcript came from a harness class with a different second test name):
 ```
-Failed ...CleanPreviousBuild_PayloadDirIsReparsePoint_DeletesNothingOutsideOutDir
-  CleanPreviousBuild deleted a file outside outDir through a reparse point (removed: payload/important.dat, manifest.json)
-Failed ...ExtractJob_PayloadDirIsReparsePoint_FailsButHasAlreadyDeletedOutside
-  …but the clean step already deleted through it
-Failed!  - Failed: 2, Passed: 0
+Failed ...CleanReparsePointTests.CleanPreviousBuild_PayloadDirIsReparsePoint_DeletesNothingOutsideOutDir
+   CleanPreviousBuild deleted a file outside outDir through a reparse point (removed: payload/important.dat, manifest.json)
+Failed ...CleanReparsePointTests.ExtractJob_PayloadDirIsReparsePoint_FailsAndDeletesNothingOutside
+   the clean step deleted through the reparse point before the write side rejected it
 ```
 The second test's first two assertions pass on HEAD (`failed` / `ReparsePoint`). That proves the order: the write side rejects correctly, but only after the delete.
 
@@ -182,11 +181,11 @@ Fences respected:
 - No UI or honesty-marker change.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** This is a GAP-S01 acceptance gap (AC-1/AC-2 for the delete sink). Per §7 it needs a new ID (e.g. `SEC-08`, Medium), with destination "GAP-S01 follow-up". The owner pins it before work starts.
-   > *Pinned 2026-11-23 as **GAP-R02** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+0. **Register gate.** Settled: slice **GAP-R02**, under ruling **D-CLEAN**. This is a GAP-S01 acceptance gap (AC-1/AC-2 for the delete sink).
+   > *Pinned 2026-11-23 as **GAP-R02** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-cleanreparse -b feat/clean-previous-build-reparse origin/main`
-2. **Red.** Add `nvcleanstall/CleanDriver.Tests/CleanReparsePointTests.cs` (§A). Run `--filter "FullyQualifiedName~CleanReparsePointTests"` and confirm both fail because the sentinel was deleted. Commit `"SEC-08 (red): the HARD-01 clean must not delete through a reparse point"`.
-3. **Green.** Make the one-site change above and run the full suite. Commit `"SEC-08: confine CleanPreviousBuild payload deletes with EnsureConfinedRealPath"`.
+2. **Red.** Add `nvcleanstall/CleanDriver.Tests/CleanReparsePointTests.cs` (§A). Run `--filter "FullyQualifiedName~CleanReparsePointTests"` and confirm both fail because the sentinel was deleted. Commit `"GAP-R02 (red): clean-previous-build-follows-reparse-point — the HARD-01 clean must not delete through a reparse point"`.
+3. **Green.** Make the one-site change above and run the full suite. Commit `"GAP-R02: clean-previous-build-follows-reparse-point — confine CleanPreviousBuild payload deletes with EnsureConfinedRealPath"`.
 4. **Refactor.** Only green. For example, extract a `TryConfined(outDir, rel, out abs)` helper.
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.** Run §B on Windows with `mklink /J`. The log has no `Cleaning previous CleanDriver build: payload/physx.bin`, `victim\physx.bin` survives, and the job is still `failed` with `package rejected: a path crosses a reparse point`.

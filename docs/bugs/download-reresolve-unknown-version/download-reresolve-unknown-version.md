@@ -185,7 +185,7 @@ Resolve against the releases this server last served, and fall back to the provi
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active and no existing GAP owns this. It needs a new owner-pinned entry (for example under Wave C as `BUG-1x` → its own GAP-C item). Do not fold it into GAP-F01, which is blocked on a UI ruling.
-   > *Pinned 2026-11-23 as **GAP-R07** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R07** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-dlresolve -b feat/download-resolves-served-catalog origin/main`.
 2. **Red.** Add §A at `nvcleanstall/CleanDriver.Tests/DownloadResolutionTests.cs` and run the filter. It fails `Expected: OK / Actual: NotFound`. Commit `"download-reresolve-unknown-version (red): /api/download resolves against the catalog the server served"`.
 3. **Green.** Apply the diff and run the FULL suite. Commit `"download-reresolve-unknown-version: resolve the download pick against the served catalog first"`.

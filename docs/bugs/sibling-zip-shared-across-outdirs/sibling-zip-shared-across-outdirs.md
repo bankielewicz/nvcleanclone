@@ -134,12 +134,12 @@ Fences respected:
 - Pins: `PackageZipTests` uses `package-<version>` folders and literal `572.16-cleandriver-package.zip` paths, and `PackageValidationTests.ExportedZipEntries_AreNormalizedRelativePaths` likewise, so they stay green under Option A. `OutDirHygieneTests.Extract_IntoPreviousPackageBuild_CleansTheStalePackageArtifacts` packages into `extract-572.16` and only *counts* `*.zip` files in the parent, so it stays green: the count is unchanged, only the name differs. Under Option A the UI log line `> Writing <name>… done` shows the new name for custom folders, with no layout change.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** New finding, so ask for a new ID (e.g. `BUG-12`, Medium; destination GAP-C02 "artifact identity"). The archive-name ruling is recorded (**D-ZIPNAME**, Option A); The register entry is **GAP-R06**.
+0. **Register gate.** Settled: ruling **D-ZIPNAME** (Option A) and slice **GAP-R06**, which joins GAP-C02's artifact-identity work by cross-reference.
    > *Ruling recorded 2026-11-23: **D-ZIPNAME**, Option A (see the header). The register entry is **GAP-R06**.*
-   > *Pinned 2026-11-23 as **GAP-R06** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
+   > *Pinned 2026-11-23 as **GAP-R06** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied. **One slice is one PR:** steps 1 and 7 below apply to the slice as a whole, with one worktree and branch for all of its reports (for example `feat/<slice-id>-<short>`), keeping one red/green commit pair per report.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-siblingzip -b feat/sibling-zip-per-outdir origin/main`
-2. **Red.** Add the §A test to `PackageZipTests.cs` and run its filter. It fails with the archive's entries replaced. Commit `"BUG-12 (red): a sibling build folder must not replace another folder's archive"`.
-3. **Green.** Implement the ruled option and run the full suite. Commit `"BUG-12: one sibling archive per build folder"`.
+2. **Red.** Add the §A test to `PackageZipTests.cs` and run its filter. It fails with the archive's entries replaced. Commit `"GAP-R06 (red): sibling-zip-shared-across-outdirs — a sibling build folder must not replace another folder's archive"`.
+3. **Green.** Implement the ruled option and run the full suite. Commit `"GAP-R06: sibling-zip-shared-across-outdirs — one sibling archive per build folder"`.
 4. **Refactor.** Green only.
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.** Run §B steps 1-4. Under Option A, `builds/` holds `572.16-minimal-cleandriver-package.zip` (1 payload) and `572.16-full-cleandriver-package.zip` (3 payloads). Building the default `output/package-572.16` still writes `output/572.16-cleandriver-package.zip`.
