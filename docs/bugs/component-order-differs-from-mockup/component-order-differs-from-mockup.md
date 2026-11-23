@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | The frozen mockup contract (`docs/design/CleanDriver GPU driver wizard/`) and the design prompt's "Frozen component catalog (name — size — checked state in mockup): 1. Display Driver … 10. Container Runtime Services". CLAUDE.md: "the five screens are a frozen design contract". Not SEC-0x. |
 | **Found** | 2026-11-23 (E2E functional pass) |
+| **Owner ruling** | **D-MOCKDATA** (2026-11-23, `docs/security_register.md`): component names and order in mockups are illustrative sample data, not part of the frozen contract. **Closed — won't fix.** The data-only reorder below is not pursued; the report is kept as the record of the deviation and the ruling. |
 
 ## Summary
 The frozen Screen 3 inventory numbers the components 1–10 with **Container Runtime Services** last. Every bundled mock manifest lists `container` immediately after `telemetry`, next to the two dependencies of GeForce Experience. The wizard renders components in manifest order, so rows 7–10 are shifted. This affects the sample data the mockup was drawn from (572.16, the default "latest") and every other bundled version, including the live-download sample template, which reuses the 572.16 manifest.
@@ -74,6 +75,7 @@ Data-only, with no code change. Move the `container` component object to the end
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active, and no entry covers mock-data conformance. Get a new owner-pinned entry, or a docs/data ruling. A data-only change under `data/` is not `wwwroot/`, so A6 does not apply automatically: ask the owner whether an xunit order pin is wanted (a red is then possible) or whether the browser transcript suffices.
+   > *Ruling recorded 2026-11-23: **D-MOCKDATA**. Closed won't-fix; no slice follows.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-comporder -b feat/component-order-differs-from-mockup origin/main`.
 2. **Red.** Optionally add xunit `MockManifestOrderTests`: for each bundled version, the component id order equals the frozen inventory order (minus absent ids). It fails today at index 6 (`container` vs `shield`). Commit `"component-order-differs-from-mockup (red): pin mock manifest order to the frozen inventory"`. Also capture the §A transcript red.
 3. **Green.** Reorder the five manifests. Run the full suite and §A (`GREEN`). Commit `"component-order-differs-from-mockup: list container last as in the frozen inventory"`.

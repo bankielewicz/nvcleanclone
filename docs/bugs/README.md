@@ -29,6 +29,10 @@ tailored per fix) → Acceptance criteria.
 `shell-url-from-raw-cleandriver-urls` is a WinForms path that cannot run on Linux, though both of
 its halves are reproduced.
 
+After the owner rulings of 2026-11-23, one report is **closed won't-fix**
+(`component-order-differs-from-mockup`) and one is re-graded a **documentation defect**
+(`run-log-lines-have-no-timestamps`). That leaves **37 open code defects**.
+
 The functional UI pass ran **81 browser tests: 57 PASS / 23 FAIL / 0 BLOCKED / 1 N-A**. Its 23
 failures map onto 7 new reports, 5 reports from the code-level hunt, and the registered BUG-06. See
 [Functional UI pass](#functional-ui-pass). **AC-005 fails as written.** That contradicts
@@ -104,7 +108,11 @@ BUG-07 already records.
 - **One row, two ACs:** `execute-malformed-body-500` (route) + `execute-prelude-throw-orphans-running-job` (engine).
 - **Honesty-marker pair:** `customized-manifest-drops-sample-flag` (`manifest.json`) + `receipt-drops-sample-components-flag` (receipt, `config.json`).
 - **Order-dependent frontend fixes:** `preset-on-screen1-freezes-download-at-100` → `preset-components-lost-after-back-to-source`; `pollrun-failed-job-dead-ends-run-screen` → `job-pollers-no-exit-on-404-or-network-error`.
-- **Owner rulings required before any build:** `clean-deletes-foreign-config-after-extract` (amends pin D1), `sibling-zip-shared-across-outdirs` (amends the GAP-06 archive name), `run-log-lines-have-no-timestamps` (code or spec wording), `component-order-differs-from-mockup` (data or mockup).
+- **Owner rulings — recorded 2026-11-23** in `docs/security_register.md` (rulings only; each fix still needs a register entry):
+  - **D-CLEAN** clarifies pin D1: delete only artifacts the prior build wrote. Covers `clean-deletes-foreign-config-after-extract`, with mechanism constraints: size-bounded reads before delete, no link following, the `customizedBy` trust model. Pair it with `clean-previous-build-follows-reparse-point`, since both touch `CleanPreviousBuild`. The High fix does **not** depend on it: `build-into-source-folder-destroys-package` refuses an output that aliases the source and copies source-first, leaving D1's wording alone.
+  - **D-ZIPNAME** amends GAP-06 Resolution (2): Option A of `sibling-zip-shared-across-outdirs`. The default folder keeps its archive name; other folders get `<version>-<leaf>-cleandriver-package.zip`.
+  - **D-LOGTS**: `run-log-lines-have-no-timestamps` is re-graded a **documentation defect**. The fix is a docs-only `CLAUDE.md` correction; FR-010 is read as met by the receipt and is not reworded.
+  - **D-MOCKDATA**: mockup component names and order are illustrative, so `component-order-differs-from-mockup` is **closed won't-fix**.
 - **Spec record to correct:** `specs/nvcleanstall/parity.md` records AC-005 as passing; it fails as written until `preset-on-screen1-freezes-download-at-100` lands.
 - **In-flight guards (one pattern, two handlers):** `screen1-next-no-inflight-guard-wrong-version` (Screen 1 Next) and `double-click-start-runs-two-jobs` (Screen 5 Start).
 - **Silent client failures:** `api-helper-silent-on-non-json-errors` is the client half of every bodiless-500 report (`execute-malformed-body-500`, `preset-load-invalid-name-500`, BUG-06).
@@ -127,8 +135,8 @@ Playwright/Chromium against `--mock-catalog`.
 | [`double-click-start-runs-two-jobs`](double-click-start-runs-two-jobs/double-click-start-runs-two-jobs.md) | Low | N-06 | Start has no in-flight guard. Presses ≤5 ms apart start two jobs; with Build package one fails while the banner says "Package built". | Machine-speed only: presses ≥15 ms apart start one job. The code-level frontend hunter rejected it as humanly unreachable; it is kept at Low as the first dynamic reproduction of **BUG-04** (two writers on one folder) |
 | [`long-output-path-pushes-finish-offscreen`](long-output-path-pushes-finish-offscreen/long-output-path-pushes-finish-offscreen.md) | Low | L-03 | A ~90+ character unbroken output path in the result banner pushes Finish outside the 960 px shell window. | Removes one of R4's two exits |
 | [`source-note-clips-local-option`](source-note-clips-local-option/source-note-clips-local-option.md) | Low | L-01, L-02 | With the version dropdown open, the "Sample catalog" note clips "Use driver files on disk" by 14 px. | Cosmetic |
-| [`run-log-lines-have-no-timestamps`](run-log-lines-have-no-timestamps/run-log-lines-have-no-timestamps.md) | Low | S5-10 | FR-010 and CLAUDE.md say the log is timestamped; log entries are only `{text, cls}` (`Jobs.cs`). | Needs an **owner ruling**: fix the code or the wording |
-| [`component-order-differs-from-mockup`](component-order-differs-from-mockup/component-order-differs-from-mockup.md) | Low | M-01 | Container Runtime Services is row 7, not last as in the frozen Screen 3 mockup (data order in the sample manifests). | Design-contract deviation; owner decides data vs. mockup |
+| [`run-log-lines-have-no-timestamps`](run-log-lines-have-no-timestamps/run-log-lines-have-no-timestamps.md) | Low | S5-10 | FR-010 and CLAUDE.md say the log is timestamped; log entries are only `{text, cls}` (`Jobs.cs`). | **Ruled D-LOGTS:** documentation defect; fix the `CLAUDE.md` wording, the code stands |
+| [`component-order-differs-from-mockup`](component-order-differs-from-mockup/component-order-differs-from-mockup.md) | Low | M-01 | Container Runtime Services is row 7, not last as in the frozen Screen 3 mockup (data order in the sample manifests). | **Ruled D-MOCKDATA:** mockup order is illustrative; **closed won't-fix** |
 | `preset-on-screen1-freezes-download-at-100` | Medium | **AC-005**, P-02 | (code-level hunt, above) | Also fails after a real process restart, not only on a fresh page |
 | `pollrun-failed-job-dead-ends-run-screen` | Medium | R-07, R-08 | (above) | A trigger that writes nothing: Output folder = the sample's `manifest.json` file |
 | `job-pollers-no-exit-on-404-or-network-error` | Low | N-04, R-02…R-05 | (above) | Reproduced by a real server restart mid-run |

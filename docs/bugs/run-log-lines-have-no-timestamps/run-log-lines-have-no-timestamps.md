@@ -5,11 +5,12 @@
 | **Slug** | `run-log-lines-have-no-timestamps` |
 | **Severity** | Low. This is a spec-conformance and audit-quality gap, not a malfunction. The receipt still carries one `installedAt`, but the step-by-step log cannot be correlated in time, and it is lost once the page closes. |
 | **Confidence** | Confirmed by a live browser repro (Playwright/Chromium) plus the API snapshot: 0 of 10 run-view lines carry a time, and `/api/jobs/{id}` log entries have only `text` and `cls`. |
-| **Area** | `nvcleanstall/Lib/Jobs.cs` (`Job.LogLine`, `Job.Snapshot`) is the root cause. The rendering is `nvcleanstall/wwwroot/app.js` (`pollRun`). |
+| **Area** | `CLAUDE.md` (architecture sentence "appending timestamped log lines") — a documentation defect per **D-LOGTS**. As originally filed, the root cause was placed in `nvcleanstall/Lib/Jobs.cs` (`Job.LogLine`, `Job.Snapshot`), rendered by `nvcleanstall/wwwroot/app.js` (`pollRun`); under the ruling that code is correct. |
 | **Baseline** | `main` @ `54b3c31` |
 | **Platform** | Both |
 | **Related register entries** | FR-010: "Install/Silent run a simulated install producing a **timestamped log** and receipt file". `CLAUDE.md` architecture: "background step lists appending **timestamped log lines** the frontend polls". Ruling R9 adopts the 9-line mockup log as the reference *shape*, and that mockup shows no times. Parity AC-001 is graded `pass` without checking this. Not in `docs/security_register.md` §3. |
 | **Found** | 2026-11-23 (E2E functional pass) |
+| **Owner ruling** | **D-LOGTS** (2026-11-23, `docs/security_register.md`): **option (b)** — correct the documentation, not the code. This report is re-graded a **documentation defect** (severity Low): the code matches the frozen mockup and R9. FR-010 is read as satisfied by the receipt and is not reworded under this ruling. The fix is a docs-only (A2) slice correcting the `CLAUDE.md` sentence; option (a) below is not pursued. |
 
 ## Summary
 FR-010 and the architecture notes both say the job log is timestamped. It is not, anywhere. `Job.LogLine` stores `{ text, cls }`, the snapshot returns those two fields, and the run view renders `text` only. Every action (Install, Silent, Extract, Build) produces lines like `> Removing previous driver traces…` with no time.
@@ -130,6 +131,7 @@ Fences: no new controls, `textContent` only, and receipts' honesty markers untou
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active, and no entry covers FR-010 conformance. Get a new owner-pinned entry first, or record the owner's choice of (b) as a docs-only fix (A2). If (a) touches `wwwroot/` for the display, declare `slice_start --no-surface '^nvcleanstall/wwwroot/'` for that part.
+   > *Ruling recorded 2026-11-23: **D-LOGTS**, option (b). The fix is the docs-only (A2) `CLAUDE.md` correction; no code slice and no red/green test apply.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-logts -b feat/run-log-lines-have-no-timestamps origin/main`.
 2. **Red.** Add `JobLogTimestampTests.cs` and run `dotnet test … --filter "FullyQualifiedName~JobLogTimestampTests"`. It must fail on the assertion (`log entry has no ts`), not compile-fail. Commit `"run-log-lines-have-no-timestamps (red): job log entries carry a UTC ts"`.
 3. **Green.** Make the one-line `LogLine` change, then run the full suite. Existing receipt and log pins stay green because `text`/`cls` are unchanged. If the UI renders the time, add the red and green browser transcript (§A script). Commit `"run-log-lines-have-no-timestamps: record a UTC timestamp per log line"`.

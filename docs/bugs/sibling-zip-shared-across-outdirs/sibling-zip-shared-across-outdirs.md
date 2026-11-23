@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | GAP-06 Resolution (2) (`docs/gaps_analysis.md`) and parity FEAT-027 fix the name as `<version>-cleandriver-package.zip`, a sibling of `outDir`. This finding is a consequence of that ruling that the ruling did not address. BUG-04 / GAP-C02 cover *concurrent* replacement of the same sibling ZIP. This is the *sequential, cross-folder* case, and GAP-C02's atomic replace would not fix it (it would just atomically replace the wrong archive). |
 | **Found** | 2026-11-23 |
+| **Owner ruling** | **D-ZIPNAME** (2026-11-23, `docs/security_register.md`): **Option A adopted.** GAP-06 Resolution (2) is amended: the default `package-<version>` folder keeps `<version>-cleandriver-package.zip`; any other folder gets `<version>-<leaf>-cleandriver-package.zip`, still a sibling of `outDir`. Option B is not pursued. A register entry is still needed before build. |
 
 ## Summary
 `ZipPathFor` names the archive `<parent-of-outDir>/<version>-cleandriver-package.zip`. The name depends only on the version, so every output folder with the same parent shares one archive path.
@@ -133,6 +134,7 @@ Fences respected:
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** New finding, so ask for a new ID (e.g. `BUG-12`, Medium; destination GAP-C02 "artifact identity"). **Also needs an owner ruling** amending GAP-06 Resolution (2) for Option A, or recording Option B. HALT until both are recorded.
+   > *Ruling recorded 2026-11-23: **D-ZIPNAME**, Option A (see the header). What remains is the register entry.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-siblingzip -b feat/sibling-zip-per-outdir origin/main`
 2. **Red.** Add the §A test to `PackageZipTests.cs` and run its filter. It fails with the archive's entries replaced. Commit `"BUG-12 (red): a sibling build folder must not replace another folder's archive"`.
 3. **Green.** Implement the ruled option and run the full suite. Commit `"BUG-12: one sibling archive per build folder"`.

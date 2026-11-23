@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | This is a gap inside HARD-01 / owner pin D1 (`docs/hardening_register.md` §HARD-01). The pin lists "`install.cmd` / `config.json` / `manifest.json` themselves" as declared artifacts of *any* CleanDriver manifest. It also says "**Foreign files always survive**." Those two clauses conflict whenever the prior build was an `extract`. Not in `docs/security_register.md` §3. |
 | **Found** | 2026-11-23 |
+| **Owner ruling** | **D-CLEAN** (2026-11-23, `docs/security_register.md`): pin D1 is *clarified*, not reversed — delete only artifacts the prior build wrote. The Remedy's content check is one acceptable mechanism; constraints: same stamp trust model as `customizedBy`, size-bounded reads before any delete, no link following. Pair with (or serialize after) `clean-previous-build-follows-reparse-point`. A register entry is still needed before build. |
 
 ## Summary
 `CleanPreviousBuild` always deletes `install.cmd` and `config.json` when `outDir` holds a CleanDriver-stamped `manifest.json`. Only the `package` action ever writes those two files. An `extract` writes `manifest.json`, `payload/` and `.reg` files and nothing else.
@@ -119,6 +120,7 @@ Fences respected:
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** HARD-01's register is closed, and pin D1's text is the defect. Ask the owner for:
+   > *Ruling recorded 2026-11-23: **D-CLEAN** (see the header). What remains is the register entry.*
    - a new ID in `docs/security_register.md` §3 (e.g. `BUG-11`, Medium; destination GAP-C02 "correct artifact identity", or a new GAP-C entry);
    - a recorded amendment to pin D1: "`install.cmd`/`config.json` only when they are CleanDriver's own".
 
