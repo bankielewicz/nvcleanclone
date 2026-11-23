@@ -10,6 +10,7 @@
 | **Platform** | Both. The Windows consequences below are reasoned from Win32 naming rules, not run. |
 | **Related register entries** | GAP-S01 Fix: "Current-format version, component ID, and payload names use allowlists". The `PackageValidation.cs:41-42` comment says "dotted decimals only". The `5447080`/`62b19ed` commit messages say "VersionRe not widened", but `\d` already is wider. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R03** — Package input hardening (GAP-S01 follow-ups) (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 All three GAP-S01 allowlists end in `$`. In .NET, `$` matches at the end of the string *or before a final `\n`*. So `"572.16\n"`, `"display-driver.bin\n"` and `"display-driver\n"` pass validation.
@@ -135,6 +136,7 @@ Fences respected: validator only; no path, deletion or UI change; error constant
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** This is a GAP-S01 allowlist defect. Request a new ID per §7 (e.g. `SEC-10`, Low) with destination "GAP-S01 follow-up". It can share a validator-hardening slice with `manifest-null-collections-crash-validator` and `dependency-target-check-ignores-case`, with one TDD row each.
+   > *Pinned 2026-11-23 as **GAP-R03** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-regexanchor -b feat/validation-regex-anchors origin/main`
 2. **Red.** Add the §A tests and run `--filter "FullyQualifiedName~PackageValidationTests"`. The 6 new cases fail with "No exception was thrown". Commit `"SEC-10 (red): allowlists must be whole-string ASCII"`.
 3. **Green.** Replace the three patterns and run the full suite. Commit `"SEC-10: anchor allowlists with \z and use [0-9] for version digits"`.

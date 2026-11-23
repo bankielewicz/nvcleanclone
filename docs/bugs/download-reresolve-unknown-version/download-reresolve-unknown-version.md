@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | No direct entry. **GAP-F01** plans to "cache metadata with schema/version/age", but it is blocked on an owner UI ruling and does not specify how `/api/download` resolves a pick. This is a route-level defect that holds even with a provider-side cache that can expire between the two calls. Unrelated to **BUG-02** (artifact correlation). |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R07** — Download engine robustness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `GET /api/catalog` shows the user a release list built by the provider. When the user clicks Next, `POST /api/download` does not resolve the pick against that list. It calls `catalog.GetReleases(...)` again, and in live mode that is a fresh, synchronous NVIDIA lookup with a 5-second timeout. `NvidiaCatalogProvider` never throws: on any failure it silently returns the mock catalog. So if the second lookup times out or fails, the live version the user picked is not in the result, and the route answers `404 {"error":"unknown version"}`. The wizard alerts "unknown version" for a driver the app itself listed seconds earlier.
@@ -184,6 +185,7 @@ Resolve against the releases this server last served, and fall back to the provi
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active and no existing GAP owns this. It needs a new owner-pinned entry (for example under Wave C as `BUG-1x` → its own GAP-C item). Do not fold it into GAP-F01, which is blocked on a UI ruling.
+   > *Pinned 2026-11-23 as **GAP-R07** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-dlresolve -b feat/download-resolves-served-catalog origin/main`.
 2. **Red.** Add §A at `nvcleanstall/CleanDriver.Tests/DownloadResolutionTests.cs` and run the filter. It fails `Expected: OK / Actual: NotFound`. Commit `"download-reresolve-unknown-version (red): /api/download resolves against the catalog the server served"`.
 3. **Green.** Apply the diff and run the FULL suite. Commit `"download-reresolve-unknown-version: resolve the download pick against the served catalog first"`.

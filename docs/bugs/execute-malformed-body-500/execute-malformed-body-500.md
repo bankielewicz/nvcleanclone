@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | Next to **BUG-01 / GAP-C01** ("validate before creating a job"), but GAP-C01 does not cover this. Its ACs are about what a selection means (unknown or duplicate IDs, a missing display driver, tweak types). They do not cover a missing token, `null` collections, or an `outputPath` that `Path.GetFullPath` rejects. A GAP-C01 validator that walks `selection.Components` would hit the same `NullReferenceException` unless it guards for null first. The zombie jobs also make **BUG-05 / GAP-S02** worse: GAP-S02's eviction rule says eviction "never removes a running job", so a job that can never finish would never be evicted. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R05** — API input contract: malformed requests get a JSON 400, never a bodiless 500 or a zombie job (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `POST /api/execute` treats the bound `ExecuteRequest` as if it were already valid. Three things crash it with an unhandled exception, which Kestrel turns into `500` with `Content-Length: 0`:
@@ -250,6 +251,7 @@ Validate the body at the top of the route, before any job exists. This patch was
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active. This fits **GAP-C01** ("Validate before creating a job") as three extra direct-API reds: missing token, null collections, and unparseable `outputPath`. The owner must pin those added ACs into GAP-C01. Otherwise it needs a new owner-pinned entry (for example `BUG-10`); per §7, "any new finding receives a new ID".
+   > *Pinned 2026-11-23 as **GAP-R05** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-exec400 -b feat/execute-malformed-body-400 origin/main`.
 2. **Red.** Add §A's test at `nvcleanstall/CleanDriver.Tests/ExecuteMalformedBodyTests.cs` and run the filter. All 7 cases fail with `Actual: InternalServerError`, which is the stated reason (the unhandled ArgumentNullException, NullReferenceException or ArgumentException). Commit `"execute-malformed-body-500 (red): /api/execute answers malformed bodies with a named 400"`.
 3. **Green.** Apply the route-level validation above and run the FULL suite. Commit `"execute-malformed-body-500: validate token/selection/outputPath before any job is created"`.

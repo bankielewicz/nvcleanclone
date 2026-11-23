@@ -10,6 +10,7 @@
 | **Platform** | Both. The window is fixed at 960×640 (`ShellForm.cs`), and plain mode reproduces at 1280×720 as well, because the window is the same 960×640 box. |
 | **Related register entries** | D4 (fixed 960×640 canvas) and the frozen Screen 1 mockup. The note itself is a sanctioned post-mockup addition (GAP-01 / HARD-06 "render WHY the mock catalog is in play"); the mockup was never re-checked with it present. Not SEC-0x. |
 | **Found** | 2026-11-23 (E2E functional pass) |
+| **Register slice** | **GAP-R09b** — Wizard frontend, pass 2: keyboard access and layout (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 The mockup's Screen 1 fits exactly at 960×640 with the five-row version menu open. The live page adds one line under the menu: "Sample catalog (`<reason>`) — showing bundled sample releases." That is 8 px of margin plus a 16 px line. `.content` clips its overflow, so the "Use driver files on disk" card is pushed down and its bottom is cut off by the footer.
@@ -78,6 +79,7 @@ Frontend-only, A6. No new controls, and the note text and position stay as HARD-
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active, and no entry covers this. Get a new owner-pinned entry, or fold it into a frontend-layout item with `long-output-path-pushes-finish-offscreen`. Declare `slice_start --no-surface '^nvcleanstall/wwwroot/'`.
+   > *Pinned 2026-11-23 as **GAP-R09b** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-srcnote -b feat/source-note-clips-local-option origin/main`.
 2. **Red.** §A transcript (`RED … clipped by 14px`) plus screenshot.
 3. **Green.** Make the minimal change from the Remedy. §A must print `GREEN`. Run the full C# suite (unchanged). Commit `"source-note-clips-local-option: keep the local card inside the window with the menu open"`.

@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | None. GAP-02's contract was "On cancel/failure, delete the partial file", and CLAUDE.md says "`.part` → rename; deleted on cancel/failure". GAP-S03's "temporary final name plus atomic move" protects an earlier verified file, but does not remove an abandoned `.part`. Not BUG-05: that is about in-memory store growth, and this is on-disk residue. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R07** — Download engine robustness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 A real download runs on a detached `Task.Run` worker. Only that worker can delete the `.part` file, from its own `catch` blocks. When the user closes the shell window during a download (on Screen 2, R3 hides Back, so the only exits are Cancel and closing the window), `Program.Main` runs `app.StopAsync().Wait()` and returns. Pressing Ctrl+C on `--headless` stops the host the same way. Nothing cancels or waits for the download worker, so the process exits mid-stream with the worker's cleanup never run. `output/drivers/<version>-<type>.exe.part`, up to 2 GiB, is left on disk, and nothing in the app ever removes it.
@@ -185,6 +186,7 @@ Add a drain seam to `Jobs`, and register it once on the host's stopping event in
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** The active register is `docs/security_register.md`, and no item covers this. The owner pins a new finding ID first. Destination: Wave C, most naturally **fold into GAP-C02** ("Correct artifact identity, receipts, and concurrent jobs"), which owns download-job lifecycle correctness (atomic same-version creation). Otherwise it is a standalone new entry. Per §7 it needs its own ID and AC.
+   > *Pinned 2026-11-23 as **GAP-R07** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-host-drain -b feat/download-host-stop-drain origin/main`
 2. **Red.** Add `HostLifetimeTests.cs` (§A). Run `--filter "FullyQualifiedName~HostLifetimeTests"` and confirm `Expected: "cancelled" / Actual: "running"`, which is not a compile error. Commit `"<ID> (red): host stop cancels in-flight downloads and removes .part"`.
 3. **Green.** Add `Jobs.CancelActiveDownloads` and the `Api.Map` registration. Grep `Jobs.cs` for `shutdown`, which must return nothing. Run the full suite. Commit `"<ID>: drain real downloads on host stop"`.

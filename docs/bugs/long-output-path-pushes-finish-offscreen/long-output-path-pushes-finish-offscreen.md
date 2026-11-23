@@ -10,6 +10,7 @@
 | **Platform** | Both. The window is a fixed 960×640 in WebView2 (`ShellForm.cs`: `ClientSize = new Size(960, 640)`, `FormBorderStyle.FixedSingle`), so the user cannot widen it. |
 | **Related register entries** | Ruling R4 ("'Open output folder' and 'Finish' are the exits"), D4 (fixed 960×640 window). Distinct from `pollrun-failed-job-dead-ends-run-screen`: there the banner never appears, here it appears but its exit is clipped. Not SEC-0x. |
 | **Found** | 2026-11-23 (E2E functional pass) |
+| **Register slice** | **GAP-R09b** — Wizard frontend, pass 2: keyboard access and layout (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 After Extract only or Build package, the banner reads "… package written to `<path>`". For any output folder the user typed, `shortPath` cannot shorten the path because it does not contain `output/`, so the full path is printed inside a `<code>` element. A Windows path has break opportunities only at spaces and hyphens. With neither, the `<code>` is one unbreakable run of text.
@@ -109,6 +110,7 @@ Optionally, `shortPath` could also abbreviate the middle of very long paths with
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active, and no entry covers banner layout. Get a new owner-pinned entry, or fold this into a small "frontend robustness" item. Declare `slice_start --no-surface '^nvcleanstall/wwwroot/'`.
+   > *Pinned 2026-11-23 as **GAP-R09b** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-longpath -b feat/long-output-path-pushes-finish-offscreen origin/main`.
 2. **Red.** The §A transcript must show `RED … from 90 chars`, with screenshot.
 3. **Green.** Make the three CSS declarations. §A must print `GREEN` and every sweep row inside. Run the full C# suite (unchanged). Commit `"long-output-path-pushes-finish-offscreen: let the banner path wrap"`.

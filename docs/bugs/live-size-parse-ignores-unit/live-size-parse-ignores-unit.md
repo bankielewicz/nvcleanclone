@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | none |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R08** — Catalog and GPU detection correctness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `ParseSizeMB` keeps whatever number comes before the first space and never reads the unit after it. NVIDIA's `DownloadURLFileSize` is a human-readable string (`"979.17 MB"` in the recorded response). Any size stated in another unit is therefore taken as megabytes: `"1.02 GB"` becomes `SizeMB = 1`. That contradicts the method's own contract, which is the value in MB, or 0 when absent or unparseable. The recorded sizes are already ~979 MB, and Jobs.cs notes that "real packages are ~1 GB". So the first driver NVIDIA reports in GB would show as a 1 MB download.
@@ -122,6 +123,7 @@ Minimal fix: read the unit, convert the known ones, and return 0 for anything el
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active; GAP-F01 is catalog work but blocked on a UI ruling. Ask the owner to pin a new ID (for example BUG-13, "live catalog parsing") per §7, or to bundle it with the Studio-row fix under one ID as a separately disclosed finding.
+   > *Pinned 2026-11-23 as **GAP-R08** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-size-unit -b feat/live-size-parse-ignores-unit origin/main`
 2. **Red.** Add the §A theory to `nvcleanstall/CleanDriver.Tests/NvidiaCatalogProviderTests.cs`. Run the filter and confirm `Actual: 1` for both cases. Commit `"BUG-13 (red): a live size stated in GB is converted to MB"`.
 3. **Green.** Unit-aware `ParseSizeMB`. Run the FULL suite. Commit `"BUG-13: read the unit in DownloadURLFileSize"`.

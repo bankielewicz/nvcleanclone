@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | GAP-S01 AC-2 ("Each malicious case returns HTTP 400 with a stable non-path-leaking error") is not met for structurally malformed manifests. **Sibling doc:** `docs/bugs/execute-malformed-body-500` covers the same JSON-`null`-collection pattern on `/api/execute`'s `Selection` (`Api.cs`/`Models.cs`). This doc is the `/api/package` manifest side, rooted in the package validator. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R03** — Package input hardening (GAP-S01 follow-ups) (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 System.Text.Json assigns an explicit JSON `null` to a collection property, which overrides the `= new()` initializer in `Models.cs`. Three manifests show the problem:
@@ -132,6 +133,7 @@ Fences respected: no filesystem change, no UI change, and messages stay path-fre
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** This is a GAP-S01 AC-2 gap. Request a new ID per §7 (e.g. `BUG-14`, Low) with destination "GAP-S01 follow-up". It can share one validator-hardening slice with `validation-regex-allows-newline-and-unicode` and `dependency-target-check-ignores-case` if the owner pins them together, with one TDD row per behavior.
+   > *Pinned 2026-11-23 as **GAP-R03** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-nullmanifest -b feat/manifest-null-collections origin/main`
 2. **Red.** Add the §A theory to `PackageValidationTests.cs` and run its filter. Three failures, `NullReferenceException`. Commit `"BUG-14 (red): null manifest collections must be a 400-class rejection"`.
 3. **Green.** Add the two guards and run the full suite. Commit `"BUG-14: reject null components/dependsOn in the manifest validator"`.

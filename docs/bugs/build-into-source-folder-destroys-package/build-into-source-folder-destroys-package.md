@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | GAP-S01 (PR #23) introduced mechanism (1) when it replaced `ReadPayload` + `WriteAllBytes` with streaming `CopyPayload`. HARD-01 (pin D1) is where mechanism (2) comes from. No register row covers either one. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R01** — Building into the source folder must not destroy the package (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 If `outputPath` is the folder the package was loaded from, an `extract` or `package` run destroys that package. It also fails, so the user gets nothing in return.
@@ -213,6 +214,7 @@ Known limit: being name-based, the predicate does not catch an alias created thr
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active, and §7 says "any new finding receives a new ID". Ask the owner to pin a new row (e.g. `BUG-10`, High). Mechanism (1) is a GAP-S01 regression, so the natural destination is a GAP-S01 follow-up slice. Do not fold it silently into GAP-C02.
+   > *Pinned 2026-11-23 as **GAP-R01** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-srcalias -b feat/build-into-source-folder origin/main`
 2. **Red.** Add `nvcleanstall/CleanDriver.Tests/BuildIntoSourceFolderTests.cs` (§A). Run `--filter "FullyQualifiedName~BuildIntoSourceFolderTests"`. It should show 4 failures for the stated reasons. Commit `"BUG-10 (red): building into the package folder must not destroy the source"`.
 3. **Green.** Add `OutputAliasesSource` + `OutputIsSourceError` and call them from `StartExecute`. Reorder `CopyPayload` to open the source first. Run the full suite. Commit `"BUG-10: refuse outputPath == package folder; CopyPayload opens source before destination"`.

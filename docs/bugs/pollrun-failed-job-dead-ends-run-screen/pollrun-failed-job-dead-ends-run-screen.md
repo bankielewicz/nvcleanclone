@@ -10,6 +10,7 @@
 | **Platform** | Both. Reproduced in Chromium with and without `?shell=1`. The WebView2 shell uses the same engine (reasoned). |
 | **Related register entries** | Ruling R4: its exits ("Open output folder" and "Finish") never appear on failure. HARD-02 (`Jobs.cs:396-403` fails a drive-root run *by job status*, "the caller polls a job"). Sibling of HARD-04, which fixed the same "status with no terminal branch" defect in `pollDownload`. Also sibling of `job-pollers-no-exit-on-404-or-network-error` (transport and 404 errors), which builds on this fix. Distinct from `build-into-source-folder-destroys-package`: that doc is about what the backend *does* to files, and this one is about what the UI does once the job fails. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R09a** — Wizard frontend, pass 1: robustness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `pollRun` handles only two job statuses, `running` and `done`. The backend's third terminal status, `failed`, matches no branch. When it arrives, the poll loop stops silently. The run view keeps its "Extracting customized package…" title, a partial progress bar, and an `> ERROR:` line in the log. It shows no result banner, so there is no **Finish** and no **Open output folder**. The footer is also hidden by ruling R4, so there is no **Back**. The user has no control that leaves the screen. The only escape is a page reload (F5), which nothing on screen suggests and which discards the whole wizard state.
@@ -181,6 +182,7 @@ Add the missing terminal branch, mirroring `pollDownload`'s existing `failed` ha
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is the active register. No existing GAP covers UI failure handling (GAP-C01…C05 are server-side), so this needs a **new owner-pinned register entry** first. Suggest one "run-view terminal states" entry covering this doc and `job-pollers-no-exit-on-404-or-network-error`, whose `pollRun` part reuses this branch. This slice lands first. Declare the no-test-surface slice: `slice_start --no-surface '^nvcleanstall/wwwroot/'`, sanctioned by that pattern appearing verbatim in the build plan.
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-pollrun-failed -b feat/pollrun-failed-job-dead-ends-run-screen origin/main`.
 2. **Red.** Start `dotnet run --project nvcleanstall -- --headless --mock-catalog`. Run the §A script against the unmodified app and save the RED transcript above verbatim as the PR's red evidence. The repo has no place for JS scripts and must not gain a toolchain, so the script and transcript live in the PR body. That is the HARD-04/HARD-06 precedent.
 3. **Green.** Apply the one-line diff. Rerun the same script and expect the GREEN transcript below. Run the full C# suite to prove no backend regression. Commit `pollrun-failed-job-dead-ends-run-screen: treat a failed run job as terminal (alert + back to Screen 5)`.

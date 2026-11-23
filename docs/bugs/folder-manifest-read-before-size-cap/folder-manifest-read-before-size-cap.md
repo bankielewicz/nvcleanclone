@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | The SEC-04 / GAP-S01 fix ("reject … manifests over 1 MiB") is incomplete. The zip path rejects by declared length *before* reading, but the folder path and the HARD-01 prior-manifest read measure only *after* reading the whole file. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R03** — Package input hardening (GAP-S01 follow-ups) (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 GAP-S01 added a 1 MiB manifest cap. On the zip path the cap is checked against the entry's declared length before anything is read (`Packages.cs:63`). On the folder path, `LoadLocal` calls `File.ReadAllText` on `manifest.json` with no size check. `ReadManifest` then measures the string that has already been materialized (`Packages.cs:80`).
@@ -160,6 +161,7 @@ Edge to disclose: a CleanDriver-written manifest over 1 MiB, for example one car
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** SEC-04's fix is incomplete. Request a new owner-pinned ID per §7 (e.g. `SEC-09`, Medium) with destination "GAP-S01 follow-up".
+   > *Pinned 2026-11-23 as **GAP-R03** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-mfcap -b feat/manifest-size-cap-before-read origin/main`
 2. **Red.** Add `nvcleanstall/CleanDriver.Tests/ManifestSizeCapTests.cs` (§A). Run `--filter "FullyQualifiedName~ManifestSizeCapTests"` and confirm both fail on the allocation assertion. Commit `"SEC-09 (red): manifest size cap must apply before the file is read"`.
 3. **Green.** Add `ReadManifestText` and use it in `LoadLocal` (folder) and `CleanPreviousBuild`. Optionally use it in `LoadCatalog`/`LoadSampleTemplate` for uniformity. Run the full suite. Commit `"SEC-09: check manifest.json length before reading (folder load + HARD-01 clean)"`.

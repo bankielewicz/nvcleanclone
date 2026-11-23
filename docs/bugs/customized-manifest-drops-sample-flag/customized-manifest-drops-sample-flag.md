@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | GAP-02 (`docs/gaps_analysis.md`, closed register): "the UI labels components 'sample component list — real package parsing not yet implemented.'" GAP-05's honesty-marker pattern (`signatureSimulated`, `driverTelemetrySimulated`) is additive and null-omitted. Not in `docs/security_register.md` §3. GAP-F03/F04 will eventually replace the sample, but until then the label must survive. **Sibling doc:** `docs/bugs/receipt-drops-sample-components-flag` covers the same lost flag in the artifacts `Jobs.cs` writes (install receipt and package `config.json`). This doc covers only the `Packages.cs` manifest rewrite and its reload. They are complementary, not duplicates, and may share one register row. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R06** — Artifact identity and honesty (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 For a live-downloaded driver version (no bundled package), `LoadSampleTemplate` serves the newest **mock** package. It relabels it to the requested version and sets `SampleComponents = true`, and the UI shows "sample component list" because of that flag.
@@ -135,6 +136,7 @@ Fences respected:
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** New finding: request an ID in `docs/security_register.md` §3 (e.g. `BUG-13`, Medium). The natural destination is GAP-C05 ("make tweak claims … truthful", the honesty wave). Do not fold it into an unrelated PR.
+   > *Pinned 2026-11-23 as **GAP-R06** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-sampleflag -b feat/keep-sample-flag-in-output origin/main`
 2. **Red.** Add both §A tests to `PackageHonestyTests.cs`. Run `--filter "FullyQualifiedName~PackageHonestyTests"` and confirm the two new tests fail as shown. Commit `"BUG-13 (red): sample-template builds must keep sampleComponents"`.
 3. **Green.** Add the one-line field and run the full suite. Commit `"BUG-13: carry sampleComponents into the customized manifest (null-omitted)"`.

@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | None covers this. It is the same defect family as HARD-03, which closed the unbounded wait for the WMI read. It is distinct from HARD-05/A5: the hop **count** is bounded, but each hop's **wait** is not. Hardening candidate #6 (`Jobs.StallTimeout` static seam) is a test-parallelism note, not this. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R07** — Download engine robustness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 The real-download client has no overall timeout. The code says liveness comes from "ResponseHeadersRead + a per-read stall timeout", but the stall window only wraps body `ReadAsync` calls. Each `GetAsync` in the redirect-follow loop, covering TCP connect, TLS handshake and the wait for response headers, gets only the job's cancel token. So when a peer accepts the request and never answers, the job stays `running` forever with progress 0. That peer can be the initial host or any followed redirect hop. Examples: a wedged proxy, an HTTPS-scanning antivirus that holds the response, or a half-open TLS session. The user never gets the `download stalled` error. Until the user presses Cancel, every retry of that version gets the same wedged job back.
@@ -218,6 +219,7 @@ Also correct the comment at `Jobs.cs:157-159` so it describes both bounds.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** The active register is `docs/security_register.md`, and no item there covers this. The owner pins a new finding ID first. Destination: **fold into GAP-S03**, which already rewrites this exact loop to require `https` on the initial URL and every redirect before contact. The liveness bound is a natural same-seam rider, but it must carry its own ID and AC, per §7 ("never silently folded"). If GAP-S03 is not next, it can go out as a standalone Wave C entry.
+   > *Pinned 2026-11-23 as **GAP-R07** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-hdr-stall -b feat/download-headers-stall-timeout origin/main`
 2. **Red.** Add `SilentPeerHandler` to `TestDownload.cs` and the three facts to `RealDownloadTests.cs` (§A). Run the single-test filter and confirm `job still 'running' after 3 s …` and `Expected: Not "N"`. Neither may be a compile error. Commit `"<ID> (red): headers phase of every hop is bounded by the stall window"`.
 3. **Green.** Apply the `GetFollowingRedirectsAsync` diff and run the full suite. Commit `"<ID>: bound each hop's headers wait by StallTimeout"`.

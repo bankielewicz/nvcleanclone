@@ -197,6 +197,75 @@ Each ID is one PR and must include its own red/green evidence, full build/test o
 
 **Acceptance:** a clean `win-x64` publish directory contains only `CleanDriver.exe` plus checksum/provenance artifacts; copying only the EXE to an empty directory starts native and headless modes, serves UI/data, saves presets, and writes output under LocalAppData. The published EXE is inspected for all expected bundle entries.
 
+
+### Wave R — bug-report follow-ups (owner-pinned 2026-11-23)
+
+Source: the 39 reports under `docs/bugs/` (index `docs/bugs/README.md`), found at `main` @ `54b3c31`. One slice is one PR. **Acceptance: as in each source report's "Acceptance criteria" section** (no new ACs are pinned here). The register gate in each report is satisfied by the slice ID below; any ID a report suggests is superseded.
+
+**Order (owner-pinned):** GAP-R01 lands first. GAP-R01 → R02 → R03 are serialized because all three edit `Packages.cs`. The rest follow the listed order. **Not pinned:** where GAP-R02 onward sit relative to the remaining GAP-S02…S04, Wave C and Wave F items; the owner places them at scheduling time.
+
+`docs/bugs/component-order-differs-from-mockup/` is closed won't-fix (D-MOCKDATA) and has no slice.
+
+#### GAP-R01 — Building into the source folder must not destroy the package
+
+**Reports:** `docs/bugs/build-into-source-folder-destroys-package/`.
+
+High; a regression from GAP-S01 (PR #23). Does not depend on D-CLEAN.
+
+#### GAP-R02 — `CleanPreviousBuild` deletes only what the prior build wrote, never through a link
+
+**Reports:** `docs/bugs/clean-previous-build-follows-reparse-point/`, `docs/bugs/clean-deletes-foreign-config-after-extract/`.
+
+Implements ruling **D-CLEAN**. Both reports change `CleanPreviousBuild`, hence one slice.
+
+#### GAP-R03 — Package input hardening (GAP-S01 follow-ups)
+
+**Reports:** `docs/bugs/folder-manifest-read-before-size-cap/`, `docs/bugs/manifest-null-collections-crash-validator/`, `docs/bugs/validation-regex-allows-newline-and-unicode/`, `docs/bugs/dependency-target-check-ignores-case/`.
+
+#### GAP-R04 — App host and process launch
+
+**Reports:** `docs/bugs/host-ambient-config-overrides-bind/`, `docs/bugs/open-folder-explorer-search-path/`, `docs/bugs/shell-url-from-raw-cleandriver-urls/`.
+
+Cross-reference: lands alongside GAP-S02 (local control plane) and GAP-C04 (PATH-based process launch); those entries' text and ACs are unchanged.
+
+#### GAP-R05 — API input contract: malformed requests get a JSON 400, never a bodiless 500 or a zombie job
+
+**Reports:** `docs/bugs/execute-malformed-body-500/`, `docs/bugs/execute-prelude-throw-orphans-running-job/`, `docs/bugs/preset-load-invalid-name-500/`, `docs/bugs/preset-save-accepts-null-selection/`.
+
+The two `execute-*` reports are the route and engine halves of one defect.
+
+#### GAP-R06 — Artifact identity and honesty
+
+**Reports:** `docs/bugs/receipt-drops-sample-components-flag/`, `docs/bugs/customized-manifest-drops-sample-flag/`, `docs/bugs/sibling-zip-shared-across-outdirs/`, `docs/bugs/receipt-name-date-uses-culture-calendar/`.
+
+Implements ruling **D-ZIPNAME**. Cross-reference: joins GAP-C02 (artifact identity, receipts, concurrent jobs); GAP-C02's own text and ACs are unchanged.
+
+#### GAP-R07 — Download engine robustness
+
+**Reports:** `docs/bugs/download-headers-phase-has-no-stall-timeout/`, `docs/bugs/shutdown-mid-download-leaves-part-file/`, `docs/bugs/download-reresolve-unknown-version/`.
+
+#### GAP-R08 — Catalog and GPU detection correctness
+
+**Reports:** `docs/bugs/studio-only-release-listed-as-game-ready/`, `docs/bugs/marketing-version-unpadded-wmi-field/`, `docs/bugs/gpu-detect-concurrent-first-call-race/`, `docs/bugs/live-size-parse-ignores-unit/`.
+
+#### GAP-R09a — Wizard frontend, pass 1: robustness
+
+**Reports:** `docs/bugs/pollrun-failed-job-dead-ends-run-screen/`, `docs/bugs/job-pollers-no-exit-on-404-or-network-error/`, `docs/bugs/preset-on-screen1-freezes-download-at-100/`, `docs/bugs/preset-components-lost-after-back-to-source/`, `docs/bugs/screen1-next-no-inflight-guard-wrong-version/`, `docs/bugs/double-click-start-runs-two-jobs/`, `docs/bugs/api-helper-silent-on-non-json-errors/`, `docs/bugs/component-dependency-closure-incomplete/`, `docs/bugs/auto-reboot-submitted-with-unattended-off/`.
+
+Frontend evidence per amendment A6. Within the slice: `pollrun-failed-job-dead-ends-run-screen` before `job-pollers-no-exit-on-404-or-network-error`, and `preset-on-screen1-freezes-download-at-100` before `preset-components-lost-after-back-to-source`.
+
+#### GAP-R09b — Wizard frontend, pass 2: keyboard access and layout
+
+**Reports:** `docs/bugs/keyboard-cannot-reach-wizard-controls/`, `docs/bugs/long-output-path-pushes-finish-offscreen/`, `docs/bugs/source-note-clips-local-option/`.
+
+Frontend evidence per amendment A6; follows GAP-R09a.
+
+#### GAP-R10 — Documentation corrections
+
+**Reports:** `docs/bugs/run-log-lines-have-no-timestamps/`.
+
+Implements ruling **D-LOGTS** (the `CLAUDE.md` sentence; FR-010 is not reworded). Also corrects `specs/nvcleanstall/parity.md`'s AC-005 "pass", which fails as written until `preset-on-screen1-freezes-download-at-100` (GAP-R09a) lands. Docs-only (A2).
+
 ## 5. Required execution order
 
 1. GAP-S01 → S02 → S03 → S04.

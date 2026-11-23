@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | Materially different from **SEC-02 / GAP-S02**. GAP-S02's fix is "bind only to loopback and reject non-loopback `CLEANDRIVER_URLS`". A `Kestrel:Endpoints` section from any configuration source *replaces* the `UseUrls(urls)` addresses, so a check on `CLEANDRIVER_URLS` never sees the address actually bound. If GAP-S02's Host filtering uses the stock `AllowedHosts` configuration key, the same planted file overrides it as well. Not covered by **GAP-F05**, which moves mutable data to LocalAppData; with `IncludeAllContentForSelfExtract` the content root would move to the extraction directory, but environment variables still apply. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R04** — App host and process launch (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `Program.cs` builds the server with the default `WebApplication.CreateBuilder` and sets `ContentRootPath = AppContext.BaseDirectory`, which is the folder `CleanDriver.exe` sits in (for a portable single exe, typically `Downloads`). That default builder loads three things:
@@ -222,6 +223,7 @@ This was validated in the Linux harness. With the remedy, the planted-file test 
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active. This belongs in **GAP-S02** (the HTTP boundary), as an amendment: "the host ignores ambient configuration; endpoints, environment and host filtering come only from code and `CLEANDRIVER_URLS`". GAP-S02 is next in Wave S, so the owner should pin this before that slice starts, because GAP-S02's loopback check is otherwise bypassable.
+   > *Pinned 2026-11-23 as **GAP-R04** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-hostcfg -b feat/host-ignores-ambient-config origin/main`.
 2. **Red.** Add §A at `nvcleanstall/CleanDriver.Tests/AppHostConfigTests.cs` together with the behavior-preserving extraction `Lib/AppHost.cs` (`Program.cs:13-19` moved verbatim) and `Program.cs` calling it. Disclose this in the PR as the minimum production change the test needs in order to compile. Run the filter: it fails with `Expected ["http://127.0.0.1:<requested>"] / Actual ["http://127.0.0.1:<planted>"]`. Commit `"host-ambient-config-overrides-bind (red): extract AppHost; planted appsettings.json must not rebind the API"`.
 3. **Green.** Add `EnvironmentName = Production`, `Sources.Clear()` and `AddInMemoryCollection()`, then run the FULL suite. Commit `"host-ambient-config-overrides-bind: build the host from explicit inputs only"`.

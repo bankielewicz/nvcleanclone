@@ -10,6 +10,7 @@
 | **Platform** | Both: the defect is in a pure, platform-neutral seam. Real input only comes from Windows WMI. |
 | **Related register entries** | none. Distinct from GAP-F01 (adapter coverage, multi-GPU) and from HARD-03/GAP-C04 (how the query runs). This is the arithmetic on a correctly read value. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R08** — Catalog and GPU detection correctness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `Gpu.MarketingVersion` takes "the last five digits of the dot-stripped string" and splits them 3.2. That works only if the fourth WMI field always has four digits. Windows prints each `DriverVersion` field as a plain integer with no zero padding, so a fourth field below 1000 loses its leading zero. Some examples of what HEAD returns:
@@ -162,6 +163,7 @@ Minimal fix: when the value has the four-field shape, compute from the fields, p
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active. GAP-C04 touches `Gpu.cs` but is scoped to the PowerShell path, so this does not fit there. Ask the owner to pin a new ID (for example BUG-11, destination "Wave C, Gpu.cs") per §7.
+   > *Pinned 2026-11-23 as **GAP-R08** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-wmi-version -b feat/marketing-version-unpadded-wmi-field origin/main`
 2. **Red.** Add the §A theory and fact to `nvcleanstall/CleanDriver.Tests/GpuDetectionTests.cs`. Run `--filter "FullyQualifiedName~GpuDetectionTests"` and confirm the five failures above (`136.97`, `131.42`, `016.74`, `161.23`, `016.74`). Commit `"BUG-11 (red): unpadded fourth WMI field keeps its implied leading zero"`.
 3. **Green.** Apply the guarded branch. Run the FULL suite. Commit `"BUG-11: derive the marketing version per field, not from the last five digits"`.

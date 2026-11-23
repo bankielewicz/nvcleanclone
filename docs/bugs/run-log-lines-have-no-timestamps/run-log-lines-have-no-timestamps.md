@@ -11,6 +11,7 @@
 | **Related register entries** | FR-010: "Install/Silent run a simulated install producing a **timestamped log** and receipt file". `CLAUDE.md` architecture: "background step lists appending **timestamped log lines** the frontend polls". Ruling R9 adopts the 9-line mockup log as the reference *shape*, and that mockup shows no times. Parity AC-001 is graded `pass` without checking this. Not in `docs/security_register.md` §3. |
 | **Found** | 2026-11-23 (E2E functional pass) |
 | **Owner ruling** | **D-LOGTS** (2026-11-23, `docs/security_register.md`): **option (b)** — correct the documentation, not the code. This report is re-graded a **documentation defect** (severity Low): the code matches the frozen mockup and R9. FR-010 is read as satisfied by the receipt and is not reworded under this ruling. The fix is a docs-only (A2) slice correcting the `CLAUDE.md` sentence; option (a) below is not pursued. |
+| **Register slice** | **GAP-R10** — Documentation corrections (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 FR-010 and the architecture notes both say the job log is timestamped. It is not, anywhere. `Job.LogLine` stores `{ text, cls }`, the snapshot returns those two fields, and the run view renders `text` only. Every action (Install, Silent, Extract, Build) produces lines like `> Removing previous driver traces…` with no time.
@@ -132,6 +133,7 @@ Fences: docs-only. No production, test or `wwwroot/` change.
 
 ## Fix workflow (docs-only — exemption A2)
 0. **Register gate.** D-LOGTS rules the outcome. Per CLAUDE.md, the owner still pins the slice: a register entry, or explicit word that D-LOGTS suffices for this one-sentence docs fix.
+   > *Pinned 2026-11-23 as **GAP-R10** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-log-wording -b docs/claude-md-log-wording origin/main`.
 2. **Edit** the one `CLAUDE.md` sentence. Touch no other file.
 3. **No red/green.** Under exemption **A2** a docs-only slice satisfies the TDD gate vacuously; name A2 in the PR body.

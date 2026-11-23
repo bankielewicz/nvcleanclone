@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | Same line as **BUG-03** (GAP-C02), but a distinct defect. BUG-03 is that same-day receipts *collide*. This one is that the date in the name uses the *wrong calendar*. GAP-C02's planned rename ("UTC timestamp plus random job ID") will carry this defect over unless its format call is made culture-invariant, so this belongs in GAP-C02's AC list. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R06** — Artifact identity and honesty (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 The install/silent receipt is named `receipt-{stamp}.json`, where `stamp = DateTime.Now.ToString("yyyy-MM-dd")`. A custom date format without an explicit provider is rendered in the current culture's **default calendar**, which is not Gregorian on several common Windows regional formats. On a Thai system today's receipt is `receipt-2569-11-23.json`, on Saudi Arabic it is `receipt-1448-06-13.json`, and on Persian it is `receipt-1405-09-02.json`. The receipt body records `installedAt` with the culture-invariant round-trip format (`2026-11-23T…Z`). The same artifact therefore carries two dates that disagree by centuries, and the name is not the ISO date the mockups, tests and tooling assume.
@@ -112,6 +113,7 @@ Failed!  - Failed:     3, Passed:     0, Skipped:     0, Total:     3
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** The active register is `docs/security_register.md`, and no item covers this. The owner pins a new finding ID first. Destination: **fold into GAP-C02**, which owns receipt naming (BUG-03) and will rewrite this exact line. Add AC "receipt names are culture-invariant (Gregorian ISO) under any `CurrentCulture`". Per §7 it gets its own ID.
+   > *Pinned 2026-11-23 as **GAP-R06** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-receipt-culture -b feat/receipt-name-invariant-date origin/main` (or the GAP-C02 branch).
 2. **Red.** Add the theory from §A to `ExecuteReceiptTests.cs`. Run the filter and confirm three `Not found: "receipt-2569…"`-style failures. Commit `"<ID> (red): receipt name date is ISO-Gregorian in any culture"`.
 3. **Green.** Make the one-line change and run the full suite. Commit `"<ID>: format the receipt stamp with InvariantCulture"`.

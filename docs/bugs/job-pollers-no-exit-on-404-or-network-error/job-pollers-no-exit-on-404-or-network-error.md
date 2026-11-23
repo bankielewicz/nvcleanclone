@@ -10,6 +10,7 @@
 | **Platform** | Browser / headless (`--headless`, the verification mode) in practice. In the WebView2 shell the server runs in-process, so a server loss takes the window with it (reasoned). |
 | **Related register entries** | Same defect family as **HARD-04**: a status that matches no terminal branch, polled every 150 ms forever. That fix handled `cancelled` only. **Depends on** `pollrun-failed-job-dead-ends-run-screen`: the run-view half routes into the `failed` branch that doc adds, so land that one first. BUG-05 / GAP-S02 (job-store caps and expiry) would make the 404 case reachable while the server is up, unless eviction stays limited to finished jobs as GAP-S02 specifies. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R09a** — Wizard frontend, pass 1: robustness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 Both pollers assume every poll returns a 200 job snapshot. There is no error exit for the two other outcomes the server and network can produce:
@@ -217,6 +218,7 @@ Add one helper that turns "no job" and "no server" into the terminal `failed` st
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active, and no entry covers client polling. A **new owner-pinned entry** is needed. Suggested: one "run-view and poller terminal states" entry shared with `pollrun-failed-job-dead-ends-run-screen`, with this slice landing second. Declare the no-test-surface slice: `slice_start --no-surface '^nvcleanstall/wwwroot/'` (sanctioned by that pattern appearing verbatim in the build plan).
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** After the sibling merges: `git worktree add ../nvcleanclone-poll-errors -b feat/job-pollers-no-exit-on-404-or-network-error origin/main`.
 2. **Red.** Run the §A script against the unmodified app and save the RED transcript. Also repeat the manual §B restart once and paste it as live red. Both go in the PR body (HARD-04/HARD-06 precedent: no JS test location, no toolchain).
 3. **Green.** Apply the diff. Rerun the script, which should produce the GREEN transcript below, and repeat §B. Run the full C# suite. Commit `job-pollers-no-exit-on-404-or-network-error: treat a lost job or server as a failed job in both pollers`.

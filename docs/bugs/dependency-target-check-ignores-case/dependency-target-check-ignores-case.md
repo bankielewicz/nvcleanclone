@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | GAP-S01 AC-1 lists "missing dependency targets" as a case the validator must reject. Case-variant targets are missing for every consumer, yet they pass. GAP-C01 (server-side selection enforcement, not built yet) will consume these edges too. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R03** — Package input hardening (GAP-S01 follow-ups) (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `ValidateManifest` resolves `dependsOn` targets against `ids`, a `HashSet<string>` built with `StringComparer.OrdinalIgnoreCase`. That comparer is correct for *duplicate* detection, but it also makes `"dependsOn": ["Display-Driver"]` count as resolved when the only component is `display-driver`.
@@ -137,6 +138,7 @@ Fences respected: no UI change (R1-R10 intact); messages unchanged and path-free
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** This is a GAP-S01 AC-1 gap. Request a new ID per §7 (e.g. `BUG-15`, Low) with destination "GAP-S01 follow-up". It's a natural companion of `manifest-null-collections-crash-validator` and `validation-regex-allows-newline-and-unicode` in one validator slice, if the owner pins it that way.
+   > *Pinned 2026-11-23 as **GAP-R03** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-depcase -b feat/dependency-resolution-ordinal origin/main`
 2. **Red.** Add both §A tests and run the filter. Both fail with "No exception was thrown". Commit `"BUG-15 (red): dependency targets resolve ordinally"`.
 3. **Green.** Add the ordinal set and run the full suite. Commit `"BUG-15: resolve dependsOn against exact component ids"`.

@@ -10,6 +10,7 @@
 | **Platform** | Both. Reproduced in Chromium; the logic does not depend on `?shell=1`. |
 | **Related register entries** | FR-015, FEAT-028. Sibling of `preset-on-screen1-freezes-download-at-100`, which follows the same "load on Screen 1" path but has a different root cause. **This fix must land after that one**: it sends more loads through the `pendingPreset` path, and that path crashes on a stale `hiComp` until the sibling is fixed. Not covered by GAP-C03 (that entry is server-side). |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R09a** — Wizard frontend, pass 1: robustness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 Back from Screen 3 returns to Screen 1 but keeps `state.manifest` loaded. The Load-preset handler treats "a manifest exists" as "the preset can be applied now", so on Screen 1 it applies the preset to the old package directly and skips the `pendingPreset` deferral. Leaving Screen 1 always re-adopts a package, even for the same version: Next re-downloads it, and `adoptManifest` resets `state.components` to the recommended defaults. With nothing pending, the preset's components are overwritten. The user arrives on Screen 3 with the preset's tweaks but the default components, and nothing tells them the preset was only half-applied.
@@ -165,6 +166,7 @@ Defer whenever the user is on a screen that precedes package adoption, and apply
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active, and no existing GAP covers client-side preset application, so a **new owner-pinned entry** is needed (it can be shared with `preset-on-screen1-freezes-download-at-100` as separate, ordered slices). Declare the slice with `slice_start --no-surface '^nvcleanstall/wwwroot/'`, sanctioned by that pattern appearing verbatim in the build plan.
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** After the sibling merges, run `git worktree add ../nvcleanclone-preset-back -b feat/preset-components-lost-after-back-to-source origin/main`.
 2. **Red.** Run the §A script against the unmodified app and save the RED transcript. It goes in the PR body (HARD-04/HARD-06 precedent: no JS test location, no toolchain).
 3. **Green.** Apply the diff and rerun the script, which should produce the GREEN transcript below. Run the full C# suite. Commit as `preset-components-lost-after-back-to-source: defer presets loaded before package adoption`.

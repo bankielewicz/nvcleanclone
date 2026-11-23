@@ -10,6 +10,7 @@
 | **Platform** | Both. WebView2 uses the same Chromium focus model (reasoned). |
 | **Related register entries** | Ruling R5 ("implementation uses a real disabled checkbox (semantic + keyboard-correct)"). The pinned design token in `docs/design/nvcleanstall-mockup-prompt.md` reads "Focus: 2px accent outline". No register row covers keyboard access. Distinct from GAP-F02 (native pickers). Not SEC-0x. |
 | **Found** | 2026-11-23 (E2E functional pass) |
+| **Register slice** | **GAP-R09b** — Wizard frontend, pass 2: keyboard access and layout (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 Every primary choice on Screens 1, 4 and 5 is a `<div>` or `<span>` with an `onclick` and no `tabindex`, `role` or key handler. That covers the two source radios, the version combo and its rows, the "Show expert tweaks" switch, the MSI priority segments, the four action cards, and the Load-preset rows. Tab never stops on them, and Enter or Space cannot activate them.
@@ -103,6 +104,7 @@ Frontend-only, A6. There is **no visual change** and no new controls (frozen fiv
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active, and no entry covers accessibility. This needs a new owner-pinned register entry (suggested: a Wave C item, "keyboard parity for the frozen five screens", citing R5). Declare `slice_start --no-surface '^nvcleanstall/wwwroot/'`.
+   > *Pinned 2026-11-23 as **GAP-R09b** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-kbd -b feat/keyboard-cannot-reach-wizard-controls origin/main`.
 2. **Red.** Run the §A transcript (`RED unreachable by Tab: […]`, `focus is on <body>`). There is no JS test runner (A6), and no commit is needed for a red with no test file.
 3. **Green.** Make the minimum attribute, key-handler and focus-restore changes. Re-run §A until both lines are `GREEN`. Run the full C# suite (unchanged, green). Commit `"keyboard-cannot-reach-wizard-controls: make wizard choices focusable and keep focus on toggle"`.

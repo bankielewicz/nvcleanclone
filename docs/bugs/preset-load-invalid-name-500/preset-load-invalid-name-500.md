@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | Next to **BUG-06 / GAP-C03**, which hardens `Presets.cs`. GAP-C03 does not fix this, and its planned "validate (do not strip)" names makes `Presets.Load` throw `InvalidDataException` for more names. The route-level gap therefore grows after GAP-C03 unless the route maps that exception. Suggest folding this into GAP-C03 as an explicit route AC. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R05** — API input contract: malformed requests get a JSON 400, never a bodiless 500 or a zombie job (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `Presets.Load(name)` calls `SafeName`, which throws `InvalidDataException("preset name required")` when a name sanitizes to empty. Examples: `!`, any non-ASCII name such as `日本`, a whitespace-only name, or `...`. The `GET /api/presets/{name}` route handles only the `null` (not found) return. The exception escapes and Kestrel returns `500` with an empty body. The sibling `POST /api/presets` route catches the same exception and returns a 400, so the GET route is the inconsistent one.
@@ -169,6 +170,7 @@ Map the exception to the existing not-found response in the route. This was vali
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active. Fold into **GAP-C03** (presets) as an added AC: the GET route returns a named 404/400 for an invalid name. The owner must pin it; otherwise it needs a new owner-pinned ID.
+   > *Pinned 2026-11-23 as **GAP-R05** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-preset404 -b feat/preset-load-invalid-name-404 origin/main`.
 2. **Red.** Add §A at `nvcleanstall/CleanDriver.Tests/PresetRouteTests.cs` and run the filter. All 4 cases fail with `expected 404/400, got 500`. Commit `"preset-load-invalid-name-500 (red): GET /api/presets/{name} answers unloadable names with 404"`.
 3. **Green.** Apply the diff and run the FULL suite. Commit `"preset-load-invalid-name-500: map Presets.Load's invalid-name InvalidDataException to 404"`.

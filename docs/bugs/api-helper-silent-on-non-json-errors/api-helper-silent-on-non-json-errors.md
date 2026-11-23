@@ -10,6 +10,7 @@
 | **Platform** | Both. `fetch`/`Response.json()` behave identically in WebView2 (reasoned). |
 | **Related register entries** | The client half of three server-side 500s: **BUG-06** (malformed preset → `Presets.List` throws), `execute-malformed-body-500` (an `outputPath` that `Path.GetFullPath` rejects), and `preset-load-invalid-name-500`. The first two docs attribute the 500 to the server. That doc's remedy note "The wizard already shows `r.error` through `alert`" holds only for JSON bodies: today a bodiless 500 shows nothing. Distinct from `job-pollers-no-exit-on-404-or-network-error`, which covers only the two poll loops and names these non-poller calls out of scope. Not SEC-0x. |
 | **Found** | 2026-11-23 (E2E functional pass) |
+| **Register slice** | **GAP-R09a** — Wizard frontend, pass 1: robustness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 Every request goes through one helper that does `fetch(p).then(r => r.json())`. Callers rely on a JSON `{error}` body to show an `alert`. When the server fails with an unhandled exception, Kestrel answers `500` with an empty body. `r.json()` then rejects with `SyntaxError: Unexpected end of JSON input`, no caller catches it, and the click handler silently ends:
@@ -123,6 +124,7 @@ Frontend-only, A6. Use no new controls, and keep using the existing `alert` patt
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active. GAP-C03 (presets) and the 500 docs are server-side, and no entry covers the client error model. Get a new owner-pinned entry, or fold this into the same slice as `job-pollers-no-exit-on-404-or-network-error`. Declare `slice_start --no-surface '^nvcleanstall/wwwroot/'`.
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-apierr -b feat/api-helper-silent-on-non-json-errors origin/main`.
 2. **Red.** §A transcript with all three lines `RED`. A6 applies: there is no JS runner, and no test file.
 3. **Green.** Make the minimal helper change and the caller checks. §A must show an alert for (a) and (b) and a boot alert for (c), with no `pageerror`. Run the full C# suite (unchanged). Commit `"api-helper-silent-on-non-json-errors: surface non-JSON server errors"`.

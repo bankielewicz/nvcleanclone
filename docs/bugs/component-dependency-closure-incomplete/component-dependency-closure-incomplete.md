@@ -10,6 +10,7 @@
 | **Platform** | Both. Reproduced in Chromium; the logic does not depend on `?shell=1`. |
 | **Related register entries** | FR-007 / FEAT-009. **BUG-01** (server enforcement of required components and dependency edges) records that the JS side is the only enforcement. This doc is distinct: it shows the JS enforcement *itself* is wrong, so the UI builds the inconsistent selection that BUG-01 imagines coming from a direct API call. **GAP-C01** will make the server reject "missing dependency" and "missing display driver". Its AC "Valid UI … selections remain green" is not achievable until this is fixed. Distinct from `dependency-target-check-ignores-case`, which covers case-variant ids that crash `compById`; that one is backend-rooted. Matters more under **GAP-F03**, which will parse real `.nvi` `requires` graphs. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R09a** — Wizard frontend, pass 1: robustness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `setComponent` adds only the *direct* `dependsOn` of a ticked component, and removes only the *direct* dependents of an unticked one. The initial default selection, **Recommended**, and preset application do not close dependencies at all. The dependents rule also ignores `required`. Two consequences follow:
@@ -267,6 +268,7 @@ Compute closures from manifest edges, and route every path that sets `state.comp
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active. This is the client half of **BUG-01 → GAP-C01**. Either fold it into GAP-C01 as an explicit client-side line item (its AC "Valid UI … selections remain green" depends on it), or pin a new owner entry ordered before GAP-C01. Either way, record the owner's acceptance of the "cannot be deselected" copy. Declare the no-test-surface slice: `slice_start --no-surface '^nvcleanstall/wwwroot/'` (sanctioned by that pattern appearing verbatim in the build plan).
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-dep-closure -b feat/component-dependency-closure-incomplete origin/main`.
 2. **Red.** Run the §A script, with both fixtures, against the unmodified app. Save the RED transcript. The script, fixtures and transcript go in the PR body; the repo has no JS test location (HARD-04/HARD-06 precedent).
 3. **Green.** Apply the diff. Rerun the script and expect the GREEN transcript below. Also run the bundled-catalog regression check, which must show the same output as before. Run the full C# suite. Commit `component-dependency-closure-incomplete: close component dependencies transitively and lock what required components need`.

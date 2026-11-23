@@ -10,6 +10,7 @@
 | **Platform** | Both (a plain check-then-act race; on Windows the duplicated process is real `powershell.exe`) |
 | **Related register entries** | Distinct from SEC-06/GAP-C04, which fix *which* executable is launched; this is *how many times* it is launched and *which result wins*. Distinct from HARD-03, which bounded a single query's time. The fix keeps both of those intact. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R08** — Catalog and GPU detection correctness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `Gpu.Detect()` caches its result with an unsynchronized check-then-set. The wizard's boot (`app.js:527-529`) fires `/api/system` and `/api/catalog` together with `Promise.all`, and both routes call `Gpu.Detect()`. Each first call therefore sees `_cached == null` and launches its own PowerShell/WMI query. Each route then answers from its own query, and `_cached` keeps whichever finished last. The docs say "`Detect()` caches, so the first `/api/system` or `/api/catalog` call pays the query". In practice, both calls pay.
@@ -245,6 +246,7 @@ Minimal fix: make the cache single-flight with `Lazy<T>` (`ExecutionAndPublicati
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active. This is a `Gpu.cs` correctness defect next to GAP-C04 but not covered by it. Ask the owner to pin a new ID (for example BUG-12, "Wave C — Gpu.cs single-flight cache") per §7, or to rule that it rides with GAP-C04 as a disclosed second finding.
+   > *Pinned 2026-11-23 as **GAP-R08** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-gpu-once -b feat/gpu-detect-concurrent-first-call-race origin/main`
 2. **Red.** Add `nvcleanstall/CleanDriver.Tests/GpuDetectCacheTests.cs` (§A). In the same commit, add the seam `Gpu.Memoize(Func<string?>)` containing HEAD's check-then-set logic **moved verbatim** (`GpuInfo? cached = null; return () => { if (cached != null) return cached; cached = DetectFrom(query()); return cached; };`), with `Detect()` routed through it. That is a behavior-preserving extraction the test needs in order to compile.
    - Run `--filter "FullyQualifiedName~GpuDetectCacheTests"` and capture `Expected: 1 / Actual: 2`.

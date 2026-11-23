@@ -10,6 +10,7 @@
 | **Platform** | Both. The logic is engine-independent. |
 | **Related register entries** | Same no-in-flight-guard pattern as `screen1-next-no-inflight-guard-wrong-version` (Screen 1 **Next**, `leaveSource`). This doc covers Screen 5 **Start**, which is a different handler with a different effect. BUG-04 / GAP-C02 ("serialize extract/package work by canonical output directory") is the server half: this repro is a dynamic reproduction of the concurrent same-directory writer that BUG-04 lists as "not dynamically reproduced". Not SEC-0x. |
 | **Found** | 2026-11-23 (E2E functional pass) |
+| **Register slice** | **GAP-R09a** — Wizard frontend, pass 1: robustness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `startExecute` awaits `POST /api/execute` with no in-flight flag. The footer, and with it **Start**, only disappears once the response arrives (`show('run')`). A second press inside that window posts a second job, and both responses call `pollRun`. The two pollers append into the same `#run-log`, so every step appears twice, interleaved. The first poller to see `done` shows the success banner, whatever the other job did.
@@ -122,6 +123,7 @@ Frontend-only, A6, with no new controls. The fence is the frozen five-screen con
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active. The server half is GAP-C02. The client guard is in no register row, so fold it into GAP-C02 as a client line item (as the Screen 1 doc proposes) or get a new owner-pinned entry. Declare `slice_start --no-surface '^nvcleanstall/wwwroot/'`.
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-dblstart -b feat/double-click-start-runs-two-jobs origin/main`.
 2. **Red.** Run the §A script against `--headless --mock-catalog` on 4780 and capture `RED … (b) … POST /api/execute ×2`. There is no JS test runner (A6), so the transcript is the red. Commit nothing under wwwroot yet.
 3. **Green.** Make the minimum change in `app.js`: the flag, the disabled class, and the single-owner `pollRun`. Re-run the transcript for `GREEN … ×1`, and run the full C# suite, which must stay green (no backend change). Commit `"double-click-start-runs-two-jobs: guard Start while /api/execute is in flight"`.

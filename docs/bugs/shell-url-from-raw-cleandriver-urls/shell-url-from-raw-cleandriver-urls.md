@@ -10,6 +10,7 @@
 | **Platform** | Windows-only (native mode) |
 | **Related register entries** | Not covered by **SEC-02 / GAP-S02**. Its "bind only to loopback and reject non-loopback `CLEANDRIVER_URLS`" accepts both failing values, because every entry is loopback (`http://127.0.0.1:4780;http://[::1]:4780`, `http://127.0.0.1:0`). GAP-S02 also plans to pass a token "in the URL fragment" of this same shell address, so it will build on this expression. This is not SEC-05 (navigation restriction). |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R04** — App host and process launch (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `Program.cs` passes `CLEANDRIVER_URLS` verbatim to Kestrel (`UseUrls`), which accepts standard ASP.NET URL syntax: a `;`-separated list, or port `0` for a dynamic port. It then builds the WebView2 address by string concatenation from the same raw text, `urls.TrimEnd('/') + "/?shell=1"`. For a list, `ShellForm`'s `new Uri(url)` throws `UriFormatException`, *after* `app.Start()` has already bound the server. The exception unwinds `Main` through the `finally` (which stops the server), and the WinExe dies with no window and no message. For port `0`, the window navigates to `http://127.0.0.1:0/` and shows a connection error, even though the server is listening on the port the OS assigned.
@@ -188,6 +189,7 @@ The same logic, inlined into the harness test, turned both cases green.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active. Fold into **GAP-S02** (it already rewrites how the shell address is formed, to add the token fragment) as an added AC: "the shell loads an address Kestrel actually bound". The owner must pin it; otherwise it needs a new owner-pinned Low entry.
+   > *Pinned 2026-11-23 as **GAP-R04** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-shelladdr -b feat/shell-address-from-bound-urls origin/main`.
 2. **Red.** Add §A at `nvcleanstall/CleanDriver.Tests/ShellAddressTests.cs`, plus `Lib/ShellAddress.cs` with HEAD's semantics (`From(a) => new Uri(string.Join(";", a).TrimEnd('/') + "/?shell=1")`) and `Program.cs:46` calling `ShellAddress.From(new[] { urls })`. This is behavior-preserving, and it is the minimum production code the test needs to compile; disclose it. Run the filter: the `;`-list case fails with `UriFormatException`. Attach the harness mirror red from §A for the port-0 case, which is a call-site defect. Commit `"shell-url-from-raw-cleandriver-urls (red): the shell loads an address the server actually bound"`.
 3. **Green.** Implement `From` over the bound addresses, switch `Program.cs:46` to `ShellAddress.From(app.Urls)`, and run the FULL suite. Commit `"shell-url-from-raw-cleandriver-urls: derive the WebView2 address from app.Urls"`.

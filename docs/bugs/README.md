@@ -4,7 +4,7 @@
 |---|---|
 | **Baseline** | `main` @ `54b3c31` (after PR #23, GAP-S01) |
 | **Date** | 2026-11-23 |
-| **Status** | **Findings only — nothing here is scheduled.** The active register is `docs/security_register.md`; each report says which GAP it folds into or that it needs a new owner-pinned entry. A report is not a register entry, and this index is not implementation. |
+| **Status** | **Scheduled (2026-11-23).** The owner pinned the open reports as register slices **GAP-R01…R10** (`docs/security_register.md` §4 "Wave R"; see [Register slices](#register-slices)) and ruled D-CLEAN, D-ZIPNAME, D-LOGTS and D-MOCKDATA. Acceptance criteria live in each report. This index is not implementation: a report is fixed only when its slice's PR merges. |
 | **Scope** | Code-level bug hunt across `Lib/Jobs.cs`, `Lib/Packages.cs` + `Lib/PackageValidation.cs` + `Lib/Presets.cs`, `Api.cs` + `Program.cs` + `ShellForm.cs` + `Lib/Models.cs`, the catalog/GPU/tweak sources, and `wwwroot/`, plus an end-to-end functional UI pass ([`ui-functional-test-report.md`](ui-functional-test-report.md)). Already-registered findings (SEC-01…07, BUG-01…09) were excluded on purpose. |
 | **Process** | Docs-only; exemption **A2** applies to any PR carrying these files. |
 
@@ -100,6 +100,28 @@ BUG-07 already records.
 | [`auto-reboot-submitted-with-unattended-off`](auto-reboot-submitted-with-unattended-off/auto-reboot-submitted-with-unattended-off.md) | Low | Confirmed | The greyed "Allow automatic reboot" is still submitted after its parent is unticked; the receipt says `unattended=false autoReboot=true`. | Becomes Medium once GAP-C01 rejects the orphan server-side |
 | [`job-pollers-no-exit-on-404-or-network-error`](job-pollers-no-exit-on-404-or-network-error/job-pollers-no-exit-on-404-or-network-error.md) | Low | Confirmed (4/4 cases) | A transport error freezes Screen 2 or the run view; a 404 makes `pollDownload` spin and `pollRun` throw. | Builds on `pollrun-failed-job-dead-ends-run-screen` |
 | [`screen1-next-no-inflight-guard-wrong-version`](screen1-next-no-inflight-guard-wrong-version/screen1-next-no-inflight-guard-wrong-version.md) | Low | Confirmed (injected latency) | A second Next during the live lookup starts a second download, adopts the wrong version's package, and orphans the other job. | Widened by `download-reresolve-unknown-version` |
+
+## Register slices
+
+Owner-pinned 2026-11-23 in `docs/security_register.md` §4 "Wave R". One slice is one PR, and the
+ACs are those in the listed reports. **GAP-R01 lands first**, and R01 → R02 → R03 are serialized
+(all three edit `Packages.cs`). The rest follow the listed order. Where R02 onward sit relative to
+the remaining GAP-S02…S04 and Waves C/F is not pinned yet.
+
+| Slice | Title | Reports |
+|---|---|---|
+| **GAP-R01** | Building into the source folder must not destroy the package | `build-into-source-folder-destroys-package` |
+| **GAP-R02** | `CleanPreviousBuild` deletes only what the prior build wrote, never through a link (D-CLEAN) | `clean-previous-build-follows-reparse-point`, `clean-deletes-foreign-config-after-extract` |
+| **GAP-R03** | Package input hardening (GAP-S01 follow-ups) | `folder-manifest-read-before-size-cap`, `manifest-null-collections-crash-validator`, `validation-regex-allows-newline-and-unicode`, `dependency-target-check-ignores-case` |
+| **GAP-R04** | App host and process launch (alongside GAP-S02 / GAP-C04) | `host-ambient-config-overrides-bind`, `open-folder-explorer-search-path`, `shell-url-from-raw-cleandriver-urls` |
+| **GAP-R05** | API input contract: JSON 400s, never a bodiless 500 or a zombie job | `execute-malformed-body-500`, `execute-prelude-throw-orphans-running-job`, `preset-load-invalid-name-500`, `preset-save-accepts-null-selection` |
+| **GAP-R06** | Artifact identity and honesty (D-ZIPNAME; joins GAP-C02) | `receipt-drops-sample-components-flag`, `customized-manifest-drops-sample-flag`, `sibling-zip-shared-across-outdirs`, `receipt-name-date-uses-culture-calendar` |
+| **GAP-R07** | Download engine robustness | `download-headers-phase-has-no-stall-timeout`, `shutdown-mid-download-leaves-part-file`, `download-reresolve-unknown-version` |
+| **GAP-R08** | Catalog and GPU detection correctness | `studio-only-release-listed-as-game-ready`, `marketing-version-unpadded-wmi-field`, `gpu-detect-concurrent-first-call-race`, `live-size-parse-ignores-unit` |
+| **GAP-R09a** | Wizard frontend, pass 1: robustness (A6) | `pollrun-failed-job-dead-ends-run-screen`, `job-pollers-no-exit-on-404-or-network-error`, `preset-on-screen1-freezes-download-at-100`, `preset-components-lost-after-back-to-source`, `screen1-next-no-inflight-guard-wrong-version`, `double-click-start-runs-two-jobs`, `api-helper-silent-on-non-json-errors`, `component-dependency-closure-incomplete`, `auto-reboot-submitted-with-unattended-off` |
+| **GAP-R09b** | Wizard frontend, pass 2: keyboard access and layout (A6) | `keyboard-cannot-reach-wizard-controls`, `long-output-path-pushes-finish-offscreen`, `source-note-clips-local-option` |
+| **GAP-R10** | Documentation corrections (D-LOGTS; parity.md AC-005) | `run-log-lines-have-no-timestamps` |
+| — | Closed won't-fix (D-MOCKDATA) | `component-order-differs-from-mockup` |
 
 ## Fix ordering and pairings
 

@@ -10,6 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | Not covered by **BUG-01 / GAP-C01**, which validates selections only on `/api/execute`; its "valid preset selections remain green" clause assumes a selection exists. Not covered by **BUG-06 / GAP-C03**, which covers names, collisions, atomic writes and malformed-file tolerance, not a missing `selection` member. Could fold into GAP-C03 as an added AC. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R05** — API input contract: malformed requests get a JSON 400, never a bodiless 500 or a zombie job (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `PresetSaveRequest` declares `Selection` as non-nullable, but System.Text.Json binds a missing or `null` `selection` to `null`, and the route passes it straight to `Presets.Save`. Save writes the preset with `WhenWritingNull`, so the `selection` key is simply omitted. It returns `200` and the preset shows up in the Load list. Loading that preset in the wizard calls `applySelection(undefined)`, which throws `TypeError` on `sel.components` or `sel.tweaks`. The popover closes and nothing is applied.
@@ -175,6 +176,7 @@ Reject a missing selection at the route. This was validated in a scratch copy of
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active. Fold into **GAP-C03** (presets) as an added AC ("a save without a selection is rejected and writes nothing"). The owner must pin it; otherwise it needs a new owner-pinned ID.
+   > *Pinned 2026-11-23 as **GAP-R05** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-presetsel -b feat/preset-save-requires-selection origin/main`.
 2. **Red.** Add §A at `nvcleanstall/CleanDriver.Tests/PresetSaveValidationTests.cs` and run the filter. Both cases fail with `Expected: BadRequest / Actual: OK`. Commit `"preset-save-accepts-null-selection (red): POST /api/presets requires a selection"`.
 3. **Green.** Apply the guard and run the FULL suite. Commit `"preset-save-accepts-null-selection: reject a preset save without a selection"`.

@@ -10,6 +10,7 @@
 | **Platform** | Both. Windows uses a directory junction (no privilege needed); Unix uses a directory symlink. |
 | **Related register entries** | GAP-S01 is incomplete for the delete sink. The Fix says "reject reparse points in source/output traversal" and "`CleanPreviousBuild` may delete only canonical, previously validated leaf payloads". AC-1 ("a reparse-point escape") and AC-2 ("leaves sentinel files outside source/output untouched") are proven only for the write and read sinks. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R02** — `CleanPreviousBuild` deletes only what the prior build wrote, never through a link (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 GAP-S01 routes the payload write and the folder-source read through `PackageValidation.EnsureConfinedRealPath`, which rejects any reparse point between the root and the target. The payload delete in `CleanPreviousBuild` still uses a bare `Path.Combine` and has no reparse check.
@@ -182,6 +183,7 @@ Fences respected:
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** This is a GAP-S01 acceptance gap (AC-1/AC-2 for the delete sink). Per §7 it needs a new ID (e.g. `SEC-08`, Medium), with destination "GAP-S01 follow-up". The owner pins it before work starts.
+   > *Pinned 2026-11-23 as **GAP-R02** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-cleanreparse -b feat/clean-previous-build-reparse origin/main`
 2. **Red.** Add `nvcleanstall/CleanDriver.Tests/CleanReparsePointTests.cs` (§A). Run `--filter "FullyQualifiedName~CleanReparsePointTests"` and confirm both fail because the sentinel was deleted. Commit `"SEC-08 (red): the HARD-01 clean must not delete through a reparse point"`.
 3. **Green.** Make the one-site change above and run the full suite. Commit `"SEC-08: confine CleanPreviousBuild payload deletes with EnsureConfinedRealPath"`.

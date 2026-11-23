@@ -10,6 +10,7 @@
 | **Platform** | Both. Reproduced in Chromium; the logic does not depend on `?shell=1`. |
 | **Related register entries** | FEAT-011 ("Toggle with auto-reboot sub-option"), FR-010. GAP-C01 lists "`auto-reboot` requires `unattended`" as server-side validation still to come, with the AC "orphan auto-reboot" red and "Valid UI and preset selections remain green". This bug means the UI itself *produces* the orphan, so GAP-C01's two ACs conflict until this is fixed. BUG-01 is the server half and is not restated here. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R09a** — Wizard frontend, pass 1: robustness (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 On Screen 4 the sub-option **Allow automatic reboot** is drawn as a dependent of **Unattended express installation**. When the parent is unchecked, the sub-row is greyed out and becomes unclickable (`disabled-block`: opacity .4, `pointer-events:none`), which tells the user the option is not in effect. Its value in `state.tweaks` does not change, though. If it was ticked before the parent was unticked, `startExecute` still submits `"auto-reboot": true` alongside `"unattended": false`. The backend then logs `> Automatic reboot allowed — not performed (simulated; no system reboot).` and writes `"autoReboot": true` into the receipt, for a run the user configured as interactive.
@@ -159,6 +160,7 @@ At the point of submission, derive the effective tweaks: a sub-option whose pare
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
 0. **Register gate.** `docs/security_register.md` is active. This belongs **with GAP-C01**, which names the invariant. Record it there as the client-side counterpart so that its "Valid UI … selections remain green" AC is achievable, or pin it as a new owner-approved entry ordered **before** GAP-C01. Declare the no-test-surface slice: `slice_start --no-surface '^nvcleanstall/wwwroot/'` (sanctioned by that pattern appearing verbatim in the build plan).
+   > *Pinned 2026-11-23 as **GAP-R09a** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-auto-reboot -b feat/auto-reboot-submitted-with-unattended-off origin/main`.
 2. **Red.** Run the §A script against the unmodified app and save the RED transcript. It goes in the PR body, since the repo has no JS test location and no toolchain (HARD-04/HARD-06 precedent).
 3. **Green.** Apply the diff and rerun the script, expecting the GREEN transcript below. Run the full C# suite; mock receipts for selections *without* an orphan must stay byte-identical (the existing receipt pins). Commit `auto-reboot-submitted-with-unattended-off: submit a sub-tweak only when its parent is on`.

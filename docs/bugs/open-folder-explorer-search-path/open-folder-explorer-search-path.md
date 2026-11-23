@@ -10,6 +10,7 @@
 | **Platform** | Windows in production. The mechanism is the same on Unix, where .NET deliberately mirrors the Windows search order, and that is how it was reproduced. |
 | **Related register entries** | Same class as **SEC-06** (process launched by a search-path-resolved name), but SEC-06 / **GAP-C04** pin only `powershell` in `Gpu.cs`; GAP-C04's fix never touches `Api.cs`. `NoExecutionGuardTests.cs:14-16` explicitly blesses this call ("Api.cs uses Process.Start only to open a *directory* in Explorer"). The guard checks *what is passed*, not *which binary runs*. Reachability from other local processes widens with **SEC-02**. |
 | **Found** | 2026-11-23 |
+| **Register slice** | **GAP-R04** — App host and process launch (owner-pinned 2026-11-23, `docs/security_register.md` §4 Wave R). |
 
 ## Summary
 `POST /api/open-folder` runs `Process.Start(new ProcessStartInfo("explorer", dir) { UseShellExecute = false })`. With `UseShellExecute = false`, .NET hands Windows `CreateProcess` a null application name and a command line that starts with `"explorer"`. `CreateProcess` then searches, in order:
@@ -221,6 +222,7 @@ Launch `%SystemRoot%\explorer.exe` by absolute path, never by bare name. Quote t
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
 0. **Register gate.** `docs/security_register.md` is active. The natural home is **GAP-C04** ("Remove PATH-based PowerShell execution"), widened by the owner to "remove every search-path-resolved process launch (`Gpu.cs` powershell, `Api.cs` explorer)". That needs an owner-pinned amendment. Otherwise it needs a new SEC-ID, because §7 says a new finding is never silently folded into an unrelated PR.
+   > *Pinned 2026-11-23 as **GAP-R04** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup:** `git worktree add ../nvcleanclone-explorer -b feat/open-folder-absolute-explorer origin/main`.
 2. **Red.** Add §A at `nvcleanstall/CleanDriver.Tests/OpenFolderLaunchTests.cs` plus the `src\Api.cs` content link in `CleanDriver.Tests.csproj`. Run the filter on Windows: (a) fails with `Collection: ["explorer"]`. Attach the Linux (b) red from §A and the Windows notepad evidence from §B as additional red. Commit `"open-folder-explorer-search-path (red): Api.cs never launches a process by bare name"`.
 3. **Green.** Apply the diff and run the FULL suite. Commit `"open-folder-explorer-search-path: launch %SystemRoot%\\explorer.exe by absolute path, quoted"`.
