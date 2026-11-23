@@ -106,9 +106,9 @@ full: done
 The archive identity is `(parent, version)`, but the thing being archived has identity `outDir`. With the default layout, `output/package-<version>`, the two coincide one-to-one. With user-chosen output folders they don't, and `WriteZip`'s unconditional delete-then-create turns that many-to-one mapping into silent replacement.
 
 ## Remedy
-**This needs an owner ruling**, because GAP-06 Resolution (2) fixes the archive name. Two options:
+**Ruled (D-ZIPNAME, 2026-11-23): Option A.** GAP-06 Resolution (2) is amended as below. Option B is kept for the record only and is **not pursued**.
 
-- **Option A (recommended; needs a ruling).** Make the archive name include the folder, while keeping today's exact name for the default folder so every existing pin and literal stays valid:
+- **Option A (adopted under D-ZIPNAME).** Make the archive name include the folder, while keeping today's exact name for the default folder so every existing pin and literal stays valid:
 ```csharp
 public static string ZipPathFor(string outDir, string version)
 {
@@ -122,18 +122,18 @@ public static string ZipPathFor(string outDir, string version)
 }
 ```
   Every distinct `outDir` under one parent then gets a distinct archive. No non-default folder can produce the legacy name, because it always has the extra `-<leaf>` segment.
-- **Option B (no ruling change).** Keep the name, but refuse to replace an archive this `outDir` did not produce. Add `builtFrom: "<outDir leaf>"` (additive) to the archived `config.json`. In `WriteZip`, if an archive exists and its `config.json.builtFrom` names a different folder, fail the job by name, for example "a package archive for another build folder already exists beside this folder". That never deletes another build's archive. The cost is that the user must pick another parent, and an existing untrusted zip gets parsed.
+- *Not pursued (D-ZIPNAME):* **Option B (no ruling change).** Keep the name, but refuse to replace an archive this `outDir` did not produce. Add `builtFrom: "<outDir leaf>"` (additive) to the archived `config.json`. In `WriteZip`, if an archive exists and its `config.json.builtFrom` names a different folder, fail the job by name, for example "a package archive for another build folder already exists beside this folder". That never deletes another build's archive. The cost is that the user must pick another parent, and an existing untrusted zip gets parsed.
 
 Alternative rejected: timestamped names. They would break the "re-runs overwrite cleanly" pin, and stale archives would pile up.
 
 Fences respected:
-- Option A deletes nothing new. Option B deletes strictly less.
+- Option A deletes nothing new.
 - No recursive deletion.
-- Honesty markers unchanged, since the archived manifest and config are untouched (except Option B's additive field).
+- Honesty markers unchanged, since the archived manifest and config are untouched.
 - Pins: `PackageZipTests` uses `package-<version>` folders and literal `572.16-cleandriver-package.zip` paths, and `PackageValidationTests.ExportedZipEntries_AreNormalizedRelativePaths` likewise, so they stay green under Option A. `OutDirHygieneTests.Extract_IntoPreviousPackageBuild_CleansTheStalePackageArtifacts` packages into `extract-572.16` and only *counts* `*.zip` files in the parent, so it stays green: the count is unchanged, only the name differs. Under Option A the UI log line `> Writing <name>… done` shows the new name for custom folders, with no layout change.
 
 ## TDD fix workflow (CONTRIBUTING.md — strict red-first)
-0. **Register gate.** New finding, so ask for a new ID (e.g. `BUG-12`, Medium; destination GAP-C02 "artifact identity"). **Also needs an owner ruling** amending GAP-06 Resolution (2) for Option A, or recording Option B. HALT until both are recorded.
+0. **Register gate.** New finding, so ask for a new ID (e.g. `BUG-12`, Medium; destination GAP-C02 "artifact identity"). The archive-name ruling is recorded (**D-ZIPNAME**, Option A); HALT only until the register entry exists.
    > *Ruling recorded 2026-11-23: **D-ZIPNAME**, Option A (see the header). What remains is the register entry.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-siblingzip -b feat/sibling-zip-per-outdir origin/main`
 2. **Red.** Add the §A test to `PackageZipTests.cs` and run its filter. It fails with the archive's entries replaced. Commit `"BUG-12 (red): a sibling build folder must not replace another folder's archive"`.
@@ -164,7 +164,7 @@ Fences respected:
 8. **Report to owner.** Verdict line, plus the ruling reference. The owner merges.
 
 ## Acceptance criteria
-1. Packaging the same version into two different folders under one parent leaves two intact archives, or under Option B fails the second build by name. Either way the first folder's archive keeps exactly its entries.
+1. Packaging the same version into two different folders under one parent leaves two intact archives, `<version>-<leafA>-cleandriver-package.zip` and `<version>-<leafB>-cleandriver-package.zip`, and the first folder's archive keeps exactly its entries.
 2. Packaging into the default `output/package-<version>` still writes `output/<version>-cleandriver-package.zip`, and re-running into the same folder still overwrites cleanly (`PackageAction_RunTwiceIntoSameOutDir_OverwritesTheArchive` green, unedited).
 3. All existing `PackageZipTests`, `OutDirHygieneTests` and `PackageValidationTests` pins pass unedited.
-4. The owner ruling that changes or keeps the archive name is recorded in the register before merge.
+4. The PR cites ruling **D-ZIPNAME** (recorded 2026-11-23) and its register entry.

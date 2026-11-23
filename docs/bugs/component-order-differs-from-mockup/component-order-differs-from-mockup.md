@@ -71,9 +71,13 @@ Run: `dotnet run --project nvcleanstall -- --headless --mock-catalog`, then `BAS
 The mock manifests were authored grouping GeForce Experience's dependencies (`telemetry`, `container`) together, and nobody compared the data order against the frozen inventory, which the renderer follows faithfully.
 
 ## Remedy
+> **Not pursued — closed won't-fix under D-MOCKDATA (2026-11-23).** Kept for the record only; do not reorder the bundled data.
+
 Data-only, with no code change. Move the `container` component object to the end of `components[]` in each `data/packages/<ver>/manifest.json` (5 files). Keep ids, sizes, payloads and `dependsOn` unchanged. 566.36 has no USB-C row, so its order becomes Display, PhysX, HD Audio, GFE, Telemetry, Shield, Stereo 3D, Notebook, Container. Do **not** sort in `app.js`: local manifests are user data and must render in their own order. Keep the mock catalog's other properties untouched. 566.36 still intentionally lacks USB-C.
 
 ## TDD fix workflow (CONTRIBUTING.md + amendment A6)
+> **Not pursued — closed won't-fix under D-MOCKDATA (2026-11-23).** Kept for the record only; do not reorder the bundled data.
+
 0. **Register gate.** `docs/security_register.md` is active, and no entry covers mock-data conformance. Get a new owner-pinned entry, or a docs/data ruling. A data-only change under `data/` is not `wwwroot/`, so A6 does not apply automatically: ask the owner whether an xunit order pin is wanted (a red is then possible) or whether the browser transcript suffices.
    > *Ruling recorded 2026-11-23: **D-MOCKDATA**. Closed won't-fix; no slice follows.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-comporder -b feat/component-order-differs-from-mockup origin/main`.
@@ -85,6 +89,8 @@ Data-only, with no code change. Move the `container` component object to the end
 7. **PR.** Use the template (TDD rows, xunit and/or transcript). Push and never merge.
 
 ## Code-review workflow (docs/ai-review-workflow.html → docs/ai-fix-loop-workflow.html)
+> **Not pursued — closed won't-fix under D-MOCKDATA (2026-11-23).** Kept for the record only; do not reorder the bundled data.
+
 1. **CI triage.**
 2. **Isolated review worktree**, `origin/main...HEAD`.
 3. **Re-run the gates** and §A.
@@ -100,6 +106,8 @@ Data-only, with no code change. Move the `container` component object to the end
 8. **Report to the owner**; the owner merges.
 
 ## Acceptance criteria
+> **Not pursued — closed won't-fix under D-MOCKDATA (2026-11-23).** Kept for the record only; do not reorder the bundled data.
+
 1. For 572.16 the Screen 3 rows match `mockup-screen-03-components.html` exactly in name and order (§A `GREEN`). The other bundled versions follow the same relative order.
 2. Component ids, sizes, payloads, `dependsOn` and the 566.36 USB-C omission are unchanged.
 3. The full C# suite is green, and `git diff --check` is clean.

@@ -50,7 +50,7 @@ exit=1
 
 ## How to reproduce
 ### A. Automated — failing xunit test (backend root cause) + browser transcript
-Proposed red test `nvcleanstall/CleanDriver.Tests/JobLogTimestampTests.cs`. It is pure: no receipt, no filesystem, no timing dependency.
+*Under D-LOGTS this test only documents the code/doc mismatch; it is **not** to be added to the suite.* Originally proposed as red test `nvcleanstall/CleanDriver.Tests/JobLogTimestampTests.cs`. It is pure: no receipt, no filesystem, no timing dependency.
 ```csharp
 using System;
 using System.Globalization;
@@ -123,42 +123,36 @@ Run: `dotnet run --project nvcleanstall -- --headless --mock-catalog`, then `BAS
 The log entry model was written as `{text, cls}` for rendering only. The "timestamped" wording in FR-010 and CLAUDE.md was never backed by a field, and AC-001's verification checked step *content*, not times.
 
 ## Remedy
-The owner rules first, choosing (a) or (b):
-- **(a) Implement, preferred and additive.** `LogLine` records `ts = DateTime.UtcNow.ToString("o")` alongside `text`/`cls`. The snapshot passes it through, and mock receipts are unaffected because the receipt does not embed the log. In the UI, to keep R9's line shape, render the time unobtrusively. Either use a `title` attribute (hover shows local time) or a muted `HH:mm:ss` prefix via `textContent`; the latter needs an owner ruling against R9, since it changes the reference line text.
-- **(b) Correct the text.** Amend FR-010 ("a log and a timestamped receipt") and the CLAUDE.md architecture sentence. That is docs-only, under amendment A2.
+**Ruled (D-LOGTS, 2026-11-23): option (b), correct the documentation.** The code stands: log entries stay `{text, cls}`, which matches the frozen Screen 5 mockup and R9's reference log shape.
+- In `CLAUDE.md` (architecture, `Jobs.cs` bullet), drop "timestamped" from "background step lists appending timestamped log lines the frontend polls via `/api/jobs/{id}`".
+- Do **not** edit FR-010 in `specs/nvcleanstall/spec.md`. Under D-LOGTS its "timestamped log and receipt file" is read as met by the receipt (`installedAt` plus its dated file name; the file name's date is itself open under [`receipt-name-date-uses-culture-calendar`](../receipt-name-date-uses-culture-calendar/receipt-name-date-uses-culture-calendar.md)). Rewording FR-010 needs a separate owner sign-off.
+- *Not pursued (D-LOGTS):* option (a), recording a UTC `ts` on each log line and showing it on hover or as a visible prefix. It would need a fresh ruling, and a visible prefix would also amend R9.
 
-Fences: no new controls, `textContent` only, and receipts' honesty markers untouched.
+Fences: docs-only. No production, test or `wwwroot/` change.
 
-## TDD fix workflow (CONTRIBUTING.md + amendment A6)
-0. **Register gate.** `docs/security_register.md` is active, and no entry covers FR-010 conformance. Get a new owner-pinned entry first, or record the owner's choice of (b) as a docs-only fix (A2). If (a) touches `wwwroot/` for the display, declare `slice_start --no-surface '^nvcleanstall/wwwroot/'` for that part.
-   > *Ruling recorded 2026-11-23: **D-LOGTS**, option (b). The fix is the docs-only (A2) `CLAUDE.md` correction; no code slice and no red/green test apply.*
-1. **Slice setup.** `git worktree add ../nvcleanclone-logts -b feat/run-log-lines-have-no-timestamps origin/main`.
-2. **Red.** Add `JobLogTimestampTests.cs` and run `dotnet test … --filter "FullyQualifiedName~JobLogTimestampTests"`. It must fail on the assertion (`log entry has no ts`), not compile-fail. Commit `"run-log-lines-have-no-timestamps (red): job log entries carry a UTC ts"`.
-3. **Green.** Make the one-line `LogLine` change, then run the full suite. Existing receipt and log pins stay green because `text`/`cls` are unchanged. If the UI renders the time, add the red and green browser transcript (§A script). Commit `"run-log-lines-have-no-timestamps: record a UTC timestamp per log line"`.
-4. **Refactor**, green only.
-5. **Gates:** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
-6. **Live exercise.** Run `curl /api/jobs/<id>` (entries show `ts`), plus the WebView2 run view, which matches R9 unless the owner ruled otherwise.
-7. **PR.** Use the template's TDD rows (xunit red/green; plus A6 transcripts if the UI changed). Push and never merge.
+## Fix workflow (docs-only — exemption A2)
+0. **Register gate.** D-LOGTS rules the outcome. Per CLAUDE.md, the owner still pins the slice: a register entry, or explicit word that D-LOGTS suffices for this one-sentence docs fix.
+1. **Slice setup.** `git worktree add ../nvcleanclone-log-wording -b docs/claude-md-log-wording origin/main`.
+2. **Edit** the one `CLAUDE.md` sentence. Touch no other file.
+3. **No red/green.** Under exemption **A2** a docs-only slice satisfies the TDD gate vacuously; name A2 in the PR body.
+4. **Gates still run:** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj` (count unchanged), `git diff --check`.
+5. **PR.** In the template, "What & why" cites D-LOGTS and this report; the TDD table says "A2 — docs-only, no behavior change"; Deviations: none; Live exercise: not applicable (docs). Push; never merge.
 
 ## Code-review workflow (docs/ai-review-workflow.html → docs/ai-fix-loop-workflow.html)
-1. **CI triage.**
-2. **Isolated review worktree**, `origin/main...HEAD`.
-3. **Re-run the gates** and the transcript.
+1. **CI triage**: green.
+2. **Isolated review worktree**, `origin/main...HEAD`. Confirm the diff touches only `CLAUDE.md`.
+3. **Re-run the gates.**
 4. **Finder pass:**
-   - `ts` is UTC with round-trip `"o"`, not culture-formatted. Compare `receipt-name-date-uses-culture-calendar`.
-   - Every `LogLine` caller is covered, including the early root-path failure (`Jobs.cs:400`) and the download jobs.
-   - Receipts and manifests are byte-identical on the mock path.
-   - Any UI rendering uses `textContent`.
-5. **Adversarial verify:**
-   - Snapshot a running job twice: earlier entries keep their original `ts`.
-   - A failed job's `> ERROR:` line has a `ts`.
-   - Silent install (bar hidden) still shows times if the UI renders them.
+   - The edited sentence no longer claims timestamped log lines, and nothing else in `CLAUDE.md` changes meaning.
+   - FR-010 in `specs/nvcleanstall/spec.md` is untouched (D-LOGTS).
+   - The PR body names exemption A2.
+5. **Adversarial verify:** `grep -rnI "timestamped log" --include=*.md --include=*.html .` outside `docs/bugs/`. At `54b3c31` the only hits were FR-010 (kept by ruling) and the `CLAUDE.md` sentence. Any new hit is a finding to report to the owner, not to edit silently.
 6. **Verdict doc.**
-7. **Implementer handoff** → C0–C7, one `F<n>:` commit per finding.
+7. **Implementer handoff** if needed → C0–C7, one `F<n>:` commit per finding.
 8. **Report to the owner**; the owner merges.
 
 ## Acceptance criteria
-1. Either (a) every `/api/jobs/{id}` log entry has an ISO-8601 UTC `ts` and `JobLogTimestampTests` passes, or (b) FR-010 and CLAUDE.md are amended by an owner-approved docs PR, so that no document claims a timestamped log that does not exist.
-2. Existing log/receipt tests are unchanged and green, and mock receipts are byte-identical.
-3. If times are displayed, R9's line text is unchanged unless the owner ruled otherwise, and rendering uses `textContent`.
-4. `dotnet build`, `dotnet test` and `git diff --check` are green.
+1. `CLAUDE.md` no longer says log lines are timestamped.
+2. FR-010 in `specs/nvcleanstall/spec.md` is unchanged.
+3. The diff touches only `CLAUDE.md`, and the PR body names exemption A2.
+4. `dotnet build`, `dotnet test` (count unchanged) and `git diff --check` are green.

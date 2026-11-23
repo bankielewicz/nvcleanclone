@@ -10,7 +10,7 @@
 | **Platform** | Both |
 | **Related register entries** | This is a gap inside HARD-01 / owner pin D1 (`docs/hardening_register.md` §HARD-01). The pin lists "`install.cmd` / `config.json` / `manifest.json` themselves" as declared artifacts of *any* CleanDriver manifest. It also says "**Foreign files always survive**." Those two clauses conflict whenever the prior build was an `extract`. Not in `docs/security_register.md` §3. |
 | **Found** | 2026-11-23 |
-| **Owner ruling** | **D-CLEAN** (2026-11-23, `docs/security_register.md`): pin D1 is *clarified*, not reversed — delete only artifacts the prior build wrote. The Remedy's content check is one acceptable mechanism; constraints: same stamp trust model as `customizedBy`, size-bounded reads before any delete, no link following. Pair with (or serialize after) `clean-previous-build-follows-reparse-point`. A register entry is still needed before build. |
+| **Owner ruling** | **D-CLEAN** (2026-11-23, `docs/security_register.md`): pin D1 is *clarified*, not reversed — delete only artifacts the prior build actually wrote. The builder picks the mechanism (the Remedy's content check is one option), but any read before a delete must be size-bounded and must not follow links (ACs 5–6). Pair with `clean-previous-build-follows-reparse-point`; both change `CleanPreviousBuild`. A register entry is still needed before build. |
 
 ## Summary
 `CleanPreviousBuild` always deletes `install.cmd` and `config.json` when `outDir` holds a CleanDriver-stamped `manifest.json`. Only the `package` action ever writes those two files. An `extract` writes `manifest.json`, `payload/` and `.reg` files and nothing else.
@@ -114,6 +114,7 @@ static bool IsOurInstaller(string p) { /* small, 2nd line == "rem CleanDriver se
 Alternative: record `artifacts: [...]`, or the action, in the rewritten manifest and delete exactly that list. That's cleaner long-term, but it changes the manifest shape. Stock/extract manifests would no longer be byte-identical, which the GAP-05 comment at `Packages.cs:142-144` cares about. It also still needs the content check for manifests written before the change. Rejected as not minimal.
 
 Fences respected:
+- **D-CLEAN constraints:** any read before a delete is size-bounded (check the length before reading, as `IsOur*` does with its cap), and no check or delete resolves through a symlink or junction (check `FileAttributes.ReparsePoint` first). See ACs 5–6.
 - Enumerable-by-name deletion only, nothing recursive. The change only narrows what is deleted.
 - Existing pins stay green: `Extract_IntoPreviousPackageBuild_CleansTheStalePackageArtifacts` (CleanDriver's own `config.json`/`install.cmd` still match and are removed), `Rebuild_SmallerSelection_…`, `ForeignOrMalformedManifest_NothingIsDeleted` and `JobLog_NamesTheCleanedFiles_WhenACleanRan`.
 - **Owner pin D1** lists these two files as unconditionally declared, so amending that wording is an owner decision. See step 0.
@@ -158,3 +159,5 @@ Fences respected:
 2. A CleanDriver `package` build's own `config.json` (`builtBy == "CleanDriver"`) and `install.cmd` are still removed by the next build into that folder (`Extract_IntoPreviousPackageBuild_CleansTheStalePackageArtifacts` green, unedited).
 3. `CleanPreviousBuild` still never throws, including when `config.json` is huge, malformed, locked or a directory.
 4. The job log's "Cleaning previous CleanDriver build" line names only files that were actually CleanDriver's.
+5. **(D-CLEAN)** An oversized `config.json` or `install.cmd` in `outDir` (above the bound the slice sets) is never read whole and is not deleted.
+6. **(D-CLEAN)** A `config.json` or `install.cmd` that is a symlink or junction is not followed (its target is neither read nor deleted) and is not deleted.
