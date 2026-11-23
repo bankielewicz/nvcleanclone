@@ -196,26 +196,31 @@ No `pageerror` or unexpected `console.error` occurred in any happy-path test (al
 
 ## Appendix — How to re-run
 
+> **Warning: the suite writes presets, so run it against a throwaway copy of the app.** Presets live beside the app's executable (`<app dir>/presets`, `Presets.PresetDir`). The suite saves presets named `lean` (AC-005), `lean2` (AC-005b), `p01 rich`, `p02 pending`, `dup` (twice) and the P-03 set (`my lean preset`, `café ünï`, `../x`, 100×`L`, `日本語`). Each one silently overwrites any existing preset that sanitizes to the same file name. P-05 also writes and then deletes `zz-broken.json`. Never point the suite at a build whose presets you want to keep. *(Added after the Codex review of PR #25.)*
+
 **Linux harness (as used for this report):**
 ```bash
 E2E=<scratch>/agents/e2e
 cd $E2E/server && dotnet build -o out            # HeadlessProgram.cs + real Lib/, Api.cs, wwwroot/, data/
-cd $E2E/repro && ./run-harness-suite.sh          # suite owns the server on 127.0.0.1:4806 (always --mock-catalog)
+cd $E2E/repro && ./run-harness-suite.sh          # suite owns the server on 127.0.0.1:4806 (always --mock-catalog); the harness out/ is itself a throwaway build
 #   run-harness-suite.sh exports BASE_URL, SERVER_CMD, PRESETS_DIR (= server/out/presets), OUT_ROOT
 ONLY='^AC-|^R-0[1-3]' ./run-harness-suite.sh     # subset by test-id regex
 ./with-server.sh <bug-slug>.js                   # one per-bug repro against a fresh harness
 ```
 
-**Against the repo app on port 4780** (Windows, with node and the `playwright` package available; nothing is added to the repo):
+**Against the repo app on port 4780** (Windows, with node and the `playwright` package available; nothing is added to the repo). Build once, copy the build output to a throwaway folder, and run the suite against that copy, so its `presets/` and `output/` never touch your development build:
 ```bat
+dotnet build nvcleanstall/CleanDriver.csproj
+robocopy nvcleanstall\bin\Debug\net10.0-windows "%TEMP%\cleandriver-e2e" /E
 set BASE_URL=http://localhost:4780
-set SERVER_CMD=dotnet run --project nvcleanstall -- --headless --mock-catalog
+set SERVER_CMD="%TEMP%\cleandriver-e2e\CleanDriver.exe" --headless --mock-catalog
 set KILL_CMD=taskkill /F /IM CleanDriver.exe
-set PRESETS_DIR=%CD%\nvcleanstall\bin\Debug\net10.0-windows\presets
+set PRESETS_DIR=%TEMP%\cleandriver-e2e\presets
 set MOCKUP_DIR=%CD%\docs\design\CleanDriver GPU driver wizard
 node e2e-suite.js
 ```
-From WSL, use the same variables plus `PATH_MAP_FROM=/mnt/c/` and `PATH_MAP_TO=C:/`, and set `OUT_ROOT` under `/mnt/c/…` so the Windows server can read the generated fixtures. Use `SERVER_CMD='"/mnt/c/Program Files/dotnet/dotnet.exe" run --project nvcleanstall -- --headless --mock-catalog'` and `KILL_CMD='taskkill.exe /F /IM CleanDriver.exe'` (CLAUDE.md: flags cross into Windows processes, env vars do not). Without `SERVER_CMD` the suite uses an already running server, and AC-005, AC-005b, N-03 and N-04 report BLOCKED. Without `PRESETS_DIR`, P-05 reports BLOCKED.
+Delete the throwaway copy yourself when you are done with it. Copy to a fresh folder for each run, so earlier runs' presets cannot change the results.
+From WSL, use the same variables plus `PATH_MAP_FROM=/mnt/c/` and `PATH_MAP_TO=C:/`, and set `OUT_ROOT` under `/mnt/c/…` so the Windows server can read the generated fixtures. Use the same throwaway copy: `SERVER_CMD='"/mnt/c/Users/<you>/AppData/Local/Temp/cleandriver-e2e/CleanDriver.exe" --headless --mock-catalog'`, `PRESETS_DIR` pointing at that copy's `presets/`, and `KILL_CMD='taskkill.exe /F /IM CleanDriver.exe'` (CLAUDE.md: flags cross into Windows processes, env vars do not). Without `SERVER_CMD` the suite uses an already running server, and AC-005, AC-005b, N-03 and N-04 report BLOCKED. Without `PRESETS_DIR`, P-05 reports BLOCKED.
 
 **Per-bug repro scripts** (each standalone, default `BASE_URL=http://localhost:4780`, prints `RED`/`GREEN`, exit 1 on RED), in `<E2E>/repro/`:
 - `keyboard-cannot-reach-wizard-controls.js`
