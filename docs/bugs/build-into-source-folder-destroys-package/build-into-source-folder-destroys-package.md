@@ -17,6 +17,8 @@ If `outputPath` is the folder the package was loaded from, an `extract` or `pack
 - **Mechanism (1), a PR #23 regression.** `CopyPayload` truncates the destination file before it opens the source. When both are the same file, the source payload drops to 0 bytes and the job fails with a sharing violation. This happens with any ordinary local package folder. It also happens with the bundled sample package, whose path `/api/sample-package` shows in the UI.
 - **Mechanism (2), from HARD-01.** CleanDriver's own `extract` output (`manifest.json` + `payload/`) is a valid local package. If the user loads it back and rebuilds into the same folder, `CleanPreviousBuild` deletes the input's manifest and payloads before `WriteCustomized` reads them.
 
+- **Mechanism (3), a zip source** (added after the PR #25 review). The `package` step ends with `WriteZip(ZipPathFor(outDir, version))`, which deletes whatever already sits at that path (`Packages.cs:268`). Build a package into `output/package-572.16`, load the resulting `output/572.16-cleandriver-package.zip`, and build again into the same folder: the source archive is deleted and rewritten with the narrower selection.
+
 A sibling symptom of mechanism (1): when a selected payload is missing from the source, a zero-byte `payload/<name>` is left behind.
 
 ## Evidence
@@ -45,6 +47,7 @@ Nothing anywhere compares `outDir` with `source.Dir`. The only pre-write guard i
 - **Data loss of the user's input.** "Customize this package in place" is a natural thing to try. It leaves `payload/display-driver.bin` at 0 bytes, and the job reports `failed`.
 - Re-customizing a previous CleanDriver extract in place deletes the whole input package. Live, all that remained was a single 0-byte file.
 - **Corrupts the app's own data.** Loading `/api/sample-package`'s path and building into it truncates the bundled `data/packages/<ver>/payload/display-driver.bin`. Every later build of that version then copies a 0-byte "driver" and reports `done`, until the app is reinstalled.
+- **A zip source is replaced, silently.** Under mechanism (3) the job ends `done`: the user's full archive becomes the narrower one, with no error at all.
 - The failure message then leaks the absolute path through the job error. That leak is pre-existing behavior of job errors, noted here only for completeness.
 
 ## How to reproduce
@@ -137,6 +140,38 @@ public class BuildIntoSourceFolderTests
         Assert.False(File.Exists(Path.Combine(outDir, "payload", "physx.bin")),
             "a zero-byte payload was left behind for a payload that does not exist in the source");
     }
+
+    // Mechanism (3): `package` writes Packages.ZipPathFor(outDir, version). When that is the zip
+    // the package was loaded from, the build must be refused by name, never replace the source.
+    [Fact]
+    public async Task PackageFromAZip_IntoTheFolderThatProducedIt_NeverReplacesTheSourceZip()
+    {
+        var root = TempDir.Create();
+        var outDir = Path.Combine(root, "package-572.16");
+
+        var (m0, s0) = Packages.LoadCatalog("572.16");
+        var all = new Selection { Components = m0.Components.Select(c => c.Id).ToList() };
+        var j0 = Jobs.StartExecute("package", m0, s0, all, outDir, Gpu.Simulated);
+        await j0.Completion!;
+        Assert.Equal("done", j0.Status);
+
+        var zip = Packages.ZipPathFor(outDir, "572.16");          // the archive that build produced
+        var before = Entries(zip);
+
+        var (m1, s1) = Packages.LoadLocal(zip);                    // load that archive as the source
+        var j1 = Jobs.StartExecute("package", m1, s1,
+            new Selection { Components = new() { "display-driver" } }, outDir, Gpu.Simulated);
+        await j1.Completion!;
+
+        Assert.Equal(before, Entries(zip));                        // the source archive is untouched
+        Assert.Equal("failed", j1.Status);                         // …because the build was refused
+    }
+
+    private static List<string> Entries(string zip)
+    {
+        using var z = System.IO.Compression.ZipFile.OpenRead(zip);
+        return z.Entries.Select(e => $"{e.FullName}:{e.Length}").OrderBy(x => x, StringComparer.Ordinal).ToList();
+    }
 }
 ```
 Run:
@@ -159,6 +194,16 @@ Failed ...MissingSourcePayload_LeavesNoZeroBytePayloadBehind
   a zero-byte payload was left behind for a payload that does not exist in the source
 Failed!  - Failed: 4, Passed: 0
 ```
+Mechanism (3), added after the PR #25 review. RED from the Linux `net10.0` harness at `54b3c31` (separate run, class `BuildFromZipIntoItsOwnBuildFolderTests`, identical method body):
+```
+Failed ...PackageFromAZip_IntoTheFolderThatProducedIt_NeverReplacesTheSourceZip [4 s]
+   Assert.Equal() Failure: Collections differ
+           ↓ (pos 0)
+Expected: ["config.json:290", "install.cmd:179", "manifest.json:3422", "payload/container.bin:2111", "payload/display-driver.bin:2116", ···]
+Actual:   ["config.json:158", "install.cmd:179", "manifest.json:534", "payload/display-driver.bin:2116"]
+           ↑ (pos 0)
+```
+
 Regression check: the same file was compiled against `git archive a8c4f70` (pre-PR #23). Both `BuildIntoTheSourceFolder_*` cases **pass** there. `ReCustomizing…` fails there too ("payload missing for component display-driver"), which confirms mechanism (2) predates PR #23.
 
 ### B. Live — running app
@@ -185,15 +230,19 @@ Nothing treats "the output directory is the input package" as a hazard. Two writ
 
 ## Remedy
 Minimal, two parts:
-1. **Refuse the alias by name before any write.** This follows the HARD-02 pattern. Add a pure predicate in `Packages.cs`, and call it at the top of `StartExecute` right after `IsFilesystemRoot` (`Jobs.cs:396`). Failing the job by name has the same shape as `RootOutputPathError`.
+1. **Refuse the alias by name before any write.** This follows the HARD-02 pattern. Add a pure predicate in `Packages.cs`, and call it at the top of `StartExecute` right after `IsFilesystemRoot` (`Jobs.cs:396`). Failing the job by name has the same shape as `RootOutputPathError`. Call it as `OutputAliasesSource(source, outDir, action, manifest.Version)`; `extract` from a zip is never refused, since it writes no archive.
 ```csharp
-public const string OutputIsSourceError = "outputPath is the package's own folder; choose a different folder";
-public static bool OutputAliasesSource(PackageSource source, string outDir)
+public const string OutputIsSourceError = "outputPath would overwrite the package being customized; choose a different folder";
+public static bool OutputAliasesSource(PackageSource source, string outDir, string action, string version)
 {
-    if (source.Dir is null) return false;                       // local-zip: the zip file is never written
     var cmp = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
     static string Norm(string p) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(p));
-    return string.Equals(Norm(source.Dir), Norm(outDir), cmp);
+    // Folder source: any action writes into outDir.
+    if (source.Dir is not null && string.Equals(Norm(source.Dir), Norm(outDir), cmp)) return true;
+    // Zip source: only `package` writes an archive, at ZipPathFor(outDir, version). Call ZipPathFor
+    // itself, never a copy of its naming rule (GAP-R06 / D-ZIPNAME changes that name later).
+    return action == "package" && source.ZipPath is not null
+        && string.Equals(Norm(source.ZipPath), Norm(ZipPathFor(outDir, version)), cmp);
 }
 ```
 2. **Make `CopyPayload` source-first.** Resolve and open the source (zip entry, or the confined file plus its `File.Exists` check) before `File.Create(destPath)`. With the alias refused this is defense in depth. It also stops a missing or invalid source from leaving a zero-byte destination.
@@ -250,3 +299,4 @@ Known limit: being name-based, the predicate does not catch an alias created thr
 3. Re-loading a CleanDriver extract and building into the same folder fails by name. The folder's `manifest.json` and payloads survive unchanged.
 4. A selected payload missing from the source raises `PayloadMissing` and leaves no `payload/<name>` file in `outDir`.
 5. Building into any other folder is unchanged: `OutDirHygieneTests`, `PackageZipTests` and `PackageValidationTests` are green and unedited.
+6. `package` from a local zip into the folder whose archive path (`Packages.ZipPathFor(outDir, version)`) is that same zip fails by name before any write, and the zip keeps every entry byte-for-byte (`PackageFromAZip_IntoTheFolderThatProducedIt_NeverReplacesTheSourceZip`). `extract` from that zip into that folder still succeeds.
