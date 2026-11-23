@@ -115,7 +115,7 @@ A user action that starts an asynchronous, server-side job is treated as if it w
 
 ## Remedy
 Frontend-only, A6, with no new controls. The fence is the frozen five-screen contract plus R1–R10, and the footer is still hidden by R4 once the run view shows.
-- Add a module-level `executing` flag. In `startExecute`, `if (executing) return; executing = true;`. Add `$('btn-next').classList.add('disabled')` so the existing `.btn.disabled` style (`styles.css:107`) applies. Release both in a `finally` when the call did not reach `show('run')`, so an alert path stays retryable.
+- Add a module-level `executing` flag. In `startExecute`, `if (executing) return; executing = true;`. Add `$('btn-next').classList.add('disabled')` so the existing `.btn.disabled` style (`styles.css:107`) applies. Release both **unconditionally** in a `finally`. During a run, R4's hidden footer already blocks further presses, and the single-owner `pollRun` below discards stale ticks; holding the flag past the request would leave Start dead for every later run until a reload.
 - Make `pollRun` single-owner: keep the current job id in `state.runJob`, and have a tick return early when `jobId !== state.runJob`.
 - Apply the same flag pattern to `leaveSource`, as `screen1-next-no-inflight-guard-wrong-version` proposes. Land both in one slice, or sequence them.
 - Keep `textContent` for log lines (`app.js:420`) and `esc()` for the banner path. Leave the safety boundary and honesty markers untouched.
@@ -155,3 +155,4 @@ Frontend-only, A6, with no new controls. The fence is the frozen five-screen con
 3. Only the poller of the latest job writes to `#run-log` and the banner. After **Finish** and a new run, no line from the earlier job appears.
 4. R4 still holds: the footer is hidden in the run view, and Open output folder and Finish are the exits. No new controls are added.
 5. The full C# suite is green, and `git diff --check` is clean.
+6. After a successful run, **Finish**, and a new selection, **Start** posts exactly once again, with no reload (UI test S5-09 stays PASS).
