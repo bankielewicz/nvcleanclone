@@ -196,7 +196,7 @@ Start `dotnet run --project nvcleanstall -- --headless --mock-catalog` (port 478
    HTTP/1.1 500 Internal Server Error
    Content-Length: 0
    ```
-5. Wait 10 s, then poll the job ids the server allocated and never returned:
+5. Wait 10 s, then poll the job ids the server allocated and never returned. **This step works only while ids are sequential (`54b3c31`);** after GAP-S02a (PR #24) the ids are random and never returned, so the zombie is observable only in-process (see `execute-prelude-throw-orphans-running-job` §A, `Jobs.Running()`):
    ```
    $ curl -s localhost:4780/api/jobs/1
    { "id": "1", "type": "install", "status": "running", "progress": 0, "totalMB": 0, "doneMB": 0,

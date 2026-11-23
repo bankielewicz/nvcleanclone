@@ -106,19 +106,19 @@ public class ExecutePreludeTests
         Assert.Null(ex);
     }
 
-    // The consequence: no job may be left "running" with no worker.
+    // The consequence: no job may be left "running" with no worker. Ids are never parsed or
+    // guessed (GAP-S02a / PR #24 makes them random 32-hex strings); the test enumerates running
+    // jobs through Jobs.Running(), a seam this fix adds (compile-level red on HEAD).
     [Fact]
     public void StartExecute_PreludeThrow_LeavesNoNeverTerminalJob()
     {
-        var before = int.Parse(Jobs.StartDownload(new Release { Version = "000.01", SizeMB = 1 }).Id);
+        var before = Jobs.Running().Select(j => j.Id).ToHashSet();
         try { Jobs.StartExecute("extract", M(), Src(), Sel(), "out\0dir", G()); } catch { /* asserted above */ }
-        var after = int.Parse(Jobs.StartDownload(new Release { Version = "000.02", SizeMB = 1 }).Id);
 
         Thread.Sleep(200); // any legitimately-started job has long since been handed its worker
-        var orphans = Enumerable.Range(before + 1, after - before - 1)
-            .Select(i => Jobs.Get(i.ToString()))
-            .Where(j => j is { Type: "extract", Status: "running", Completion: null })
-            .Select(j => j!.Id)
+        var orphans = Jobs.Running()
+            .Where(j => !before.Contains(j.Id) && j is { Type: "extract", Completion: null })
+            .Select(j => j.Id)
             .ToList();
 
         Assert.Empty(orphans);
@@ -131,7 +131,14 @@ Run (real repo):
 dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj --filter "FullyQualifiedName~ExecutePreludeTests"
 ```
 
-Captured RED on unmodified HEAD (Linux net10.0 harness, class `ExecutePreludeThrowOrphansRunningJobRepro`, same bodies):
+**Red for `StartExecute_PreludeThrow_LeavesNoNeverTerminalJob` is compile-level on HEAD** (`Jobs.Running` does not exist yet; the seam is this test's own requirement, stated per the repo's compile-level-red precedent). Its behavioral red at `54b3c31` was shown in the harness only, by reading the private store through reflection (not for the suite, because PR #24 replaces the store type):
+```
+Failed ...Harness_StartExecutePreludeThrow_LeavesARunningJobWithNoWorker [203 ms]
+   Assert.Empty() Failure: Collection was not empty
+Collection: ["9"]
+```
+
+Captured RED on unmodified HEAD for all three facts as first written (Linux net10.0 harness, class `ExecutePreludeThrowOrphansRunningJobRepro`; that first version of the orphan test parsed sequential ids, which is why it was replaced):
 ```
 Failed ...StartExecute_PreludeThrow_LeavesNoNeverTerminalJob [226 ms]
   Error Message:
@@ -151,7 +158,7 @@ Failed!  - Failed:     3, Passed:     0, Skipped:     0, Total:     3
 ```
 
 ### B. Live — running app (if applicable)
-Against `dotnet run --project nvcleanstall -- --headless --mock-catalog` (port 4780). The transcript below was captured on the Linux mirror, port 4801, fresh process.
+Against `dotnet run --project nvcleanstall -- --headless --mock-catalog` (port 4780). The transcript below was captured on the Linux mirror, port 4801, fresh process. **Steps 2, 5 and 6 work only while job ids are sequential (`54b3c31`).** Once GAP-S02a (PR #24) makes ids random, the zombie job's id is never returned and cannot be guessed, so the orphan is observable only in-process (§A); steps 3–4 (the bodiless 500) still apply.
 1. `curl -s -X POST localhost:4780/api/package -H 'Content-Type: application/json' -d '{"kind":"catalog","version":"572.16"}'` → `"token": "1"`.
 2. Probe the id counter: `curl -s -X POST localhost:4780/api/download -H 'Content-Type: application/json' -d '{"version":"572.16"}'` → `{"jobId":"1"}`.
 3. `curl -s -i -X POST localhost:4780/api/execute -H 'Content-Type: application/json' -d '{"token":"1","action":"extract","selection":{"components":["display"]},"outputPath":"out\u0000dir"}'`
@@ -169,7 +176,7 @@ Against `dotnet run --project nvcleanstall -- --headless --mock-catalog` (port 4
 `StartExecute` breaks its own ordering invariant: a job may only be published to the store once it is either handed a worker or failed by name. `Create(action)` publishes first, and the synchronous request-derived work that can still throw runs afterwards. The HARD-02 guard closed this for one *value* (a root path) but not for the *class* of prelude failures. Api.cs's narrow filter turns the escape into a bare 500.
 
 ## Remedy
-Keep the publish-first shape, which HARD-02 relies on to return a failed job, but make the prelude total. Any exception before the worker is assigned fails the published job by name:
+Keep the publish-first shape, which HARD-02 relies on to return a failed job, but make the prelude total. Add the read-only seam the test needs: `public static IReadOnlyList<Job> Running() => Store.Values.Where(j => j.Status == "running").ToList();`. Any exception before the worker is assigned fails the published job by name:
 
 ```diff
 +    public const string InvalidExecuteRequestError = "invalid outputPath or selection";
