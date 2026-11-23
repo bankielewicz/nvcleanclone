@@ -223,6 +223,18 @@ Same run with `path` = `outputPath` = the value of `GET /api/sample-package` (`�
 
 Mechanism (2), live: extract catalog 572.16 to `…/l1b/extract-572.16`, which ends `done`. Then `POST /api/package {"kind":"local","path":"…/l1b/extract-572.16"}` and extract into the same path. The log shows `> Cleaning previous CleanDriver build: payload/display-driver.bin, payload/physx.bin, payload/hd-audio.bin, manifest.json`, then `> ERROR: The process cannot access the file …`. Files left: `0  …/payload/display-driver.bin`.
 
+
+Mechanism (3), live (added after the PR #25 review). Leave **Output folder empty** both times, so the default `outDir` (`output/package-<version>`) is the folder that produced the archive:
+1. `POST /api/package {"kind":"catalog","version":"572.16"}`, then `POST /api/execute` with `"action":"package"`, every component selected and `"outputPath":""`. The job ends `done` and writes `output/572.16-cleandriver-package.zip`. Record its size, sha256 and entry count.
+2. `POST /api/package {"kind":"local","path":"<app dir>/output/572.16-cleandriver-package.zip"}`.
+3. `POST /api/execute` with that token, `"action":"package"`, `"components":["display-driver"]` and `"outputPath":""`, then record the same three values again.
+
+**Expected:** step 3 fails by name and the archive is byte-identical. **Actual (captured on the Linux harness at `54b3c31`, port 4812):**
+```
+1. job 1: done      3554 bytes output/572.16-cleandriver-package.zip   sha256 ee2bf050dc12fe14…  entries: 13
+3. job 2: done      1085 bytes output/572.16-cleandriver-package.zip   sha256 4772ccab16a33322…  entries: 4
+```
+The user's full archive is silently replaced by the narrower one, and the job reports success. After the fix, `extract` from that same zip (Output folder empty, so `output/extract-572.16`, or explicitly `output/package-572.16`) must still succeed (AC 6).
 ## Root cause
 Nothing treats "the output directory is the input package" as a hazard. Two writers act on that alias:
 1. `CopyPayload` opens the destination with truncate semantics before the source is opened, so destination and source being the same file is destructive. PR #23 swapped "read everything, then write" for "open destination, then stream from source".
@@ -237,7 +249,11 @@ public static bool OutputAliasesSource(PackageSource source, string outDir, stri
 {
     var cmp = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
     static string Norm(string p) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(p));
-    // Folder source: any action writes into outDir.
+    // Only `extract` and `package` write to outDir. `install`/`silent` never use outputPath,
+    // so they are never refused here (unlike HARD-02's action-uniform root check, amendment A3:
+    // aliasing can only damage the source through a write).
+    if (action is not ("extract" or "package")) return false;
+    // Folder source: both writing actions write into outDir.
     if (source.Dir is not null && string.Equals(Norm(source.Dir), Norm(outDir), cmp)) return true;
     // Zip source: only `package` writes an archive, at ZipPathFor(outDir, version). Call ZipPathFor
     // itself, never a copy of its naming rule (GAP-R06 / D-ZIPNAME changes that name later).
@@ -294,7 +310,7 @@ Known limit: being name-based, the predicate does not catch an alias created thr
 8. **Report to owner.** "merge it" or "hold: fixes requested", with the fix prompt attached. Only the owner merges.
 
 ## Acceptance criteria
-1. `extract` and `package` with `outputPath` equal to the loaded local package folder fail by name (`OutputIsSourceError`) before any write. Every source file keeps its bytes, and no file is created, deleted or truncated in that folder.
+1. `extract` and `package` (the two actions that write to `outputPath`) with `outputPath` equal to the loaded local package folder fail by name (`OutputIsSourceError`) before any write. `install` and `silent`, which never write to `outputPath`, are not refused. Every source file keeps its bytes, and no file is created, deleted or truncated in that folder.
 2. The same holds when the source is the bundled catalog package (`/api/sample-package` path) and when `outputPath` differs only by a trailing separator or, on Windows, by case.
 3. Re-loading a CleanDriver extract and building into the same folder fails by name. The folder's `manifest.json` and payloads survive unchanged.
 4. A selected payload missing from the source raises `PayloadMissing` and leaves no `payload/<name>` file in `outDir`.
