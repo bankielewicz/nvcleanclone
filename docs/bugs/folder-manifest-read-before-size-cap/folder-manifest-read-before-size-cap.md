@@ -164,7 +164,7 @@ Edge to disclose: a CleanDriver-written manifest over 1 MiB, for example one car
    > *Pinned 2026-11-23 as **GAP-R03** (`docs/security_register.md` §4 Wave R): use that ID; the register gate is satisfied, and any ID suggested in this step is superseded.*
 1. **Slice setup.** `git worktree add ../nvcleanclone-mfcap -b feat/manifest-size-cap-before-read origin/main`
 2. **Red.** Add `nvcleanstall/CleanDriver.Tests/ManifestSizeCapTests.cs` (§A). Run `--filter "FullyQualifiedName~ManifestSizeCapTests"` and confirm both fail on the allocation assertion. Commit `"SEC-09 (red): manifest size cap must apply before the file is read"`.
-3. **Green.** Add `ReadManifestText` and use it in `LoadLocal` (folder) and `CleanPreviousBuild`. Optionally use it in `LoadCatalog`/`LoadSampleTemplate` for uniformity. Run the full suite. Commit `"SEC-09: check manifest.json length before reading (folder load + HARD-01 clean)"`.
+3. **Green.** Add `ReadManifestText` and use it in `LoadLocal` (folder); `CleanPreviousBuild` will already use it from GAP-R02 (see AC 3). Optionally use it in `LoadCatalog`/`LoadSampleTemplate` for uniformity. Run the full suite. Commit `"SEC-09: check manifest.json length before reading (folder load + HARD-01 clean)"`.
 4. **Refactor.** Only with the suite green.
 5. **Gates.** `dotnet build nvcleanstall/CleanDriver.csproj`, `dotnet test nvcleanstall/CleanDriver.Tests/CleanDriver.Tests.csproj`, `git diff --check`.
 6. **Live exercise.** Run §B with a 1.5 GiB file: HTTP 400 `manifest rejected: manifest is too large` within well under a second, with the server's working set flat (Task Manager / `Get-Process CleanDriver | select WS`).
@@ -192,5 +192,5 @@ Edge to disclose: a CleanDriver-written manifest over 1 MiB, for example one car
 ## Acceptance criteria
 1. `Packages.LoadLocal(folder)` with a `manifest.json` larger than `MaxManifestBytes` throws `InvalidDataException(ManifestTooLarge)` while allocating less than 8 MiB, whatever the file size.
 2. `POST /api/package {"kind":"local"}` on a 1.5 GiB folder manifest returns HTTP 400 `manifest rejected: manifest is too large` in under 1 s, with no memory spike and no 500.
-3. `Packages.CleanPreviousBuild(outDir)` with an oversized `outDir/manifest.json` returns an empty list without reading the file (< 8 MiB allocated) and without throwing.
+3. `Packages.CleanPreviousBuild(outDir)` with an oversized `outDir/manifest.json` returns an empty list without reading the file (< 8 MiB allocated) and without throwing. **Lands in GAP-R02, not R03:** ruling D-CLEAN binds the clean step and R02 lands first, so R02 takes the `CleanPreviousBuild` half (its red is `CleanPreviousBuild_OversizedPriorManifest_IsNotReadWhole`, and it is AC 7 of `clean-previous-build-follows-reparse-point`). In GAP-R03 this AC is a pin that must stay green.
 4. Existing `PackageValidationTests` and `OutDirHygieneTests` pins stay green and unedited.

@@ -170,7 +170,7 @@ try { abs = PackageValidation.EnsureConfinedRealPath(outDir, Path.Combine("paylo
 catch (InvalidDataException) { continue; }   // escape / reparse point → skip, never delete
 Remove(abs, $"payload/{name}");
 ```
-Optionally apply the same to the `tweak-*.reg` and fixed-name removals at `:215-224`. They sit directly under `outDir`, so only a leaf symlink applies there, and `File.Delete` removes the link itself. That is harmless, so it isn't needed for this fix.
+Apply the same rule to the `tweak-*.reg` and fixed-name removals at `:215-224`, and to the prior `manifest.json` that is read first. **Under ruling D-CLEAN a link is never followed and never deleted:** CleanDriver never writes a symlink or junction, so a link at any declared name is foreign to the prior build and survives. (`File.Delete` on a leaf link would remove only the link, but the link was not written by the prior build, so deleting it would still breach D-CLEAN.) Read the prior manifest only if it is a regular file within the size cap: a link or an oversized file means "not a CleanDriver build", so nothing is deleted.
 
 Why this is minimal: it reuses the existing validator, one call site, and no new API.
 
@@ -216,3 +216,6 @@ Fences respected:
 2. The full `extract`/`package` job in that setup still fails with `PackageValidation.ReparsePoint`, and the outside sentinel survives.
 3. All existing HARD-01 pins (`OutDirHygieneTests`) and the GAP-S01 Sink 4 test stay green and unedited.
 4. No recursive-delete primitive appears in `Packages.cs`/`Jobs.cs`.
+5. **(D-CLEAN)** A declared leaf (`payload/<name>`, `tweak-<id>.reg`, `install.cmd`, `config.json`) that is a symlink or junction is neither followed nor deleted, and its target survives.
+6. **(D-CLEAN)** If `outDir/manifest.json` is itself a symlink or junction, it is not followed: nothing is read through it and nothing is deleted.
+7. **(D-CLEAN)** If `outDir/manifest.json` is larger than `MaxManifestBytes`, it is not read whole (under 8 MiB allocated) and nothing is deleted. This is the `CleanPreviousBuild` half of `folder-manifest-read-before-size-cap`, moved into GAP-R02 because D-CLEAN binds this slice and R02 lands before R03; that report's `CleanPreviousBuild_OversizedPriorManifest_IsNotReadWhole` is the red for this AC.

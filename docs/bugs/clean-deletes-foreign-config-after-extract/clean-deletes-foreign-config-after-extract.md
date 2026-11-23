@@ -162,4 +162,4 @@ Fences respected:
 3. `CleanPreviousBuild` still never throws, including when `config.json` is huge, malformed, locked or a directory.
 4. The job log's "Cleaning previous CleanDriver build" line names only files that were actually CleanDriver's.
 5. **(D-CLEAN)** An oversized `config.json` or `install.cmd` in `outDir` (above the bound the slice sets) is never read whole and is not deleted.
-6. **(D-CLEAN)** A `config.json` or `install.cmd` that is a symlink or junction is not followed (its target is neither read nor deleted) and is not deleted.
+6. **(D-CLEAN)** A `config.json` or `install.cmd` that is a symlink or junction is not followed (its target is neither read nor deleted) and is not deleted. This is the same rule as AC 5 of `clean-previous-build-follows-reparse-point`, which lands in the same slice (GAP-R02).
