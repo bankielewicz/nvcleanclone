@@ -95,6 +95,10 @@ body.shell .caption{display:none;}
 .screen.active{display:flex;}
 .page-title{font-size:20px; font-weight:600; line-height:26px; margin:0;}
 .label{font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--text2); font-weight:600;}
+/* GAP-S02a (pin 3a): relocated from an inline style="align-self:center" on index.html:119 so a
+   strict CSP (no 'unsafe-inline') has no inline styles to block. Scoped to .label.self-center —
+   the shared .label rule is unchanged. */
+.label.self-center{align-self:center;}
 .caption-txt{font-size:12px; color:var(--text2);}
 
 /* buttons */
